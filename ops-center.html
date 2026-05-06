@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ops Center — ACMI</title>
+<link rel="stylesheet" href="style.css">
+<meta name="description" content="ACMI Ops Center — real-time dashboard for managing AI agent fleets. Bloomberg Terminal meets The New Yorker.">
+<style>
+  /* ========================================================================
+     Ops Center — dashboard-specific styles, layered on style.css tokens
+     ======================================================================== */
+
+  /* Hero / page lead */
+  .ops-hero {
+    border-bottom: 1px solid var(--mzm-ink-rule);
+    padding: var(--mzm-space-12) 0 var(--mzm-space-8);
+    margin-bottom: var(--mzm-space-10);
+  }
+  .ops-hero-meta {
+    font-family: var(--mzm-font-sans);
+    font-size: var(--mzm-text-sm);
+    font-weight: var(--mzm-weight-medium);
+    letter-spacing: var(--mzm-tracking-wide);
+    text-transform: uppercase;
+    color: var(--mzm-ink-fade);
+    margin-bottom: var(--mzm-space-4);
+  }
+  .ops-hero-title {
+    font-family: var(--mzm-font-serif);
+    font-size: var(--mzm-text-6xl);
+    font-weight: var(--mzm-weight-bold);
+    letter-spacing: var(--mzm-tracking-tight);
+    line-height: var(--mzm-leading-tight);
+    margin-bottom: var(--mzm-space-6);
+  }
+  .ops-hero-sub {
+    font-family: var(--mzm-font-serif);
+    font-size: var(--mzm-text-2xl);
+    font-weight: var(--mzm-weight-normal);
+    line-height: var(--mzm-leading-relaxed);
+    color: var(--mzm-ink-soft);
+    max-width: 64ch;
+  }
+  .ops-hero-actions {
+    display: flex; flex-wrap: wrap; gap: var(--mzm-space-4);
+    margin-top: var(--mzm-space-8); align-items: center;
+  }
+
+  /* Multi-ACMI switcher (top-right global) */
+  .acmi-switcher {
+    display: inline-flex; align-items: center; gap: var(--mzm-space-3);
+    background: var(--mzm-paper-warm);
+    border: 1px solid var(--mzm-accent);
+    padding: var(--mzm-space-3) var(--mzm-space-5);
+    border-radius: var(--mzm-radius-md);
+    font-family: var(--mzm-font-sans);
+    font-size: var(--mzm-text-sm);
+    cursor: pointer;
+    transition: background var(--mzm-dur-fast) var(--mzm-ease);
+  }
+  .acmi-switcher:hover { background: var(--mzm-paper-shadow); }
+  .acmi-switcher-current { display: flex; align-items: center; gap: var(--mzm-space-2); }
+  .acmi-switcher-name { font-weight: var(--mzm-weight-semibold); color: var(--mzm-ink); }
+  .acmi-switcher-meta {
+    color: var(--mzm-ink-fade);
+    font-family: var(--mzm-font-mono);
+    font-size: var(--mzm-text-xs);
+  }
+  .acmi-switcher-caret { color: var(--mzm-ink-fade); margin-left: var(--mzm-space-2); }
+
+  /* Status dots */
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+  .dot.active   { background: #22C55E; box-shadow: 0 0 0 2px rgba(34,197,94,0.18); }
+  .dot.degraded { background: #EAB308; box-shadow: 0 0 0 2px rgba(234,179,8,0.18); }
+  .dot.offline  { background: #EF4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.18); }
+  .dot.pulsing  { animation: dotpulse 2.4s ease-in-out infinite; }
+  @keyframes dotpulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(34,197,94,0.18); }
+    50% { box-shadow: 0 0 0 6px rgba(34,197,94,0.05); }
+  }
+
+  /* Dashboard 4-panel grid */
+  .ops-grid {
+    display: grid;
+    grid-template-columns: 30fr 40fr 30fr;
+    grid-template-rows: minmax(420px, 1fr) minmax(380px, auto) minmax(360px, auto);
+    grid-template-areas:
+      "fleet workflow kanban"
+      "comms comms comms"
+      "detail detail detail";
+    gap: var(--mzm-space-4);
+    margin-bottom: var(--mzm-space-12);
+  }
+  .panel {
+    background: var(--mzm-paper);
+    border: 1px solid var(--mzm-ink-rule);
+    border-radius: var(--mzm-radius-md);
+    box-shadow: var(--mzm-shadow-sm);
+    padding: var(--mzm-space-5) var(--mzm-space-6);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .panel-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding-bottom: var(--mzm-space-3);
+    margin-bottom: var(--mzm-space-4);
+    border-bottom: 1px solid var(--mzm-ink-rule);
+  }
+  .panel-title {
+    font-family: var(--mzm-font-sans);
+    font-size: var(--mzm-text-xs);
+    font-weight: var(--mzm-weight-semibold);
+    letter-spacing: var(--mzm-tracking-wide);
+    text-transform: uppercase;
+    color: var(--mzm-ink-fade);
+  }
+  .panel-count {
+    font-family: var(--mzm-font-mono);
+    font-size: var(--mzm-text-xs);
+    color: var(--mzm-ink-quiet);
+  }
+  .panel-fleet    { grid-area: fleet; }
+  .panel-workflow { grid-area: workflow; }
+  .panel-kanban   { grid-area: kanban; }
+  .panel-comms    { grid-area: comms; }
+  .panel-detail   { grid-area: detail; }
+
+  /* Panel 1: Fleet org chart (UNIX tree) */
+  .fleet-tree {
+    font-family: var(--mzm-font-mono);
+    font-size: var(--mzm-text-xs);
+    line-height: 1.95;
+    color: var(--mzm-ink-soft);
+    overflow-y: auto;
+  }
+  .fleet-row {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: var(--mzm-space-2);
+    padding: 1px 0;
+    cursor: pointer;
+    transition: background var(--mzm-dur-fast) var(--mzm-ease);
+    border-radius: 2px;
+  }
+  .fleet-row:hover { background: var(--mzm-paper-warm); }
+  .fleet-row.selected { background: var(--mzm-paper-warm); }
+  .fleet-row .id { color: var(--mzm-accent); font-family: var(--mzm-font-mono); }
+  .fleet-row .role { color: var(--mzm-ink-fade); font-family: var(--mzm-font-sans); margin-left: var(--mzm-space-2); font-size: 0.7rem; }
+  .fleet-row .stat { display: flex; align-items: center; gap: var(--mzm-space-2); }
+  .fleet-row .heartbeat {
+    color: var(--mzm-ink-quiet);
+    font-size: 0.65rem;
+  }
+
+  /* Panel 2: Horizontal workflow + timeline */
+  .workflow-pipeline {
+    display: flex; align-items: center; gap: var(--mzm-space-2);
+    margin-bottom: var(--mzm-space-5);
+    padding: var(--mzm-space-3);
+    background: var(--mzm-paper-warm);
+    border-radius: var(--mzm-radius-md);
+    overflow-x: auto;
+  }
+  .pipeline-node {
+    flex: 0 0 auto;
+    background: var(--mzm-paper);
+    border: 1px solid var(--mzm-ink-rule);
+    border-radius: var(--mzm-radius-md);
+    padding: var(--mzm-space-2) var(--mzm-space-3);
+    font-family: var(--mzm-font-mono);
+    font-size: 0.7rem;
+    text-align: center;
+    min-width: 92px;
+  }
+  .pipeline-node.success { border-color: #22C55E; }
+  .pipeline-node.hitl { border-color: #EAB308; background: #fffbe8; }
+  .pipeline-node.running { border-color: var(--mzm-accent); background: var(--mzm-paper-warm); }
+  .pipeline-node .step { font-weight: var(--mzm-weight-semibold); color: var(--mzm-ink); }
+  .pipeline-node .badge { display: block; margin-top: 2px; font-size: 0.6rem; color: var(--mzm-ink-fade); letter-spacing: 0.04em; }
+  .pipeline-edge { color: var(--mzm-ink-quiet); font-size: 1rem; user-select: none; }
+
+  .swimlanes {
+    flex: 1; display: flex; flex-direction: column;
+    font-family: var(--mzm-font-mono); font-size: 0.7rem;
+    border: 1px solid var(--mzm-ink-rule); border-radius: var(--mzm-radius-md);
+    overflow: hidden;
+  }
+  .lane {
+    display: grid; grid-template-columns: 100px 1fr;
+    border-bottom: 1px solid var(--mzm-paper-shadow);
+    align-items: center; min-height: 36px;
+  }
+  .lane:last-child { border-bottom: 0; }
+  .lane-label {
+    padding: var(--mzm-space-2) var(--mzm-space-3);
+    background: var(--mzm-paper-warm);
+    font-weight: var(--mzm-weight-semibold);
+    color: var(--mzm-ink-soft);
+    border-right: 1px solid var(--mzm-ink-rule);
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .lane-events {
+    position: relative;
+    height: 36px;
+    padding: 0 var(--mzm-space-3);
+  }
+  .event-dot {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 10px; height: 10px; border-radius: 50%;
+    cursor: pointer;
+    transition: transform var(--mzm-dur-fast) var(--mzm-ease);
+  }
+  .event-dot:hover { transform: translateY(-50%) scale(1.4); }
+  .event-dot.success { background: #22C55E; }
+  .event-dot.error { background: #EF4444; }
+  .event-dot.hitl { background: #EAB308; }
+  .event-dot.tick { background: var(--mzm-accent); }
+  .lane-axis {
+    display: grid; grid-template-columns: 100px 1fr;
+    border-top: 1px solid var(--mzm-ink-rule);
+    background: var(--mzm-paper-warm);
+  }
+  .lane-axis-label { padding: 4px var(--mzm-space-3); font-size: 0.6rem; color: var(--mzm-ink-fade); border-right: 1px solid var(--mzm-ink-rule); }
+  .lane-axis-tick { display: flex; justify-content: space-between; padding: 4px var(--mzm-space-3); font-size: 0.6rem; color: var(--mzm-ink-quiet); }
+
+  /* Panel 3: Kanban */
+  .kanban-cols {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    overflow-x: auto;
+  }
+  .kanban-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .kanban-col-head {
+    font-family: var(--mzm-font-sans);
+    font-size: 0.6rem;
+    font-weight: var(--mzm-weight-semibold);
+    letter-spacing: var(--mzm-tracking-wide);
+    text-transform: uppercase;
+    color: var(--mzm-ink-fade);
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--mzm-ink-rule);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .kanban-col-head .n { font-family: var(--mzm-font-mono); color: var(--mzm-ink-quiet); }
+  .kanban-card {
+    background: var(--mzm-paper);
+    border: 1px solid var(--mzm-ink-rule);
+    border-radius: var(--mzm-radius-md);
+    padding: 8px 10px;
+    font-family: var(--mzm-font-sans);
+    font-size: 0.72rem;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: border-color var(--mzm-dur-fast) var(--mzm-ease);
+  }
+  .kanban-card:hover { border-color: var(--mzm-accent); }
+  .kanban-card .title { font-weight: var(--mzm-weight-semibold); color: var(--mzm-ink); margin-bottom: 4px; }
+  .kanban-card .meta { display: flex; justify-content: space-between; align-items: center; color: var(--mzm-ink-fade); font-size: 0.65rem; }
+  .kanban-card .meta .id { font-family: var(--mzm-font-mono); }
+  .kanban-card .meta .evidence { color: var(--mzm-accent); }
+
+  /* Panel 4: Comms */
+  .comms-list { display: flex; flex-direction: column; gap: var(--mzm-space-3); overflow-y: auto; max-height: 360px; padding-right: var(--mzm-space-2); }
+  .msg { display: grid; grid-template-columns: auto 1fr; gap: var(--mzm-space-3); padding: var(--mzm-space-3); background: var(--mzm-paper-warm); border-radius: var(--mzm-radius-md); border-left: 3px solid var(--mzm-ink-rule); }
+  .msg-fw-LG { border-left-color: #6366F1; }
+  .msg-fw-CR { border-left-color: #8B5CF6; }
+  .msg-fw-USER { border-left-color: #22C55E; }
+  .msg-fw-SYS { border-left-color: var(--mzm-ink-fade); }
+  .msg-badge {
+    flex: 0 0 auto;
+    font-family: var(--mzm-font-mono);
+    font-size: 0.65rem;
+    font-weight: var(--mzm-weight-semibold);
+    padding: 2px 6px;
+    border-radius: 2px;
+    height: fit-content;
+    background: rgba(0,0,0,0.04);
+  }
+  .msg-badge.LG { color: #6366F1; }
+  .msg-badge.CR { color: #8B5CF6; }
+  .msg-badge.USER { color: #22C55E; }
+  .msg-badge.SYS { color: var(--mzm-ink-fade); }
+  .msg-body { min-width: 0; }
+  .msg-meta {
+    font-family: var(--mzm-font-sans);
+    font-size: 0.65rem;
+    color: var(--mzm-ink-fade);
+    margin-bottom: 2px;
+  }
+  .msg-meta strong { color: var(--mzm-ink-soft); font-weight: var(--mzm-weight-semibold); }
+  .msg-text {
+    font-family: var(--mzm-font-serif);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--mzm-ink-soft);
+  }
+  .msg-payload {
+    font-family: var(--mzm-font-mono);
+    font-size: 0.65rem;
+    background: rgba(45,74,62,0.04);
+    border-left: 2px solid var(--mzm-accent-soft);
+    padding: 4px 8px;
+    margin-top: 6px;
+    color: var(--mzm-ink-mute);
+    overflow-x: auto;
+  }
+
+  /* Detail panel: agent deep-dive */
+  .detail-tabs { display: flex; gap: 0; margin-bottom: var(--mzm-space-5); border-bottom: 1px solid var(--mzm-ink-rule); }
+  .detail-tab {
+    padding: var(--mzm-space-3) var(--mzm-space-5);
+    font-family: var(--mzm-font-sans);
+    font-size: var(--mzm-text-sm);
+    font-weight: var(--mzm-weight-medium);
+    color: var(--mzm-ink-fade);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color var(--mzm-dur-fast) var(--mzm-ease);
+  }
+  .detail-tab.active { color: var(--mzm-accent); border-bottom-color: var(--mzm-accent); }
+  .detail-tab:hover:not(.active) { color: var(--mzm-ink-soft); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--mzm-space-6); }
+
+  .detail-block { font-family: var(--mzm-font-sans); font-size: 0.82rem; line-height: 1.6; }
+  .detail-block h4 {
+    font-size: 0.7rem; font-weight: var(--mzm-weight-semibold);
+    letter-spacing: var(--mzm-tracking-wide); text-transform: uppercase;
+    color: var(--mzm-ink-fade); margin-bottom: var(--mzm-space-2);
+  }
+  .detail-kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px var(--mzm-space-3); }
+  .detail-kv dt { color: var(--mzm-ink-fade); }
+  .detail-kv dd { font-family: var(--mzm-font-mono); color: var(--mzm-ink); font-size: 0.78rem; word-break: break-all; }
+
+  .timeline-feed { display: flex; flex-direction: column; gap: var(--mzm-space-2); max-height: 280px; overflow-y: auto; padding-right: var(--mzm-space-2); }
+  .tl-entry { display: grid; grid-template-columns: 80px auto 1fr; gap: var(--mzm-space-3); align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--mzm-paper-shadow); }
+  .tl-entry .ts { font-family: var(--mzm-font-mono); font-size: 0.65rem; color: var(--mzm-ink-quiet); }
+  .tl-entry .kind { font-family: var(--mzm-font-mono); font-size: 0.7rem; color: var(--mzm-accent); }
+  .tl-entry .summary { font-family: var(--mzm-font-serif); font-size: 0.82rem; color: var(--mzm-ink-soft); }
+
+  /* HITL approval panel */
+  .hitl-banner {
+    background: linear-gradient(180deg, #fffbe8 0%, var(--mzm-paper-warm) 100%);
+    border: 1px solid #EAB308;
+    border-left: 4px solid #EAB308;
+    border-radius: var(--mzm-radius-md);
+    padding: var(--mzm-space-6);
+    margin-bottom: var(--mzm-space-12);
+  }
+  .hitl-banner-icon { font-size: 1.6rem; }
+  .hitl-row { display: grid; grid-template-columns: auto 1fr auto; gap: var(--mzm-space-5); align-items: center; }
+  .hitl-banner h3 {
+    font-family: var(--mzm-font-serif);
+    font-size: var(--mzm-text-2xl);
+    font-weight: var(--mzm-weight-semibold);
+    color: var(--mzm-ink); margin-bottom: 4px;
+  }
+  .hitl-banner p { font-family: var(--mzm-font-sans); font-size: 0.92rem; color: var(--mzm-ink-mute); line-height: 1.5; }
+  .hitl-actions { display: flex; gap: var(--mzm-space-2); }
+  .hitl-btn {
+    font-family: var(--mzm-font-sans); font-size: 0.78rem; font-weight: var(--mzm-weight-semibold);
+    padding: 8px 14px; border-radius: var(--mzm-radius-md); border: 1px solid;
+    cursor: pointer; transition: all var(--mzm-dur-fast) var(--mzm-ease);
+  }
+  .hitl-btn.approve { color: #166534; border-color: #166534; background: #DCFCE7; }
+  .hitl-btn.approve:hover { background: #166534; color: #fff; }
+  .hitl-btn.edit { color: #854D0E; border-color: #854D0E; background: #FEF3C7; }
+  .hitl-btn.edit:hover { background: #854D0E; color: #fff; }
+  .hitl-btn.reject { color: #991B1B; border-color: #991B1B; background: #FEE2E2; }
+  .hitl-btn.reject:hover { background: #991B1B; color: #fff; }
+  .hitl-btn.defer { color: var(--mzm-ink-fade); border-color: var(--mzm-ink-rule); background: var(--mzm-paper); }
+  .hitl-btn.defer:hover { background: var(--mzm-paper-shadow); }
+
+  .hitl-items { font-family: var(--mzm-font-mono); font-size: 0.72rem; line-height: 1.7; color: var(--mzm-ink-soft); margin-top: var(--mzm-space-5); padding-top: var(--mzm-space-5); border-top: 1px dashed #EAB308; }
+  .hitl-items .item { display: grid; grid-template-columns: 200px auto 1fr; gap: var(--mzm-space-3); padding: 2px 0; }
+  .hitl-items .item .agent { color: var(--mzm-accent); font-weight: var(--mzm-weight-semibold); }
+  .hitl-items .item .arrow { color: var(--mzm-ink-quiet); }
+  .hitl-items .item .swap { color: var(--mzm-ink-soft); }
+  .hitl-items .item .swap .a { color: #991B1B; }
+  .hitl-items .item .swap .b { color: #166534; }
+
+  /* Architecture diagram (system boundary) */
+  .arch-fig {
+    background: var(--mzm-paper-warm);
+    border: 1px solid var(--mzm-ink-rule);
+    border-radius: var(--mzm-radius-md);
+    padding: var(--mzm-space-8);
+    margin-bottom: var(--mzm-space-12);
+    font-family: var(--mzm-font-mono);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--mzm-ink-soft);
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  /* Section labels */
+  .section-rule {
+    display: flex; align-items: center; gap: var(--mzm-space-3);
+    margin: var(--mzm-space-12) 0 var(--mzm-space-6);
+  }
+  .section-rule h2 {
+    font-family: var(--mzm-font-serif);
+    font-size: var(--mzm-text-3xl);
+    font-weight: var(--mzm-weight-semibold);
+    letter-spacing: var(--mzm-tracking-snug);
+    color: var(--mzm-ink);
+    flex: 0 0 auto;
+  }
+  .section-rule .line { flex: 1; height: 1px; background: var(--mzm-ink-rule); }
+  .section-rule .meta {
+    font-family: var(--mzm-font-sans);
+    font-size: var(--mzm-text-xs);
+    letter-spacing: var(--mzm-tracking-wide);
+    text-transform: uppercase;
+    color: var(--mzm-ink-fade);
+    flex: 0 0 auto;
+  }
+
+  /* Command palette ghost */
+  .cmd-ghost {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    background: var(--mzm-paper);
+    border: 1px solid var(--mzm-ink-rule);
+    border-radius: var(--mzm-radius-md);
+    font-family: var(--mzm-font-mono); font-size: 0.7rem;
+    color: var(--mzm-ink-fade);
+  }
+  .kbd {
+    font-family: var(--mzm-font-mono); font-size: 0.65rem;
+    background: var(--mzm-paper-warm); border: 1px solid var(--mzm-ink-rule);
+    border-radius: 2px; padding: 1px 5px;
+    color: var(--mzm-ink-soft);
+  }
+
+  /* Responsive: stack panels on narrow */
+  @media (max-width: 1100px) {
+    .ops-grid {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "fleet"
+        "workflow"
+        "kanban"
+        "comms"
+        "detail";
+    }
+    .ops-hero-title { font-size: var(--mzm-text-5xl); }
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="ops-center.html" class="active">Ops Center</a>
+      <a href="product.html">Product</a>
+      <a href="bugs.html">Bug Tracker</a>
+      <a href="competitive.html">Competitive</a>
+      <a href="roundtable.html">Roundtable</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<div class="page-content" style="max-width: 1280px;">
+
+  <!-- ── HERO ───────────────────────────────────────────────────────── -->
+  <header class="ops-hero">
+    <div class="ops-hero-meta">Ops Center · v0.3 · live-data preview</div>
+    <h1 class="ops-hero-title">The agent fleet, in one window.</h1>
+    <p class="ops-hero-sub">
+      Bloomberg Terminal density meets editorial readability. Watch 22 agents coordinate in real time across LangGraph, CrewAI, and bespoke pipelines — with the same three-key protocol underneath every one of them.
+    </p>
+    <div class="ops-hero-actions">
+      <div class="acmi-switcher">
+        <span class="acmi-switcher-current">
+          <span class="dot active pulsing"></span>
+          <span class="acmi-switcher-name">acmi.production</span>
+          <span class="acmi-switcher-meta">22 agents · loved-platypus.upstash.io</span>
+        </span>
+        <span class="acmi-switcher-caret">▾</span>
+      </div>
+      <div class="cmd-ghost"><span class="kbd">⌘</span> <span class="kbd">K</span> command palette</div>
+      <div class="cmd-ghost"><span class="kbd">j</span>/<span class="kbd">k</span> navigate · <span class="kbd">/</span> search</div>
+    </div>
+  </header>
+
+  <!-- ── HITL APPROVAL MOMENT ─────────────────────────────────────────── -->
+  <div class="hitl-banner" role="alert" aria-label="Human-in-the-loop approval pending">
+    <div class="hitl-row">
+      <div class="hitl-banner-icon" aria-hidden="true">✋</div>
+      <div>
+        <h3>Approval needed — 8 model drift decisions, bundled into one</h3>
+        <p>
+          <strong>drift-remediator</strong> detected 8 agents claiming a different model than policy expects. One bundled decision, not eight pages.
+          Posted <span class="msg-badge SYS">SYS</span> 2 hours ago · <span class="cmd-ghost" style="padding: 1px 6px;">cid <code>driftEscalate-1778084105342</code></span>
+        </p>
+      </div>
+      <div class="hitl-actions">
+        <button class="hitl-btn approve">Approve all</button>
+        <button class="hitl-btn edit">Edit</button>
+        <button class="hitl-btn reject">Reject</button>
+        <button class="hitl-btn defer">Defer</button>
+      </div>
+    </div>
+    <div class="hitl-items">
+      <div class="item"><span class="agent">artist-factory-agent</span><span class="arrow">→</span><span class="swap"><span class="a">anthropic/claude-3-haiku</span> ⇄ <span class="b">anthropic/claude-haiku-4-5</span></span></div>
+      <div class="item"><span class="agent">batch</span><span class="arrow">→</span><span class="swap"><span class="a">anthropic/claude-3-haiku</span> ⇄ <span class="b">moonshotai/kimi-k2-turbo</span></span></div>
+      <div class="item"><span class="agent">codex</span><span class="arrow">→</span><span class="swap"><span class="a">google/gemini-flash-latest</span> ⇄ <span class="b">openai/gpt-4-turbo</span></span></div>
+      <div class="item"><span class="agent">folana</span><span class="arrow">→</span><span class="swap"><span class="a">anthropic/claude-sonnet-4-5</span> ⇄ <span class="b">anthropic/claude-haiku-4-5</span></span></div>
+      <div class="item"><span class="agent">invitation-schema</span><span class="arrow">→</span><span class="swap"><span class="a">schema</span> ⇄ <span class="b">anthropic/claude-haiku-4-5</span></span></div>
+      <div class="item"><span class="agent">main</span><span class="arrow">→</span><span class="swap"><span class="a">zai/glm-5.1</span> ⇄ <span class="b">x-ai/grok-4-fast</span></span></div>
+      <div class="item"><span class="agent">phase2-coordinator</span><span class="arrow">→</span><span class="swap"><span class="a">deepseek/deepseek-reasoner</span> ⇄ <span class="b">anthropic/claude-haiku-4-5</span></span></div>
+      <div class="item"><span class="agent">researcher</span><span class="arrow">→</span><span class="swap"><span class="a">kimi/kimi-k2.5</span> ⇄ <span class="b">moonshotai/kimi-k2-turbo</span></span></div>
+    </div>
+  </div>
+
+  <!-- ── 4-PANEL DASHBOARD ────────────────────────────────────────────── -->
+  <div class="section-rule">
+    <h2>Dashboard</h2>
+    <div class="line"></div>
+    <div class="meta">live · 2026-05-06 · 16:48 UTC</div>
+  </div>
+
+  <div class="ops-grid">
+    <!-- Panel 1: Fleet org chart -->
+    <section class="panel panel-fleet" aria-label="Fleet org chart">
+      <header class="panel-header">
+        <span class="panel-title">Fleet</span>
+        <span class="panel-count">22 agents · 19 active · 2 degraded · 1 offline</span>
+      </header>
+      <div class="fleet-tree">
+        <div class="fleet-row">
+          <span><span class="id">bentley</span><span class="role">orchestrator (degraded)</span></span>
+          <span class="stat"><span class="heartbeat">14h ago</span><span class="dot degraded"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>├── <span class="id">bentley-temp</span><span class="role">delegate · v0 contract</span></span>
+          <span class="stat"><span class="heartbeat">2h ago</span><span class="dot active pulsing"></span></span>
+        </div>
+        <div class="fleet-row selected">
+          <span>├── <span class="id">claude-engineer</span><span class="role">DEV/PM lane</span></span>
+          <span class="stat"><span class="heartbeat">just now</span><span class="dot active pulsing"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>├── <span class="id">gemini-cli</span><span class="role">INFRA/Memory</span></span>
+          <span class="stat"><span class="heartbeat">14h ago</span><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>├── <span class="id">antigravity</span><span class="role">UI/Auth</span></span>
+          <span class="stat"><span class="heartbeat">3h ago</span><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>├── <span class="id">specialists/</span></span>
+          <span></span>
+        </div>
+        <div class="fleet-row">
+          <span>│   ├── <span class="id">growth-hacker</span></span>
+          <span class="stat"><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>│   ├── <span class="id">ops-commander</span></span>
+          <span class="stat"><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>│   ├── <span class="id">code-custodian</span></span>
+          <span class="stat"><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>│   ├── <span class="id">fleet-nurse</span></span>
+          <span class="stat"><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>│   └── <span class="id">drift-remediator</span><span class="role">cron :17</span></span>
+          <span class="stat"><span class="heartbeat">31m ago</span><span class="dot active pulsing"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>├── <span class="id">creators/</span></span>
+          <span></span>
+        </div>
+        <div class="fleet-row">
+          <span>│   ├── <span class="id">folana</span><span class="role">music · drift</span></span>
+          <span class="stat"><span class="dot degraded"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>│   ├── <span class="id">artist-factory</span></span>
+          <span class="stat"><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>│   └── <span class="id">webmaster</span></span>
+          <span class="stat"><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>└── <span class="id">research/</span></span>
+          <span></span>
+        </div>
+        <div class="fleet-row">
+          <span>&nbsp;&nbsp;&nbsp; ├── <span class="id">researcher</span></span>
+          <span class="stat"><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>&nbsp;&nbsp;&nbsp; ├── <span class="id">codex</span><span class="role">drift · major</span></span>
+          <span class="stat"><span class="dot degraded"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>&nbsp;&nbsp;&nbsp; ├── <span class="id">phase2-coordinator</span></span>
+          <span class="stat"><span class="dot degraded"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>&nbsp;&nbsp;&nbsp; ├── <span class="id">perplexity</span></span>
+          <span class="stat"><span class="dot active"></span></span>
+        </div>
+        <div class="fleet-row">
+          <span>&nbsp;&nbsp;&nbsp; └── <span class="id">director</span></span>
+          <span class="stat"><span class="dot offline"></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 2: Workflow + timeline -->
+    <section class="panel panel-workflow" aria-label="Workflow pipeline and timeline">
+      <header class="panel-header">
+        <span class="panel-title">Workflow · drift-remediator hourly</span>
+        <span class="panel-count">step 5/6 · :17 → :17:01.6</span>
+      </header>
+      <div class="workflow-pipeline">
+        <div class="pipeline-node success"><span class="step">load-delta</span><span class="badge">BENTLEY-PM</span></div>
+        <span class="pipeline-edge">→</span>
+        <div class="pipeline-node success"><span class="step">refuse-check</span><span class="badge">GUARDS</span></div>
+        <span class="pipeline-edge">→</span>
+        <div class="pipeline-node success"><span class="step">coord-claim</span><span class="badge">§3 LOCK</span></div>
+        <span class="pipeline-edge">→</span>
+        <div class="pipeline-node success"><span class="step">auto-fix</span><span class="badge">6 SIGNALS</span></div>
+        <span class="pipeline-edge">→</span>
+        <div class="pipeline-node hitl"><span class="step">hitl-bundle</span><span class="badge">✋ AWAITING</span></div>
+        <span class="pipeline-edge">→</span>
+        <div class="pipeline-node running"><span class="step">quarantine</span><span class="badge">3 KEYS</span></div>
+      </div>
+
+      <div class="swimlanes">
+        <div class="lane">
+          <div class="lane-label">drift-diff</div>
+          <div class="lane-events">
+            <span class="event-dot tick" style="left: 10%;" title="13:15 — drift-delta (17 total)"></span>
+            <span class="event-dot tick" style="left: 27%;" title="14:15 — drift-delta (17 total)"></span>
+            <span class="event-dot tick" style="left: 44%;" title="15:15 — drift-delta (17 total)"></span>
+            <span class="event-dot tick" style="left: 61%;" title="16:15 — drift-delta (8 total ↓)"></span>
+            <span class="event-dot tick" style="left: 78%;" title="17:15 — next firing"></span>
+          </div>
+        </div>
+        <div class="lane">
+          <div class="lane-label">remediator</div>
+          <div class="lane-events">
+            <span class="event-dot success" style="left: 12%;"></span>
+            <span class="event-dot success" style="left: 29%;"></span>
+            <span class="event-dot success" style="left: 46%;"></span>
+            <span class="event-dot success" style="left: 63%;" title="6 auto-fix / 1 HITL / 3 quarantine — drift 17→8"></span>
+            <span class="event-dot hitl" style="left: 65%;"></span>
+          </div>
+        </div>
+        <div class="lane">
+          <div class="lane-label">bentley</div>
+          <div class="lane-events">
+            <span class="event-dot error" style="left: 22%;" title="provider health check failed"></span>
+            <span class="event-dot tick" style="left: 41%;" title="lane split contract accepted"></span>
+            <span class="event-dot success" style="left: 60%;" title="roundtable-open: AMD hackathon"></span>
+          </div>
+        </div>
+        <div class="lane">
+          <div class="lane-label">gemini-cli</div>
+          <div class="lane-events">
+            <span class="event-dot success" style="left: 30%;" title="pulse-anomaly batch"></span>
+            <span class="event-dot success" style="left: 48%;" title="validateKeySegments draft"></span>
+          </div>
+        </div>
+        <div class="lane">
+          <div class="lane-label">claude-eng</div>
+          <div class="lane-events">
+            <span class="event-dot success" style="left: 58%;" title="drift-remediator shipped"></span>
+            <span class="event-dot success" style="left: 64%;" title="lane alignment posted"></span>
+            <span class="event-dot success" style="left: 70%;" title="mcp-server v1.3 shipped"></span>
+            <span class="event-dot tick" style="left: 76%;" title="this session — ops center"></span>
+          </div>
+        </div>
+        <div class="lane-axis">
+          <div class="lane-axis-label">last 6h</div>
+          <div class="lane-axis-tick">
+            <span>11:00</span><span>12:00</span><span>13:00</span><span>14:00</span><span>15:00</span><span>16:00</span><span>now</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 3: Kanban -->
+    <section class="panel panel-kanban" aria-label="Project kanban">
+      <header class="panel-header">
+        <span class="panel-title">Projects</span>
+        <span class="panel-count">14 open · 3 today</span>
+      </header>
+      <div class="kanban-cols">
+        <div class="kanban-col">
+          <div class="kanban-col-head">Draft <span class="n">3</span></div>
+          <div class="kanban-card">
+            <div class="title">AMD multi-agent demo video</div>
+            <div class="meta"><span class="id">amd-demo-v0</span><span>0d</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">Pitch deck — ACMI on AMD</div>
+            <div class="meta"><span class="id">amd-pitch</span><span>0d</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">Bentley source audit (wake.sh)</div>
+            <div class="meta"><span class="id">bentley-fix</span><span>1d</span></div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-head">Ready <span class="n">2</span></div>
+          <div class="kanban-card">
+            <div class="title">@madezmedia/acmi-mcp v1.3.0</div>
+            <div class="meta"><span class="id">npm-mcp</span><span class="evidence">🔗 dist-mcp/</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">Atomic Commits Rule 9</div>
+            <div class="meta"><span class="id">rt-rule9</span><span>2d</span></div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-head">Shipped <span class="n">4</span></div>
+          <div class="kanban-card">
+            <div class="title">drift-remediator + tests</div>
+            <div class="meta"><span class="id">drift-rem</span><span class="evidence">🔗 5e4cbae</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">Lane alignment → gemini</div>
+            <div class="meta"><span class="id">lane-sync</span><span class="evidence">🔗 cid</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">Bentley split coord-status</div>
+            <div class="meta"><span class="id">bentley-split</span><span class="evidence">🔗 cid</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">Namespace policy whitelist</div>
+            <div class="meta"><span class="id">_quarantine</span><span class="evidence">🔗 v1</span></div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-head">Deployed <span class="n">2</span></div>
+          <div class="kanban-card">
+            <div class="title">drift-remediator launchd</div>
+            <div class="meta"><span class="id">cron-:17</span><span class="evidence">🔗 plist</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">cowork-kanban dashboard</div>
+            <div class="meta"><span class="id">kanban</span><span class="evidence">🔗 vercel</span></div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-head">Live <span class="n">3</span></div>
+          <div class="kanban-card">
+            <div class="title">@madezmedia/acmi v1.2.0</div>
+            <div class="meta"><span class="id">npm</span><span class="evidence">🔗 npm</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">drift-diff hourly cron</div>
+            <div class="meta"><span class="id">cron-:15</span><span class="evidence">🔗 launchd</span></div>
+          </div>
+          <div class="kanban-card">
+            <div class="title">SonicBrand pricing</div>
+            <div class="meta"><span class="id">sb-revenue</span><span class="evidence">🔗 vercel</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 4: Comms -->
+    <section class="panel panel-comms" aria-label="Cross-agent communications">
+      <header class="panel-header">
+        <span class="panel-title">Comms · agent-coordination thread</span>
+        <span class="panel-count">last 6h · 14 events · 4 agents</span>
+      </header>
+      <div class="comms-list">
+        <div class="msg msg-fw-USER">
+          <span class="msg-badge USER">👤</span>
+          <div class="msg-body">
+            <div class="msg-meta"><strong>mikey</strong> · directive · just now</div>
+            <div class="msg-text">"pull latest re hackathon get to work"</div>
+          </div>
+        </div>
+        <div class="msg msg-fw-LG">
+          <span class="msg-badge LG">CLAUDE-ENG</span>
+          <div class="msg-body">
+            <div class="msg-meta"><strong>claude-engineer</strong> · handoff-complete · 12m ago · cid <code>claudeEngineerMcpHackathonComplete-…</code></div>
+            <div class="msg-text">P0 mcp-server.mjs pass + @madezmedia/acmi-mcp package structure DONE. Ready for npm publish. 19/19 helper tests pass. 16 tools register cleanly.</div>
+            <div class="msg-payload">{ deliverables: [validateKeySegments, validateJson, isProtectedKey, safeTool, acmi_delete, acmi_rollup_set], tarball: "9.1kB / 5 files", commits: ["5e4cbae", "cbb5f77"] }</div>
+          </div>
+        </div>
+        <div class="msg msg-fw-LG">
+          <span class="msg-badge LG">CLAUDE-ENG</span>
+          <div class="msg-body">
+            <div class="msg-meta"><strong>claude-engineer</strong> · coord-claim · 32m ago · cid <code>claudeEngineerHackathonMcpServer-…</code></div>
+            <div class="msg-text">claims P0 pass on mcp-server.mjs + @madezmedia/acmi-mcp package per bentley roundtable assignment. 10min window for any conflict-claim.</div>
+          </div>
+        </div>
+        <div class="msg msg-fw-CR">
+          <span class="msg-badge CR">BENTLEY</span>
+          <div class="msg-body">
+            <div class="msg-meta"><strong>bentley</strong> · roundtable-open · 1h ago · cid <code>rtAmdHackathonAcmiEntry-1778088100000</code></div>
+            <div class="msg-text">AMD Developer Hackathon (May 4–10). Mikey solo, pitching ACMI. $21,500+ prizes. Need: demo architecture, P0 bug fixes, AMD GPU plan.</div>
+            <div class="msg-payload">{ asks: { claude_engineer: "P0 mcp-server.mjs", gemini_cli: "demo architecture", backup_support: "AMD GPU verify" }, deadline: "May 10" }</div>
+          </div>
+        </div>
+        <div class="msg msg-fw-LG">
+          <span class="msg-badge LG">CLAUDE-ENG</span>
+          <div class="msg-body">
+            <div class="msg-meta"><strong>claude-engineer</strong> · handoff-request → gemini-cli · 2h ago</div>
+            <div class="msg-text">explicit lane alignment per mikey directive — duplicate-work pattern observed today (validateKeySegments write-side + drift-remediator read-side, no coord-claim). Pull list + lane split + protocol below.</div>
+          </div>
+        </div>
+        <div class="msg msg-fw-CR">
+          <span class="msg-badge CR">BENTLEY-T</span>
+          <div class="msg-body">
+            <div class="msg-meta"><strong>bentley-temp</strong> · collab-plan-accepted · 3h ago</div>
+            <div class="msg-text">v0 lane split is now the operating contract. bentley-temp = read-heavy / audit / routing only — no signature writes, no profile/signals/cron edits.</div>
+          </div>
+        </div>
+        <div class="msg msg-fw-SYS">
+          <span class="msg-badge SYS">⚙ DRIFT</span>
+          <div class="msg-body">
+            <div class="msg-meta"><strong>drift-remediator</strong> · tick-summary · 4h ago</div>
+            <div class="msg-text">first live run: drift 17 → 8 · 6 auto-fix / 1 hitl-bundle / 3 quarantine · duration 1602ms · lock-protocol §3 observed</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Detail panel: agent deep-dive -->
+    <section class="panel panel-detail" aria-label="Agent detail: claude-engineer">
+      <header class="panel-header">
+        <span class="panel-title">Detail · claude-engineer</span>
+        <span class="panel-count">ESC to close · ⌘. for next agent</span>
+      </header>
+      <nav class="detail-tabs" role="tablist">
+        <button class="detail-tab active" role="tab" aria-selected="true">Profile</button>
+        <button class="detail-tab" role="tab">Signals</button>
+        <button class="detail-tab" role="tab">Timeline</button>
+        <button class="detail-tab" role="tab">HITL</button>
+      </nav>
+      <div class="detail-grid">
+        <div class="detail-block">
+          <h4>Profile</h4>
+          <dl class="detail-kv">
+            <dt>agent_id</dt><dd>claude-engineer</dd>
+            <dt>role</dt><dd>DEV/PM lane</dd>
+            <dt>tier</dt><dd>operator</dd>
+            <dt>provider</dt><dd>anthropic/claude-opus-4-7</dd>
+            <dt>tenant</dt><dd>acmi.production</dd>
+            <dt>budget/day</dt><dd>150 cloud + 80 local</dd>
+            <dt>spec_version</dt><dd>v1.2 + v1.3 hardening</dd>
+            <dt>siblings</dt><dd>gemini-cli, antigravity, bentley</dd>
+          </dl>
+        </div>
+        <div class="detail-block">
+          <h4>Signals · last update 12m ago</h4>
+          <dl class="detail-kv">
+            <dt>active_task</dt><dd>ops-center.html mockup</dd>
+            <dt>active_claim</dt><dd>(none — released)</dd>
+            <dt>last_hb_age</dt><dd>just now</dd>
+            <dt>queue_depth</dt><dd>0 inbox · 1 hitl</dd>
+            <dt>in_flight</dt><dd>1 (this session)</dd>
+            <dt>today_stats</dt><dd>3 ships, 0 fails, 2 coord-claims, 71+19 tests</dd>
+            <dt>drift_status</dt><dd style="color: #166534;">aligned (suffix-fix landed)</dd>
+            <dt>review_load</dt><dd>0 pending</dd>
+          </dl>
+          <h4 style="margin-top: var(--mzm-space-5);">Timeline · last 8 events</h4>
+          <div class="timeline-feed">
+            <div class="tl-entry"><span class="ts">16:48</span><span class="kind">tick-summary</span><span class="summary">ops-center.html mockup landed; design-token alignment with style.css confirmed.</span></div>
+            <div class="tl-entry"><span class="ts">16:46</span><span class="kind">handoff-complete</span><span class="summary">P0 mcp-server.mjs hardening + @madezmedia/acmi-mcp package shipped.</span></div>
+            <div class="tl-entry"><span class="ts">16:43</span><span class="kind">coord-release</span><span class="summary">released claim claudeEngineerHackathonMcpServer.</span></div>
+            <div class="tl-entry"><span class="ts">15:43</span><span class="kind">handoff-request</span><span class="summary">lane alignment directive sent to gemini-cli (write-side vs read-side split).</span></div>
+            <div class="tl-entry"><span class="ts">15:24</span><span class="kind">coord-status</span><span class="summary">documented bentley-main / bentley-temp v0 contract publicly for fleet visibility.</span></div>
+            <div class="tl-entry"><span class="ts">12:14</span><span class="kind">tick-summary</span><span class="summary">drift-remediator first live run: drift 17 → 8.</span></div>
+            <div class="tl-entry"><span class="ts">11:42</span><span class="kind">handoff-complete</span><span class="summary">drift-remediator spec/plan/code/tests/cron all live; 71/71 tests pass.</span></div>
+            <div class="tl-entry"><span class="ts">10:28</span><span class="kind">coord-claim</span><span class="summary">claimed drift-remediator implementation work (Phase 0–4).</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── ARCHITECTURE / SYSTEM BOUNDARY ────────────────────────────────── -->
+  <div class="section-rule">
+    <h2>What connects to what</h2>
+    <div class="line"></div>
+    <div class="meta">read-only diagram</div>
+  </div>
+
+  <pre class="arch-fig">
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              ACMI OPS CENTER                                    │
+│                        (Next.js · paper-themed UI)                              │
+│                                                                                 │
+│  ┌─────────┐  ┌──────────┐  ┌────────┐  ┌────────┐  ┌──────────────────┐        │
+│  │  Fleet  │  │ Workflow │  │ Kanban │  │  Comms │  │ Detail / Multi-  │        │
+│  │  Tree   │  │  + Lanes │  │  Board │  │ Thread │  │ ACMI Switcher    │        │
+│  └────┬────┘  └────┬─────┘  └───┬────┘  └───┬────┘  └────────┬─────────┘        │
+│       │            │            │           │                │                  │
+│       └────────────┴────────────┴───────────┴────────────────┘                  │
+│                                  │                                              │
+│                       SSE   ◄────┴────►   ACMI CLI / MCP                        │
+│                                  │                                              │
+└──────────────────────────────────┼──────────────────────────────────────────────┘
+                                   │
+                                   ▼
+                ┌──────────────────────────────────┐
+                │         UPSTASH REDIS REST       │
+                │   (one tenant per ACMI instance) │
+                │                                  │
+                │  acmi:agent:*:profile/signals    │
+                │  acmi:thread:*:timeline (ZSET)   │
+                │  acmi:work:*:profile/signals     │
+                │  acmi:registry:* (read-only)     │
+                │  acmi:_quarantine:* (post-fix)   │
+                └──────────────┬───────────────────┘
+                               │
+                ┌──────────────┴───────────────────────────────┐
+                │                                              │
+                ▼                                              ▼
+      ┌─────────────────┐                          ┌─────────────────────────┐
+      │  AGENT FLEET    │                          │   CRONS (read + write)  │
+      │  (write-side)   │                          │                         │
+      │                 │                          │  drift-diff   :15 *     │
+      │  bentley        │                          │  drift-remediator :17 * │
+      │  bentley-temp   │                          │  inbox-janitor          │
+      │  claude-engineer│                          │  cost-ledger            │
+      │  gemini-cli     │                          │  rollup-cron            │
+      │  antigravity    │                          │  handoff-watcher        │
+      │  + 16 specialists                          │  anti-dead              │
+      └─────────────────┘                          └─────────────────────────┘
+  </pre>
+
+  <!-- ── MULTI-ACMI SWITCHER (expanded view) ───────────────────────────── -->
+  <div class="section-rule">
+    <h2>Multi-instance</h2>
+    <div class="line"></div>
+    <div class="meta">switcher · expanded</div>
+  </div>
+
+  <div style="background: var(--mzm-paper-warm); border: 1px solid var(--mzm-ink-rule); border-radius: var(--mzm-radius-md); padding: 0; max-width: 480px;">
+    <div style="padding: var(--mzm-space-4) var(--mzm-space-5); border-bottom: 1px solid var(--mzm-ink-rule); font-family: var(--mzm-font-sans); font-size: 0.75rem; color: var(--mzm-ink-fade); letter-spacing: var(--mzm-tracking-wide); text-transform: uppercase;">Switch ACMI instance</div>
+    <div style="padding: var(--mzm-space-3) var(--mzm-space-5); display: flex; align-items: center; gap: var(--mzm-space-3); border-left: 3px solid var(--mzm-accent); background: var(--mzm-paper);">
+      <span class="dot active pulsing"></span>
+      <div style="flex: 1;">
+        <div style="font-family: var(--mzm-font-sans); font-weight: var(--mzm-weight-semibold); color: var(--mzm-ink);">acmi.production</div>
+        <div style="font-family: var(--mzm-font-mono); font-size: 0.7rem; color: var(--mzm-ink-fade);">22 agents · loved-platypus.upstash.io · current</div>
+      </div>
+    </div>
+    <div style="padding: var(--mzm-space-3) var(--mzm-space-5); display: flex; align-items: center; gap: var(--mzm-space-3); border-bottom: 1px solid var(--mzm-paper-shadow);">
+      <span class="dot active"></span>
+      <div style="flex: 1;">
+        <div style="font-family: var(--mzm-font-sans); font-weight: var(--mzm-weight-medium); color: var(--mzm-ink-soft);">acmi.client-acme</div>
+        <div style="font-family: var(--mzm-font-mono); font-size: 0.7rem; color: var(--mzm-ink-fade);">8 agents · acme-prod.upstash.io · client demo</div>
+      </div>
+    </div>
+    <div style="padding: var(--mzm-space-3) var(--mzm-space-5); display: flex; align-items: center; gap: var(--mzm-space-3); border-bottom: 1px solid var(--mzm-paper-shadow);">
+      <span class="dot degraded"></span>
+      <div style="flex: 1;">
+        <div style="font-family: var(--mzm-font-sans); font-weight: var(--mzm-weight-medium); color: var(--mzm-ink-soft);">acmi.amd-hackathon</div>
+        <div style="font-family: var(--mzm-font-mono); font-size: 0.7rem; color: var(--mzm-ink-fade);">5 agents · amd-rocm.upstash.io · staging</div>
+      </div>
+    </div>
+    <div style="padding: var(--mzm-space-3) var(--mzm-space-5); display: flex; align-items: center; gap: var(--mzm-space-3); color: var(--mzm-ink-fade); border-top: 1px dashed var(--mzm-ink-rule); cursor: pointer;">
+      <span style="font-family: var(--mzm-font-mono); font-size: 0.9rem;">+</span>
+      <div style="font-family: var(--mzm-font-sans); font-size: 0.85rem;">Add instance — paste Redis URL + token</div>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────────────────── -->
+  <div style="margin: var(--mzm-space-16) 0 var(--mzm-space-12); padding-top: var(--mzm-space-8); border-top: 1px solid var(--mzm-ink-rule); font-family: var(--mzm-font-serif); font-size: 0.95rem; color: var(--mzm-ink-mute); line-height: 1.6; max-width: 720px;">
+    <p>Mock data above is real. The 22-agent fleet, the drift snapshot, the HITL bundle of 8 model-drift decisions, the kanban cards — all pulled from <code style="font-family: var(--mzm-font-mono); font-size: 0.85em; background: var(--mzm-paper-warm); padding: 1px 5px; border-radius: 2px;">acmi.production</code> as of <strong>2026-05-06 16:48 UTC</strong>. The page is static; production builds connect via Server-Sent Events to the same Redis.</p>
+    <p style="margin-top: var(--mzm-space-3); color: var(--mzm-ink-fade); font-size: 0.85rem;">Three keys per entity. Profile, signals, timeline. That's the whole protocol.</p>
+  </div>
+
+</div>
+</main>
+
+</body>
+</html>
