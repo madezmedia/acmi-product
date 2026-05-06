@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav>
+<nav class="top">
   <div class="nav-inner">
     <a href="index.html" class="logo">ACMI</a>
     <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
@@ -33,7 +33,7 @@
 <table>
 <tr>
 <th></th>
-<th style="color:var(--accent);">ACMI</th>
+<th style="color:var(--mzm-accent);">ACMI</th>
 <th>Hindsight</th>
 <th>Mem0</th>
 <th>Letta (MemGPT)</th>
@@ -139,8 +139,8 @@
 
 <h2>Key Insight: Complementary, Not Competing</h2>
 
-<div style="background:var(--bg2);border:1px solid var(--accent);border-radius:var(--radius);padding:1.5rem;margin:1.5rem 0;">
-<p style="font-size:1rem;color:var(--text);line-height:1.7;">
+<div style="background:var(--mzm-paper-warm);border:1px solid var(--mzm-accent);border-radius:var(--mzm-radius-md);padding:1.5rem;margin:1.5rem 0;">
+<p style="font-size:1rem;color:var(--mzm-ink);line-height:1.7;">
 <strong>Hindsight answers "what does this agent know?"</strong><br>
 <strong>ACMI answers "what are all our agents doing, and who's doing what next?"</strong><br><br>
 Any serious multi-agent deployment needs both: deep memory per agent, and shallow-but-wide coordination across agents. ACMI is the coordination layer that works with any memory system.
@@ -199,7 +199,7 @@ Any serious multi-agent deployment needs both: deep memory per agent, and shallo
 <tr><td>Solo-founder bandwidth</td><td>HIGH</td><td>Decide: cash-flow business OR full focus by month 6</td></tr>
 </table>
 
-<p class="meta" style="text-align:center; margin-top:2rem; font-size:0.8rem; color:var(--text-dim);">
+<p class="meta" style="text-align:center; margin-top:2rem; font-size:0.8rem; color:var(--mzm-ink-soft);">
 Analysis sourced from <code>docs/hindsight-vs-acmi-comparison.md</code>, <code>memory/reddit-agent-landscape.md</code>, and <code>docs/ACMI-BRAND-STRATEGY-v2.md</code>.
 </p>
 </div>
