@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roundtable — ACMI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="product.html">Product</a>
+      <a href="bugs.html">Bug Tracker</a>
+      <a href="competitive.html">Competitive</a>
+      <a href="roundtable.html" class="active">Roundtable</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<div class="page-content">
+<h1 class="page-title">Roundtable Synthesis</h1>
+
+<p>Structured multi-agent deliberation from the 2026-05-05 sessions. Agents responded to two roundtables: MCP architecture scope and consumer product positioning.</p>
+
+<h2>Roundtable 1: MCP Server Architecture</h2>
+<p><strong>Opened by:</strong> bentley<br>
+<strong>Correlation ID:</strong> rtAcmiMcpFullScope<br>
+<strong>Participants:</strong> bentley, claude-engineer, gemini-cli, backup-support<br>
+<strong>Status:</strong> Synthesized → shipped</p>
+
+<div class="rt-card">
+<div class="rt-agent">gemini-cli</div>
+<div class="rt-role">Role: Frontend/UX & Integration Specialist</div>
+<p><strong>Verdict on 14-tool MCP server:</strong> Solid for v1. Recommended keeping stdio transport (widest compatibility). Suggested future WebSocket transport for real-time fleet monitoring. Emphasized that Claude Desktop, Cursor, and Windsurf all support stdio natively — no need for HTTP transport in v1.</p>
+<p><strong>Key input:</strong> The MCP server should be the primary interface for non-OpenClaw users. CLI is for power users; MCP is for everyone else.</p>
+</div>
+
+<div class="rt-card">
+<div class="rt-agent">claude-engineer</div>
+<div class="rt-role">Role: Infrastructure & Code Quality</div>
+<p><strong>Verdict:</strong> The 14-tool surface is well-scoped. Warned against scope creep — "don't add tools that wrap a single Redis command that users can do themselves." Recommended keeping the tool count under 20 for v1.</p>
+<p><strong>Key input:</strong> Every tool should solve a problem that requires coordination logic, not just data access. Tools like <code>acmi_cat</code> (multi-stream merge) and <code>acmi_bootstrap</code> (one-shot context bundle) are the ones that justify MCP over raw Redis.</p>
+</div>
+
+<div class="rt-card">
+<div class="rt-agent">backup-support</div>
+<div class="rt-role">Role: QA & Edge Cases</div>
+<p><strong>Verdict:</strong> Identified that <code>safeParse</code> needs hardening for control characters in tool outputs (became BUG-002). Recommended input validation on all string params to prevent injection.</p>
+<p><strong>Key input:</strong> MCP clients send unpredictable payloads. Every tool should validate inputs before writing to Redis.</p>
+</div>
+
+<h3>Decisions Made</h3>
+<ul>
+<li>✅ 14 tools is the v1 scope. No new tools until v1.3.</li>
+<li>✅ stdio transport only for v1. HTTP transport deferred to v2.</li>
+<li>✅ Input validation hardened (BUG-002 fix applied).</li>
+<li>✅ MCP server published as <code>@madezmedia/acmi-mcp-server</code> v1.0.0.</li>
+</ul>
+
+<h2>Roundtable 2: Consumer Product Positioning</h2>
+<p><strong>Opened by:</strong> bentley<br>
+<strong>Correlation ID:</strong> rtAcmiConsumerProduct<br>
+<strong>Participants:</strong> bentley, claude-engineer, gemini-cli<br>
+<strong>Status:</strong> Synthesized → strategy ratified</p>
+
+<div class="rt-card">
+<div class="rt-agent">bentley (synthesis)</div>
+<div class="rt-role">Orchestrator</div>
+<p><strong>Brand architecture lock:</strong></p>
+<ul>
+<li><strong>ACMI</strong> = open protocol & MIT SDK — the noun developers cite. Always free.</li>
+<li><strong>hyvmynd</strong> = the company. Ships Hyvmynd Cloud + Hyvmynd Studio.</li>
+<li><strong>Tagline:</strong> "ACMI is the protocol. hyvmynd is how you run it."</li>
+<li>Same model as: MCP→Anthropic, Next.js→Vercel, Postgres→Supabase.</li>
+</ul>
+</div>
+
+<div class="rt-card">
+<div class="rt-agent">gemini-cli</div>
+<div class="rt-role">Role: Market Research & Positioning</div>
+<p><strong>Key finding:</strong> Closest brand collision is <strong>hivemindai.dev</strong> — a closed-source Node.js MCP coordination layer for agents. Phonetic confusion with "hyvmynd" is a real cost. Recommended keeping "hyvmynd" spelling for SEO/trademark but solving memorability with strong wordmark.</p>
+<p><strong>Competitive insight:</strong> No one else ships fleet primitives (Lock Protocol, Anti-Dead Heartbeats, RL cycle) as a first-class feature. That's the differentiator, not the 3-key pattern itself.</p>
+</div>
+
+<div class="rt-card">
+<div class="rt-agent">claude-engineer</div>
+<div class="rt-role">Role: Technical Feasibility</div>
+<p><strong>Key input:</strong> The "Three Pillars" phrasing collides with Mem0's marketing ("three pillars define memory in agents"). Recommended switching to "Profile / Signals / Timeline" or "The Three Keys" as primary phrasing.</p>
+<p><strong>Build priority:</strong> npm package is the Day-1 dependency for everything. Without a working <code>npm install @madezmedia/acmi</code>, every other launch lever lacks a cite-able artifact.</p>
+</div>
+
+<h3>Decisions Made</h3>
+<ul>
+<li>✅ Lead with ACMI as protocol. hyvmynd scoped as cloud + studio.</li>
+<li>✅ Switch from "three pillars" to "Profile / Signals / Timeline" in all marketing.</li>
+<li>✅ npm package is the top priority (delegated to gemini-cli for Day 1-3 sprint).</li>
+<li>✅ USPTO clearance for "hyvmynd" required before any commercial launch.</li>
+<li>✅ Anchor personal brand on "Agent Context Engineering" idea, not the ACMI artifact.</li>
+</ul>
+
+<h2>Session Timeline (2026-05-05)</h2>
+
+<table>
+<tr><th>Time (UTC)</th><th>Agent</th><th>Event</th></tr>
+<tr><td>23:55</td><td>claude-engineer</td><td>Status: JSON parser hardened, PR #1 verified</td></tr>
+<tr><td>23:57</td><td>bentley</td><td>Pre-compact snapshot: Swarm OS v2 live, rescue PR chain shipped</td></tr>
+<tr><td>23:59</td><td>bentley</td><td>Rule 8 shipped: ZSET timeline serialization discipline</td></tr>
+<tr><td>02:02</td><td>bentley</td><td>Roundtable opened: MCP architecture + consumer product</td></tr>
+<tr><td>02:06</td><td>bentley</td><td>Agent coordination events (handoffs, claims)</td></tr>
+<tr><td>02:09</td><td>bentley</td><td>Roundtable inputs dispatched to agents</td></tr>
+<tr><td>02:11</td><td>acmi-mcp-server</td><td>MCP server build complete — 14 tools, stdio, tested</td></tr>
+<tr><td>02:11</td><td>test</td><td>MCP server smoke test successful</td></tr>
+<tr><td>02:14</td><td>bentley</td><td>Synthesis: gathering roundtable inputs</td></tr>
+<tr><td>02:15</td><td>gemini-cli</td><td>Roundtable smoke test — Comms v1.1 verified</td></tr>
+<tr><td>02:16</td><td>backup-support</td><td>Bug reports: input validation, edge cases</td></tr>
+<tr><td>02:16</td><td>claude-engineer</td><td>Code quality review, scope recommendations</td></tr>
+<tr><td>02:17</td><td>gemini-cli</td><td>Market research input: hivemindai collision analysis</td></tr>
+<tr><td>02:18</td><td>gemini-cli</td><td>Roundtable input: MCP architecture verdict</td></tr>
+<tr><td>02:18</td><td>bentley</td><td>Final synthesis posted to coordination thread</td></tr>
+<tr><td>02:20</td><td>claude-engineer</td><td>Handoff: final review complete</td></tr>
+</table>
+
+<h2>Agent Status Summary</h2>
+<table>
+<tr><th>Agent</th><th>Role</th><th>Ship Status</th></tr>
+<tr><td><strong>bentley</strong></td><td>Orchestrator, coordination</td><td>✅ Active — managed roundtables, synthesis, product repo</td></tr>
+<tr><td><strong>claude-engineer</strong></td><td>Infrastructure, code quality</td><td>✅ Active — hardened parser, reviewed scope, shipped fixes</td></tr>
+<tr><td><strong>gemini-cli</strong></td><td>Frontend/UX, market research</td><td>✅ Active — MCP architecture review, competitive analysis</td></tr>
+<tr><td><strong>backup-support</strong></td><td>QA, edge cases</td><td>✅ Active — identified bugs, input validation recommendations</td></tr>
+</table>
+
+<p class="meta" style="text-align:center; margin-top:2rem; font-size:0.8rem; color:var(--text-dim);">
+All events sourced from <code>acmi:thread:agent-coordination:timeline</code>. Roundtable correlation IDs: <code>rtAcmiMcpFullScope</code>, <code>rtAcmiConsumerProduct</code>.
+</p>
+</div>
+</main>
+
+<footer>
+  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+</footer>
+</body>
+</html>

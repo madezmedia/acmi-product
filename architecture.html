@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — ACMI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html" class="active">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="product.html">Product</a>
+      <a href="bugs.html">Bug Tracker</a>
+      <a href="competitive.html">Competitive</a>
+      <a href="roundtable.html">Roundtable</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<div class="page-content">
+<h1 class="page-title">Architecture</h1>
+
+<p>The core insight: agents don't need normalized relational databases. They need <strong>state snapshots</strong> and <strong>chronological timelines</strong>. ACMI decouples the application layer from the agent layer by standardizing how context is stored.</p>
+
+<div class="arch-diagram">
+┌─────────────────────────────────────────────────────────────────┐
+│                        ACMI DATA MODEL                          │
+│                                                                 │
+│  Entity: {namespace}:{id}                                       │
+│                                                                 │
+│  ┌─────────────────────┐  ┌─────────────────────┐              │
+│  │ PROFILE (State)      │  │ SIGNALS (AI State)   │              │
+│  │ JSON string          │  │ JSON string          │              │
+│  │                      │  │                       │              │
+│  │ • Name, stage, specs │  │ • Churn risk          │              │
+│  │ • Budget, contact    │  │ • Sentiment           │              │
+│  │ • Hard facts         │  │ • Next best action    │              │
+│  │                      │  │ • Mutable, frequent   │              │
+│  └─────────────────────┘  └─────────────────────┘              │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────┐            │
+│  │ TIMELINE (Event Stream) — Redis ZSET            │            │
+│  │                                                  │            │
+│  │ score=ts1 → {ts, source, kind, correlationId, …}│            │
+│  │ score=ts2 → {ts, source, kind, correlationId, …}│            │
+│  │ score=ts3 → {ts, source, kind, correlationId, …}│            │
+│  │                                                  │            │
+│  │ Merges: Gmail, Slack, Vapi, Calendar, Webhooks  │            │
+│  └─────────────────────────────────────────────────┘            │
+│                                                                 │
+│  ┌─ AGENT EXTENSIONS (Long-Context + Identity) ───────────┐     │
+│  │                                                         │     │
+│  │ spawns (ZSET)    → Every session start, scored by ts    │     │
+│  │ active_context   → Current thread engagement (HASH)     │     │
+│  │ rollup:latest    → Synthesized summary (STRING JSON)    │     │
+│  │ work:{id}:*      → Cross-session projects + sessions    │     │
+│  └─────────────────────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────┘
+</div>
+
+<h2>Key Format</h2>
+<p>All ACMI keys follow a consistent pattern:</p>
+
+<table>
+<tr><th>Key</th><th>Type</th><th>Purpose</th></tr>
+<tr><td><code>acmi:{ns}:{id}:profile</code></td><td>STRING (JSON)</td><td>Hard state snapshot</td></tr>
+<tr><td><code>acmi:{ns}:{id}:signals</code></td><td>STRING (JSON)</td><td>AI-synthesized soft state</td></tr>
+<tr><td><code>acmi:{ns}:{id}:timeline</code></td><td>ZSET (scored by ts)</td><td>Chronological event stream</td></tr>
+<tr><td><code>acmi:agent:{id}:spawns</code></td><td>ZSET</td><td>Session history</td></tr>
+<tr><td><code>acmi:agent:{id}:active_context</code></td><td>HASH</td><td>Current thread bindings</td></tr>
+<tr><td><code>acmi:agent:{id}:rollup:latest</code></td><td>STRING (JSON)</td><td>Periodic summary</td></tr>
+<tr><td><code>acmi:work:{id}:profile</code></td><td>STRING (JSON)</td><td>Cross-session project</td></tr>
+<tr><td><code>acmi:work:{id}:timeline</code></td><td>ZSET</td><td>Project event history</td></tr>
+<tr><td><code>acmi:work:{id}:sessions</code></td><td>SET</td><td>Sessions that touched this work</td></tr>
+</table>
+
+<h2>Communication Standard v1.1</h2>
+<p>Every major event posted to coordination timelines <strong>must</strong> include five mandatory fields. This is the backbone of fleet coordination.</p>
+
+<div class="code-block">
+<pre>{
+  "ts": 1745947200000,            <span class="comment">// ✅ Unix ms epoch</span>
+  "source": "claude-engineer",    <span class="comment">// ✅ Agent ID string</span>
+  "kind": "handoff-complete",     <span class="comment">// ✅ Event type enum</span>
+  "correlationId": "readmeRewrite-1745947200000",  <span class="comment">// ✅ camelCase ONLY</span>
+  "summary": "[done] README rewritten"  <span class="comment">// ✅ ≤140 chars</span>
+}</pre>
+</div>
+
+<h3>Standard Event Kinds</h3>
+<table>
+<tr><th>Kind</th><th>When</th></tr>
+<tr><td><code>roundtable-open</code></td><td>Orchestrator opens a multi-agent deliberation</td></tr>
+<tr><td><code>roundtable-input</code></td><td>Agent submits structured input</td></tr>
+<tr><td><code>roundtable-synthesis</code></td><td>Synthesizer aggregates inputs</td></tr>
+<tr><td><code>roundtable-plan</code></td><td>Decision recorded</td></tr>
+<tr><td><code>handoff-request / -complete</code></td><td>Task transfer between agents</td></tr>
+<tr><td><code>coord-claim / -release</code></td><td>Lock protocol: prevent duplicate work</td></tr>
+<tr><td><code>hitl-required / -resolved</code></td><td>Human-in-the-loop escalation</td></tr>
+<tr><td><code>wake-status</code></td><td>Hourly agent health check</td></tr>
+<tr><td><code>comms-correction</code></td><td>Protocol violation detected</td></tr>
+<tr><td><code>sync-snapshot</code></td><td>State checkpoint</td></tr>
+<tr><td><code>deployment-shipped</code></td><td>Code deployed</td></tr>
+</table>
+
+<h2>Lock Protocol (v1.0)</h2>
+<p>Prevents duplicate work between agents or parallel sessions executing the same batch task.</p>
+
+<h3>Flow</h3>
+<ol>
+<li><strong>Claim</strong> — Before starting any batch-mutation, post a <code>coord-claim</code> event</li>
+<li><strong>Verify</strong> — Scan last 10 minutes for existing claims with the same parent task</li>
+<li><strong>Hedge</strong> — If a claim exists within the 5-minute window, defer or complement</li>
+<li><strong>Release</strong> — Post <code>coord-release</code> on completion to unlock</li>
+</ol>
+
+<h2>Multi-Tenant Design</h2>
+<p>ACMI is namespace-driven. Drop the same infrastructure into any project by changing the namespace:</p>
+<table>
+<tr><th>Namespace</th><th>Use Case</th><th>Example</th></tr>
+<tr><td><code>sales</code></td><td>CRM pipeline</td><td>Track deal stages, log calls, predict churn</td></tr>
+<tr><td><code>support</code></td><td>Customer tickets</td><td>Priority, user history, resolution events</td></tr>
+<tr><td><code>fleet</code></td><td>Dispatch/vehicles</td><td>Driver status, route events, ETA signals</td></tr>
+<tr><td><code>agent</code></td><td>AI agent identity</td><td>Session history, active threads, rollups</td></tr>
+<tr><td><code>thread</code></td><td>Conversations</td><td>Multi-agent coordination timeline</td></tr>
+<tr><td><code>work</code></td><td>Cross-session projects</td><td>Ideas, tasks, session ledger</td></tr>
+</table>
+
+<h2>Anti-Dead Heartbeats</h2>
+<p>Agents update <code>signal.last_heartbeat_ts</code> on every tick. Projects with no heartbeat for <strong>&gt;48 hours</strong> are auto-marked <strong>STALLED</strong> and escalated to the human-in-the-loop queue.</p>
+
+<h2>Reinforcement Learning Cycle</h2>
+<p>Every workflow step goes through a mandatory learning cycle:</p>
+<div class="arch-diagram">
+Execute → Assess (0-100) → Log → Analyze → Adjust → Execute (improved)
+</div>
+<ul>
+<li><strong>Every step gets scored</strong> — no execution without an assessment entry</li>
+<li><strong>Automated review</strong> for non-critical steps</li>
+<li><strong>Human review</strong> for brand, legal, client-facing content</li>
+<li><strong>Audit trail is permanent</strong> — every score and lesson is a timeline event</li>
+</ul>
+</div>
+</main>
+
+<footer>
+  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+</footer>
+</body>
+</html>
