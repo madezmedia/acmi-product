@@ -18,6 +18,25 @@ function App() {
   const [toasts, setToasts] = React.useState([]);
   const [cmdkOpen, setCmdkOpen] = React.useState(false);
 
+  // Force-re-render when data-live.jsx swaps in real ACMI data over the mocks.
+  const [liveTick, setLiveTick] = React.useState(0);
+  React.useEffect(() => {
+    const onLive = (e) => {
+      const updated = e.detail?.updated ?? 0;
+      const errors = e.detail?.errors?.length ?? 0;
+      const wasFirst = liveTick === 0;
+      setLiveTick(n => n + 1);
+      if (updated > 0 && wasFirst) {
+        const id = Math.random().toString(36).slice(2);
+        setToasts(ts => [...ts, { id, msg: `Live ACMI data loaded · ${updated} endpoint${updated === 1 ? '' : 's'}${errors ? ` (${errors} fallback)` : ''}`, tone: 'ok' }]);
+        setTimeout(() => setToasts(ts => ts.filter(x => x.id !== id)), 3200);
+        if (window.ACMI?.ALL_AGENTS?.[0]?.id) setSelectedAgentId(window.ACMI.ALL_AGENTS[0].id);
+      }
+    };
+    window.addEventListener('acmi:live-loaded', onLive);
+    return () => window.removeEventListener('acmi:live-loaded', onLive);
+  }, [liveTick]);
+
   // Apply density
   React.useEffect(() => { document.body.dataset.density = t.density || 'regular'; }, [t.density]);
 
