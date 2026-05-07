@@ -153,6 +153,18 @@ async function dispatchJsonRpc(msg, tools) {
 
 // ─── Main handler ───────────────────────────────────────────────────────
 
+// Methods that return public metadata only — no Upstash access needed.
+// Smithery's deployment proxy probes initialize + tools/list without creds
+// during the publish/scan flow; if we 401 those, serverInfo comes back null
+// and the publish UI gets stuck in "connected but no metadata" state.
+const PUBLIC_METHODS = new Set([
+  "initialize",
+  "notifications/initialized",
+  "initialized",
+  "tools/list",
+  "ping",
+]);
+
 export default async function handler(req, res) {
   // CORS for browser-initiated MCP clients
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -172,19 +184,32 @@ export default async function handler(req, res) {
       return;
     }
 
+    // Determine whether this request requires authenticated tenant creds.
+    // GET probes + JSON-RPC metadata methods are public; tools/call (and any
+    // unrecognized method) require auth.
+    const method = req.body && req.body.method;
+    const requiresAuth = req.method === "POST" && !PUBLIC_METHODS.has(method);
+
     const { url, token, source } = extractCreds(cfg, req);
-    if (!url || !token) {
-      // 401 (not 400) — this is an auth failure, not a malformed request
+    let redis;
+    if (url && token) {
+      redis = createRedis({ url, token });
+      res.setHeader("X-MCP-Cred-Source", source);
+    } else if (requiresAuth) {
       res.status(401).json({
-        error: "authentication required",
-        hint: "either pass ?config=<base64 JSON with upstashRedisRestUrl + upstashRedisRestToken> (Smithery pattern), or send Authorization: Bearer <MCP_DIRECT_AUTH_TOKEN> if the deploy owner has enabled direct access",
+        error: "authentication required for tool execution",
+        hint: "either pass ?config=<base64 JSON with upstashRedisRestUrl + upstashRedisRestToken> (Smithery pattern), or send Authorization: Bearer <MCP_DIRECT_AUTH_TOKEN> if the deploy owner has enabled direct access. initialize and tools/list don't require auth.",
       });
       return;
+    } else {
+      // Public-method path with no creds — stub redis throws if a handler
+      // accidentally tries to use it (defense in depth; should never fire
+      // because PUBLIC_METHODS handlers don't touch redis).
+      redis = async () => {
+        throw new Error("Redis not available for unauthenticated requests");
+      };
+      res.setHeader("X-MCP-Cred-Source", "anon-public");
     }
-    // Surface which credential path was used (for debugging only — not secret)
-    res.setHeader("X-MCP-Cred-Source", source);
-
-    const redis = createRedis({ url, token });
 
     // Branch on Accept: SSE-capable clients get the SDK transport (preserves
     // server-initiated streaming for tool progress); JSON-only clients get a
