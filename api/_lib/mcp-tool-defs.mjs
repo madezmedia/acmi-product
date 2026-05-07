@@ -145,7 +145,12 @@ export const TOOL_DEFS = [
       required: ["namespace"],
       additionalProperties: false,
     },
-    outputSchema: { type: "array", items: { type: "string" }, description: "Array of entity IDs in the namespace" },
+    outputSchema: {
+      type: "object",
+      properties: {
+        ids: { type: "array", items: { type: "string" }, description: "Array of entity IDs in the namespace" },
+      },
+    },
     annotations: { title: "List Namespace Entities", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
@@ -222,7 +227,12 @@ export const TOOL_DEFS = [
     name: "acmi_work_list",
     description: "List all work item IDs.",
     inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
-    outputSchema: { type: "array", items: { type: "string" } },
+    outputSchema: {
+      type: "object",
+      properties: {
+        work_ids: { type: "array", items: { type: "string" } },
+      },
+    },
     annotations: { title: "List Work Items", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
@@ -243,14 +253,19 @@ export const TOOL_DEFS = [
       additionalProperties: false,
     },
     outputSchema: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          timestamp: { type: "string" },
-          source_key: { type: "string" },
-          kind: { type: "string" },
-          summary: { type: "string" },
+      type: "object",
+      properties: {
+        events: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              timestamp: { type: "string" },
+              source_key: { type: "string" },
+              kind: { type: "string" },
+              summary: { type: "string" },
+            },
+          },
         },
       },
     },
