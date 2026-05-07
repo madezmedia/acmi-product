@@ -232,24 +232,33 @@ export default async function handler(req, res) {
     const acceptHdr = String(req.headers.accept || "").toLowerCase();
     const wantsSSE = acceptHdr.includes("text/event-stream");
 
-    // Short-circuit empty-list methods for SSE clients too — the SDK's
-    // McpServer returns -32601 Method not found for resources/list +
-    // prompts/list because we never register handlers (we have none to
-    // register), and for triggers/list because it's a Smithery extension
-    // the SDK doesn't know. Smithery's scan flags those as warnings.
-    // Bypass the SDK and reply directly with an empty result envelope.
+    // Short-circuit metadata-list methods so BOTH SSE and JSON paths return
+    // identical, schema-rich responses sourced from TOOL_DEFS:
+    //   - tools/list returns full TOOL_DEFS (name + description + inputSchema
+    //     + outputSchema + annotations). The SDK's auto-generated tools/list
+    //     only emits inputSchema, so Smithery's quality scorer marked
+    //     outputSchema 0/16 + annotations 0/16. Bypass the SDK to fix this.
+    //   - resources/list, prompts/list, triggers/list return empty arrays.
+    //     The SDK errors -32601 because we never register handlers (we have
+    //     no resources/prompts) and triggers/list is a Smithery extension.
     const reqMethod = req.body && req.body.method;
-    if (
-      req.method === "POST" &&
-      (reqMethod === "resources/list" ||
-        reqMethod === "prompts/list" ||
-        reqMethod === "triggers/list")
-    ) {
-      const key = reqMethod.split("/")[0]; // "resources" | "prompts" | "triggers"
+    let shortCircuitResult = null;
+    if (req.method === "POST") {
+      if (reqMethod === "tools/list") {
+        shortCircuitResult = { tools: TOOL_DEFS };
+      } else if (reqMethod === "resources/list") {
+        shortCircuitResult = { resources: [] };
+      } else if (reqMethod === "prompts/list") {
+        shortCircuitResult = { prompts: [] };
+      } else if (reqMethod === "triggers/list") {
+        shortCircuitResult = { triggers: [] };
+      }
+    }
+    if (shortCircuitResult !== null) {
       const reply = {
         jsonrpc: "2.0",
         id: (req.body && req.body.id) ?? null,
-        result: { [key]: [] },
+        result: shortCircuitResult,
       };
       if (wantsSSE) {
         res.status(200).setHeader("Content-Type", "text/event-stream");
