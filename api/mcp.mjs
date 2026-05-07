@@ -232,6 +232,35 @@ export default async function handler(req, res) {
     const acceptHdr = String(req.headers.accept || "").toLowerCase();
     const wantsSSE = acceptHdr.includes("text/event-stream");
 
+    // Short-circuit empty-list methods for SSE clients too — the SDK's
+    // McpServer returns -32601 Method not found for resources/list +
+    // prompts/list because we never register handlers (we have none to
+    // register), and for triggers/list because it's a Smithery extension
+    // the SDK doesn't know. Smithery's scan flags those as warnings.
+    // Bypass the SDK and reply directly with an empty result envelope.
+    const reqMethod = req.body && req.body.method;
+    if (
+      req.method === "POST" &&
+      (reqMethod === "resources/list" ||
+        reqMethod === "prompts/list" ||
+        reqMethod === "triggers/list")
+    ) {
+      const key = reqMethod.split("/")[0]; // "resources" | "prompts" | "triggers"
+      const reply = {
+        jsonrpc: "2.0",
+        id: (req.body && req.body.id) ?? null,
+        result: { [key]: [] },
+      };
+      if (wantsSSE) {
+        res.status(200).setHeader("Content-Type", "text/event-stream");
+        res.end(`event: message\ndata: ${JSON.stringify(reply)}\n\n`);
+      } else {
+        res.status(200).setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(reply));
+      }
+      return;
+    }
+
     if (wantsSSE) {
       const server = new McpServer(SERVER_INFO);
       registerAcmiTools(server, redis);
