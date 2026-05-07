@@ -12,13 +12,24 @@
 // idempotentHint, openWorldHint, title).
 
 // Smithery configSchema — declares what users must provide via Smithery's
-// connect form. Mirrors the smithery.yaml in the @madezmedia/acmi-mcp npm
-// package so the HTTP-published path matches the stdio path.
+// connect form. The x-from declarations tell Smithery's gateway HOW to
+// forward each value to our upstream /api/mcp:
+//   - upstashRedisRestUrl → header x-upstash-url
+//   - upstashRedisRestToken → header x-upstash-token
 //
-// When users click "connect" on smithery.ai/servers/madezmediapartners/acmi-mcp,
-// Smithery's UI renders a form with these fields, the user pastes their
-// Upstash creds, and Smithery proxies to /api/mcp with config={...} per
-// request. Each user's tenant stays scoped to their own creds.
+// Both go as headers (not query params) because the token is secret —
+// query params end up in logs / referer headers / browser history. The
+// URL goes as a header for symmetry with the token.
+//
+// Multi-user one-URL flow:
+//   1. Each user clicks Install on smithery.ai/servers/madezmediapartners/acmi-mcp
+//   2. Smithery's hosted setupUrl renders a form from this schema
+//   3. User pastes their own Upstash creds → Smithery stores per-user
+//   4. Smithery gives them a connection URL (mcp.smithery.run/...)
+//   5. They paste THAT URL into Claude Web (or any MCP client)
+//   6. Smithery proxies their requests to /api/mcp with x-upstash-* headers
+//      filled in from their stored config
+//   7. Each user's tenant scoped to their own creds — no shared state
 export const CONFIG_SCHEMA = {
   type: "object",
   required: ["upstashRedisRestUrl", "upstashRedisRestToken"],
@@ -27,12 +38,14 @@ export const CONFIG_SCHEMA = {
       type: "string",
       title: "Upstash Redis REST URL",
       description: "Your Upstash database REST endpoint (e.g. https://your-instance.upstash.io). Get from console.upstash.com → your database → REST API tab.",
+      "x-from": { header: "x-upstash-url" },
     },
     upstashRedisRestToken: {
       type: "string",
       title: "Upstash Redis REST Token",
       description: "Read/write token from your Upstash database. Treat as a secret.",
       format: "password",
+      "x-from": { header: "x-upstash-token" },
     },
   },
 };

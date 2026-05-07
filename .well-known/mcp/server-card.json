@@ -27,13 +27,19 @@
       "upstashRedisRestUrl": {
         "type": "string",
         "title": "Upstash Redis REST URL",
-        "description": "Your Upstash database REST endpoint (e.g. https://your-instance.upstash.io). Get from console.upstash.com → your database → REST API tab."
+        "description": "Your Upstash database REST endpoint (e.g. https://your-instance.upstash.io). Get from console.upstash.com → your database → REST API tab.",
+        "x-from": {
+          "header": "x-upstash-url"
+        }
       },
       "upstashRedisRestToken": {
         "type": "string",
         "title": "Upstash Redis REST Token",
         "description": "Read/write token from your Upstash database. Treat as a secret.",
-        "format": "password"
+        "format": "password",
+        "x-from": {
+          "header": "x-upstash-token"
+        }
       }
     }
   },
