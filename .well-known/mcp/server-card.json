@@ -17,6 +17,26 @@
   "repository": "https://github.com/madezmedia/acmi-product",
   "documentation": "https://acmi-product.vercel.app/mcp.html",
   "license": "MIT",
+  "configSchema": {
+    "type": "object",
+    "required": [
+      "upstashRedisRestUrl",
+      "upstashRedisRestToken"
+    ],
+    "properties": {
+      "upstashRedisRestUrl": {
+        "type": "string",
+        "title": "Upstash Redis REST URL",
+        "description": "Your Upstash database REST endpoint (e.g. https://your-instance.upstash.io). Get from console.upstash.com → your database → REST API tab."
+      },
+      "upstashRedisRestToken": {
+        "type": "string",
+        "title": "Upstash Redis REST Token",
+        "description": "Read/write token from your Upstash database. Treat as a secret.",
+        "format": "password"
+      }
+    }
+  },
   "tools": [
     {
       "name": "acmi_profile",

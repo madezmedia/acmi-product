@@ -11,6 +11,32 @@
 // Annotations follow the MCP spec (readOnlyHint, destructiveHint,
 // idempotentHint, openWorldHint, title).
 
+// Smithery configSchema — declares what users must provide via Smithery's
+// connect form. Mirrors the smithery.yaml in the @madezmedia/acmi-mcp npm
+// package so the HTTP-published path matches the stdio path.
+//
+// When users click "connect" on smithery.ai/servers/madezmediapartners/acmi-mcp,
+// Smithery's UI renders a form with these fields, the user pastes their
+// Upstash creds, and Smithery proxies to /api/mcp with config={...} per
+// request. Each user's tenant stays scoped to their own creds.
+export const CONFIG_SCHEMA = {
+  type: "object",
+  required: ["upstashRedisRestUrl", "upstashRedisRestToken"],
+  properties: {
+    upstashRedisRestUrl: {
+      type: "string",
+      title: "Upstash Redis REST URL",
+      description: "Your Upstash database REST endpoint (e.g. https://your-instance.upstash.io). Get from console.upstash.com → your database → REST API tab.",
+    },
+    upstashRedisRestToken: {
+      type: "string",
+      title: "Upstash Redis REST Token",
+      description: "Read/write token from your Upstash database. Treat as a secret.",
+      format: "password",
+    },
+  },
+};
+
 const ok = {
   type: "object",
   properties: {
