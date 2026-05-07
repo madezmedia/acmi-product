@@ -1,0 +1,1326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ACMI · The Coordination Protocol for Multi-Agent Systems on AMD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..900;1,8..60,300..900&family=Hanken+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    /* Brand palette — paper + forest green */
+    --paper:       #F5F1E8;
+    --paper-warm:  #ECE6D6;
+    --paper-deep:  #E2DBC4;
+    --ink:         #2A4A3E;
+    --ink-deep:    #1F3A30;
+    --ink-soft:    #4A6258;
+    --mute:        #8A9A91;
+    --rule:        #2A4A3E;
+    --amd-red:     #ED1C24;
+    --signal:      #C97B4A;  /* warm clay accent for highlights */
+
+    /* Type scale (1920×1080) */
+    --type-display: 132px;
+    --type-title:   80px;
+    --type-h2:      64px;
+    --type-subtitle:44px;
+    --type-body:    32px;
+    --type-small:   24px;
+    --type-mono:    22px;
+    --type-mono-sm: 18px;
+
+    /* Spacing */
+    --pad-x:        110px;
+    --pad-top:      90px;
+    --pad-bottom:   80px;
+    --gap-title:    52px;
+    --gap-item:     28px;
+
+    /* Faces */
+    --serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
+    --sans:  "Hanken Grotesk", "Söhne", system-ui, sans-serif;
+    --mono:  "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+
+  html, body { margin: 0; background: #0c0c0c; }
+  body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  deck-stage { background: #0c0c0c; }
+  deck-stage > section {
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ───── Slide chrome (header + footer rules) ───── */
+  .chrome {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    padding: 38px var(--pad-x);
+    display: flex; flex-direction: column; justify-content: space-between;
+    z-index: 5;
+  }
+  .chrome-row { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 24px; color: var(--ink); letter-spacing: 0.04em; white-space: nowrap; }
+  .chrome-row .left, .chrome-row .right { display: flex; align-items: center; gap: 16px; }
+  .wordmark-mini {
+    font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 26px;
+    letter-spacing: -0.01em; color: var(--ink); position: relative; padding-bottom: 8px;
+  }
+  .wordmark-mini::before, .wordmark-mini::after {
+    content: ""; position: absolute; left: 0; right: 8px; height: 1.5px; background: var(--ink);
+  }
+  .wordmark-mini::before { bottom: 4px; }
+  .wordmark-mini::after  { bottom: 0px; }
+  .pagenum { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* dark slide variant */
+  section.dark { background: var(--ink-deep); color: var(--paper); }
+  section.dark .chrome-row { color: var(--paper); }
+  section.dark .wordmark-mini { color: var(--paper); }
+  section.dark .wordmark-mini::before, section.dark .wordmark-mini::after { background: var(--paper); }
+
+  /* ───── Body container ───── */
+  .body {
+    position: absolute; inset: 0;
+    padding: 130px var(--pad-x) 180px;
+    box-sizing: border-box;
+    display: flex; flex-direction: column;
+  }
+
+  /* Eyebrow */
+  .eyebrow {
+    font-family: var(--mono); font-size: var(--type-mono); letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  section.dark .eyebrow { color: #B5C9BF; }
+
+  /* Title types */
+  .title-display {
+    font-family: var(--serif); font-style: italic; font-weight: 700;
+    font-size: var(--type-display); line-height: 0.92;
+    letter-spacing: -0.02em; color: var(--ink);
+    text-wrap: pretty;
+  }
+  .title-h1 {
+    font-family: var(--serif); font-style: italic; font-weight: 700;
+    font-size: var(--type-title); line-height: 1.0;
+    letter-spacing: -0.015em; color: var(--ink); margin: 0;
+    text-wrap: balance;
+  }
+  section.dark .title-h1 { color: var(--paper); }
+
+  .lede {
+    font-family: var(--sans); font-weight: 400;
+    font-size: var(--type-subtitle); line-height: 1.2;
+    color: var(--ink-soft); margin: 0; text-wrap: pretty;
+    max-width: 1500px;
+  }
+  section.dark .lede { color: #C7D5CD; }
+
+  .body-text {
+    font-family: var(--sans); font-weight: 400;
+    font-size: var(--type-body); line-height: 1.45;
+    color: var(--ink); text-wrap: pretty;
+  }
+
+  .mono-caption {
+    font-family: var(--mono); font-size: var(--type-mono);
+    color: var(--ink-soft); letter-spacing: 0.02em;
+  }
+  section.dark .mono-caption { color: #B5C9BF; }
+
+  /* Double-underline mark (signature device) */
+  .uline {
+    background-image: linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor);
+    background-size: 100% 2px, 100% 2px;
+    background-position: 0 100%, 0 calc(100% - 6px);
+    background-repeat: no-repeat;
+    padding-bottom: 12px;
+  }
+
+  /* Hairline rule */
+  .rule { height: 1px; background: var(--ink); opacity: 0.5; }
+  section.dark .rule { background: var(--paper); opacity: 0.35; }
+
+  /* Two-col flexible */
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 56px; align-items: stretch; }
+
+  /* Card */
+  .card {
+    background: var(--paper-warm); border: 1.5px solid var(--ink); padding: 40px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  section.dark .card { background: rgba(245,241,232,0.06); border-color: var(--paper); }
+
+  /* ───────────────────────────────────────────
+     SLIDE 1 — Title
+  ─────────────────────────────────────────── */
+  .s1-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 80px;
+    align-items: stretch;
+  }
+  .s1-left { display: flex; flex-direction: column; justify-content: space-between; }
+  .s1-mark {
+    font-family: var(--serif); font-style: italic; font-weight: 700;
+    font-size: 240px; line-height: 0.85; letter-spacing: -0.025em;
+    position: relative; padding-bottom: 28px; color: var(--paper);
+  }
+  .s1-mark::before, .s1-mark::after {
+    content: ""; position: absolute; left: 6px; right: 32%; height: 4px; background: var(--paper);
+  }
+  .s1-mark::before { bottom: 14px; }
+  .s1-mark::after  { bottom: 0; }
+  .s1-tagline {
+    font-family: var(--serif); font-style: italic; font-weight: 600;
+    font-size: 56px; line-height: 1.05; color: var(--paper);
+    max-width: 760px; letter-spacing: -0.01em;
+  }
+  .s1-meta {
+    font-family: var(--mono); font-size: 24px; color: #C7D5CD;
+    display: grid; gap: 12px; letter-spacing: 0.03em;
+  }
+  .s1-meta b { color: var(--paper); font-weight: 500; }
+
+  .s1-right { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
+
+  /* Three-keys diagram */
+  .keys-diagram {
+    border: 1.5px solid rgba(245,241,232,0.4);
+    padding: 48px 40px 40px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 28px;
+    background: rgba(245,241,232,0.03);
+  }
+  .key-cell { display: flex; flex-direction: column; gap: 18px; }
+  .key-icon { width: 100%; aspect-ratio: 1.1 / 1; border: 1.5px solid var(--paper); display: grid; place-items: center; }
+  .key-num { font-family: var(--mono); font-size: 18px; letter-spacing: 0.18em; color: #B5C9BF; }
+  .key-name { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 32px; color: var(--paper); line-height: 1; }
+  .key-desc { font-family: var(--mono); font-size: 16px; color: #B5C9BF; line-height: 1.5; }
+
+  /* Uptime badge */
+  .uptime-badge {
+    border: 1.5px solid var(--paper);
+    padding: 22px 28px;
+    display: flex; align-items: center; gap: 20px;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+  .uptime-badge .row { white-space: nowrap; }
+  .uptime-badge .live-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #5BD49E; box-shadow: 0 0 0 4px rgba(91,212,158,0.2);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(91,212,158,0.15); }
+    50%      { box-shadow: 0 0 0 8px rgba(91,212,158,0.05); }
+  }
+  .uptime-label { font-family: var(--mono); font-size: 18px; letter-spacing: 0.16em; text-transform: uppercase; color: #B5C9BF; white-space: nowrap; }
+  .uptime-num { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 56px; color: var(--paper); line-height: 1; letter-spacing: -0.01em; }
+  .uptime-unit { font-family: var(--mono); font-size: 18px; color: #B5C9BF; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+
+  /* ───────────────────────────────────────────
+     SLIDE 2 — The problem
+  ─────────────────────────────────────────── */
+  .s2-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: 60px; align-items: start; }
+  .hairball-wrap, .clean-wrap { display: flex; flex-direction: column; gap: 20px; }
+  .diagram-frame { flex: 0 1 auto; border: 1.5px solid var(--ink); background: var(--paper-warm); padding: 28px; display: grid; place-items: center; height: 340px; }
+  .diagram-label { font-family: var(--mono); font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); display: flex; justify-content: space-between; align-items: baseline; }
+  .diagram-label b { font-weight: 500; color: var(--ink); }
+  .pull-quote {
+    font-family: var(--serif); font-style: italic; font-weight: 600;
+    font-size: 36px; line-height: 1.25; color: var(--ink); max-width: 1500px; margin: 0;
+  }
+  .pull-attr { font-family: var(--mono); font-size: 18px; color: var(--ink-soft); margin-top: 14px; letter-spacing: 0.06em; }
+
+  /* ───────────────────────────────────────────
+     SLIDE 3 — Three keys
+  ─────────────────────────────────────────── */
+  .s3-keys { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; flex: 1; align-items: stretch; }
+  .s3-key {
+    border: 1.5px solid var(--ink);
+    padding: 36px 32px;
+    display: flex; flex-direction: column; gap: 18px;
+    background: var(--paper);
+    position: relative;
+  }
+  .s3-key.warm { background: var(--paper-warm); }
+  .s3-key.dark { background: var(--ink-deep); color: var(--paper); border-color: var(--ink-deep); }
+  .s3-key.dark .s3-key-num, .s3-key.dark .s3-key-meta { color: #B5C9BF; }
+  .s3-key-num {
+    font-family: var(--mono); font-size: 18px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  .s3-key-name {
+    font-family: var(--serif); font-style: italic; font-weight: 700;
+    font-size: 72px; line-height: 0.9; letter-spacing: -0.02em;
+  }
+  .s3-key-q {
+    font-family: var(--serif); font-style: italic; font-weight: 400;
+    font-size: 36px; color: var(--ink-soft);
+  }
+  .s3-key.dark .s3-key-q { color: #C7D5CD; }
+  .s3-key-desc { font-family: var(--sans); font-size: 22px; line-height: 1.4; }
+  .s3-key-meta { font-family: var(--mono); font-size: 14px; letter-spacing: 0.06em; color: var(--ink-soft); margin-top: auto; padding-top: 18px; border-top: 1px solid currentColor; opacity: 0.9; }
+
+  /* ───────────────────────────────────────────
+     SLIDE 4 — Why AMD
+  ─────────────────────────────────────────── */
+  .s4-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; flex: 1; align-items: start; margin-top: 24px; }
+  .gpu-frame {
+    border: 1.5px solid var(--ink); background: var(--ink-deep); color: var(--paper);
+    padding: 32px; position: relative; display: flex; flex-direction: column; gap: 22px;
+  }
+  .gpu-label { font-family: var(--mono); font-size: 16px; letter-spacing: 0.16em; text-transform: uppercase; color: #B5C9BF; }
+  .gpu-name { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 56px; line-height: 1; }
+  .gpu-spec { font-family: var(--mono); font-size: 18px; color: #B5C9BF; }
+  .gpu-stack { display: grid; gap: 14px; margin-top: 8px; }
+  .llm-pill {
+    display: grid; grid-template-columns: 24px 1fr auto; gap: 16px; align-items: center;
+    border: 1px solid rgba(245,241,232,0.35); padding: 14px 18px;
+  }
+  .llm-pill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amd-red); }
+  .llm-pill .name { font-family: var(--sans); font-size: 24px; font-weight: 500; }
+  .llm-pill .vram { font-family: var(--mono); font-size: 16px; color: #B5C9BF; }
+  .gpu-bar {
+    margin-top: auto;
+    border: 1px solid rgba(245,241,232,0.35);
+    padding: 18px 22px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .gpu-bar .l { font-family: var(--mono); font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: #B5C9BF; }
+  .gpu-bar .r { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 28px; }
+
+  .s4-points { display: flex; flex-direction: column; gap: 24px; }
+  .s4-point { display: grid; grid-template-columns: 56px 1fr; gap: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--ink); }
+  .s4-point:last-child { border-bottom: none; }
+  .s4-point-num { font-family: var(--mono); font-size: 18px; color: var(--ink-soft); letter-spacing: 0.1em; }
+  .s4-point-h { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 38px; line-height: 1.05; margin-bottom: 12px; letter-spacing: -0.01em; }
+  .s4-point-b { font-family: var(--sans); font-size: 24px; line-height: 1.4; color: var(--ink-soft); }
+  .s4-equation {
+    font-family: var(--serif); font-style: italic; font-weight: 600;
+    font-size: 28px; line-height: 1.2; color: var(--amd-red);
+    border-top: 2px solid var(--amd-red); padding-top: 18px;
+  }
+
+  /* ───────────────────────────────────────────
+     SLIDE 5 — Live demo architecture
+  ─────────────────────────────────────────── */
+  .s5-arch {
+    flex: 1;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 36px;
+    margin-top: 24px;
+  }
+  .arch-board {
+    border: 1.5px solid var(--ink); background: var(--paper-warm);
+    padding: 44px 56px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 36px;
+    position: relative;
+    align-items: stretch;
+  }
+  .agent-card { background: var(--paper); border: 1.5px solid var(--ink); padding: 26px 22px; display: flex; flex-direction: column; gap: 14px; position: relative; z-index: 2; }
+  .agent-tag { font-family: var(--mono); font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
+  .agent-name { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 30px; line-height: 1; }
+  .agent-job { font-family: var(--sans); font-size: 18px; line-height: 1.35; color: var(--ink-soft); }
+  .agent-out { font-family: var(--mono); font-size: 13px; padding: 8px 10px; background: var(--ink-deep); color: var(--paper); margin-top: auto; }
+  .arch-arrows {
+    position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+    height: 2px; pointer-events: none;
+  }
+  .arch-bus {
+    margin-top: 0;
+    border: 1.5px solid var(--ink); background: var(--ink-deep); color: var(--paper);
+    padding: 28px 36px;
+    display: grid;
+    grid-template-columns: 220px 1fr 220px;
+    align-items: center;
+    gap: 32px;
+    overflow: hidden;
+  }
+  .bus-label { font-family: var(--mono); font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; color: #B5C9BF; }
+  .bus-tape {
+    display: flex; gap: 6px; align-items: center; overflow: hidden;
+    border-left: 1px solid rgba(245,241,232,0.35);
+    border-right: 1px solid rgba(245,241,232,0.35);
+    padding: 0 18px;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+  .bus-event { font-family: var(--mono); font-size: 14px; padding: 6px 10px; background: rgba(245,241,232,0.08); border: 1px solid rgba(245,241,232,0.25); white-space: nowrap; color: var(--paper); }
+  .bus-event.b { background: var(--paper); color: var(--ink-deep); border-color: var(--paper); }
+  .bus-stack-name { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 28px; }
+
+  /* ───────────────────────────────────────────
+     SLIDE 6 — Under the hood
+  ─────────────────────────────────────────── */
+  .s6-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; flex: 1; align-items: stretch; margin-top: 30px; }
+  .codeblock {
+    background: var(--ink-deep); color: var(--paper);
+    padding: 32px 36px;
+    font-family: var(--mono); font-size: 20px; line-height: 1.55;
+    border: 1.5px solid var(--ink-deep);
+    overflow: hidden;
+    position: relative;
+  }
+  .codeblock .c-key { color: #9DC0AF; }
+  .codeblock .c-str { color: #E6C99A; }
+  .codeblock .c-num { color: #C97B4A; }
+  .codeblock .c-cmt { color: #6B7F75; font-style: italic; }
+  .codeblock .c-bra { color: #B5C9BF; }
+  .codeblock-cap {
+    position: absolute; top: 14px; right: 18px;
+    font-size: 14px; color: #B5C9BF; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  .rule-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--ink); }
+  .rule-row {
+    display: grid; grid-template-columns: 110px 1fr;
+    gap: 28px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--ink);
+    align-items: baseline;
+  }
+  .rule-tag { font-family: var(--mono); font-size: 16px; color: var(--ink-soft); letter-spacing: 0.1em; text-transform: uppercase; }
+  .rule-name { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 28px; line-height: 1.05; }
+  .rule-desc { font-family: var(--sans); font-size: 20px; color: var(--ink-soft); margin-top: 4px; line-height: 1.4; }
+
+  /* ───────────────────────────────────────────
+     SLIDE 7 — Receipts
+  ─────────────────────────────────────────── */
+  .s7-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-top: 30px; }
+  .stat-tile { display: flex; flex-direction: column; justify-content: space-between; padding: 32px 28px; min-height: 320px; border: 1.5px solid var(--ink); position: relative; }
+  .stat-tile.warm { background: var(--paper-warm); }
+  .stat-tile.dark { background: var(--ink-deep); color: var(--paper); border-color: var(--ink-deep); }
+  .stat-tile.dark .stat-cap, .stat-tile.dark .stat-sub { color: #B5C9BF; }
+  .stat-cap { font-family: var(--mono); font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); }
+  .stat-num { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 156px; line-height: 0.85; letter-spacing: -0.03em; }
+  .stat-num small { font-size: 64px; vertical-align: top; }
+  .stat-sub { font-family: var(--sans); font-size: 22px; line-height: 1.35; color: var(--ink-soft); }
+
+  .s7-evidence {
+    margin-top: 36px;
+    border-top: 1px solid var(--ink);
+    padding-top: 24px;
+    display: grid; grid-template-columns: 1fr auto 1fr auto 1fr;
+    align-items: center; gap: 32px;
+  }
+  .ev-cell { font-family: var(--mono); font-size: 18px; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .ev-cell b { font-family: var(--sans); font-weight: 500; color: var(--ink); }
+  .ev-dot { width: 6px; height: 6px; background: var(--ink); border-radius: 50%; }
+
+  /* ───────────────────────────────────────────
+     SLIDE 8 — Roadmap
+  ─────────────────────────────────────────── */
+  .s8-track { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 30px; position: relative; }
+  .s8-rail { position: absolute; left: 0; right: 0; top: 90px; height: 2px; background: var(--ink); }
+  .s8-col { padding: 0 36px 0 0; display: flex; flex-direction: column; }
+  .s8-col + .s8-col { padding-left: 36px; border-left: 1px solid var(--ink); }
+  .s8-marker {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--paper); border: 2.5px solid var(--ink);
+    margin-top: 80px; margin-bottom: 28px; position: relative; z-index: 2;
+  }
+  .s8-col.now .s8-marker { background: var(--ink); }
+  .s8-phase { font-family: var(--mono); font-size: 16px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
+  .s8-version { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 64px; line-height: 1; letter-spacing: -0.02em; margin: 8px 0 24px; }
+  .s8-features { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
+  .s8-features li {
+    font-family: var(--sans); font-size: 22px; line-height: 1.35; padding-left: 22px; position: relative;
+  }
+  .s8-features li::before {
+    content: ""; position: absolute; left: 0; top: 0.65em; width: 12px; height: 1.5px; background: var(--ink);
+  }
+  .s8-status { margin-top: 28px; padding-top: 18px; border-top: 1px dashed var(--ink); font-family: var(--mono); font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); }
+
+  /* ───────────────────────────────────────────
+     SLIDE 9 — The ask
+  ─────────────────────────────────────────── */
+  .s9-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: stretch; }
+  .s9-rails {
+    display: flex; flex-direction: column; gap: 0;
+    border-top: 2px solid var(--paper); border-bottom: 2px solid var(--paper);
+    padding: 24px 0;
+  }
+  .s9-rail-row { display: grid; grid-template-columns: 130px 1fr; align-items: baseline; padding: 28px 0; border-bottom: 1px solid rgba(245,241,232,0.18); gap: 24px; }
+  .s9-rail-row:last-child { border-bottom: none; }
+  .s9-tag { font-family: var(--mono); font-size: 16px; letter-spacing: 0.16em; text-transform: uppercase; color: #B5C9BF; }
+  .s9-claim { font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 36px; line-height: 1.15; color: var(--paper); }
+  .s9-claim em { font-style: normal; color: #C97B4A; font-weight: 700; padding: 0 2px; }
+  .s9-quote-card {
+    border-left: 4px solid #C97B4A;
+    padding: 12px 32px;
+    display: flex; flex-direction: column; gap: 0; justify-content: center;
+  }
+  .s9-quote {
+    font-family: var(--serif); font-style: italic; font-weight: 600;
+    font-size: 44px; line-height: 1.2;
+    color: var(--paper); margin: 0; letter-spacing: -0.01em;
+  }
+  .s9-quote-sig { font-family: var(--mono); font-size: 18px; letter-spacing: 0.1em; text-transform: uppercase; color: #B5C9BF; }
+
+  /* ───────────────────────────────────────────
+     SLIDE 10 — Closing
+  ─────────────────────────────────────────── */
+  .s10-grid { flex: 1; display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 80px; align-items: stretch; }
+  .s10-tagline {
+    font-family: var(--serif); font-style: italic; font-weight: 700;
+    font-size: 116px; line-height: 0.9; letter-spacing: -0.025em;
+    color: var(--paper); margin: 0;
+  }
+  .s10-tagline .uline2 {
+    background-image: linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor);
+    background-size: 100% 4px, 100% 4px;
+    background-position: 0 100%, 0 calc(100% - 14px);
+    background-repeat: no-repeat;
+    padding-bottom: 20px;
+    display: inline-block;
+  }
+  .s10-contact {
+    border: 1.5px solid var(--paper);
+    padding: 36px 40px;
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .s10-contact-row {
+    display: grid; grid-template-columns: 130px 1fr;
+    padding: 16px 0; border-bottom: 1px solid rgba(245,241,232,0.2);
+    font-family: var(--mono); font-size: 22px; align-items: baseline; gap: 24px;
+  }
+  .s10-contact-row:last-child { border-bottom: none; }
+  .s10-contact-row .l { color: #B5C9BF; letter-spacing: 0.14em; text-transform: uppercase; font-size: 14px; }
+  .s10-contact-row .v { color: var(--paper); }
+
+  .s10-qr {
+    border: 1.5px solid var(--paper); padding: 28px;
+    display: flex; flex-direction: column; gap: 20px; align-items: center;
+    background: var(--paper); color: var(--ink);
+  }
+  .qr-grid { display: grid; grid-template-columns: repeat(21, 1fr); gap: 0; width: 240px; height: 240px; }
+  .qr-grid div { background: var(--ink); aspect-ratio: 1; }
+  .qr-grid div.w { background: transparent; }
+  .qr-cap { font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+
+  /* misc helpers */
+  .stack-12 { display: flex; flex-direction: column; gap: 12px; }
+  .stack-16 { display: flex; flex-direction: column; gap: 16px; }
+  .stack-24 { display: flex; flex-direction: column; gap: 24px; }
+  .stack-40 { display: flex; flex-direction: column; gap: 40px; }
+  .stack-56 { display: flex; flex-direction: column; gap: 56px; }
+  .stack-72 { display: flex; flex-direction: column; gap: 72px; }
+  .row { display: flex; align-items: center; gap: 16px; }
+  .grow { flex: 1; }
+
+</style>
+
+<script type="application/json" id="speaker-notes">
+[
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  ""
+]
+</script>
+</head>
+<body>
+
+<deck-stage width="1920" height="1080">
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 1 — TITLE
+  ═════════════════════════════════════════════ -->
+  <section class="dark" data-label="01 Title">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">01 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">AMD DEVELOPER HACKATHON · 2026</div>
+        <div class="right">npm install @madezmedia/acmi</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="s1-grid">
+        <div class="s1-left">
+          <div>
+            <div class="eyebrow" style="margin-bottom: 36px; font-size: 26px;">A coordination protocol for multi-agent systems</div>
+            <div class="s1-mark">ACMI</div>
+          </div>
+          <div class="s1-tagline">
+            Three keys per agent.<br>One protocol for the fleet.
+          </div>
+          <div class="s1-meta">
+            <div><b>Submission</b> &nbsp;·&nbsp; Mikey, solo · @madezmedia</div>
+            <div><b>Status</b> &nbsp;·&nbsp; v1.2.0 live on npm · MIT licensed</div>
+            <div><b>Built on</b> &nbsp;·&nbsp; AMD MI300X · ROCm 7.2 · Ollama</div>
+          </div>
+        </div>
+
+        <div class="s1-right">
+          <div class="keys-diagram">
+            <div class="key-cell">
+              <div class="key-num">01</div>
+              <div class="key-icon">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                  <circle cx="32" cy="22" r="10" stroke="#F5F1E8" stroke-width="2"/>
+                  <path d="M14 54c0-9.9 8.1-18 18-18s18 8.1 18 18" stroke="#F5F1E8" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="key-name">Profile</div>
+              <div class="key-desc">who · identity, capabilities, role</div>
+            </div>
+            <div class="key-cell">
+              <div class="key-num">02</div>
+              <div class="key-icon">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                  <circle cx="32" cy="32" r="6" fill="#F5F1E8"/>
+                  <circle cx="32" cy="32" r="14" stroke="#F5F1E8" stroke-width="2" opacity="0.7"/>
+                  <circle cx="32" cy="32" r="22" stroke="#F5F1E8" stroke-width="2" opacity="0.4"/>
+                </svg>
+              </div>
+              <div class="key-name">Signals</div>
+              <div class="key-desc">now · current state, focus, availability</div>
+            </div>
+            <div class="key-cell">
+              <div class="key-num">03</div>
+              <div class="key-icon">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                  <line x1="10" y1="32" x2="54" y2="32" stroke="#F5F1E8" stroke-width="2"/>
+                  <circle cx="14" cy="32" r="3" fill="#F5F1E8"/>
+                  <circle cx="26" cy="32" r="3" fill="#F5F1E8"/>
+                  <circle cx="38" cy="32" r="3" fill="#F5F1E8"/>
+                  <circle cx="50" cy="32" r="3" fill="#F5F1E8"/>
+                </svg>
+              </div>
+              <div class="key-name">Timeline</div>
+              <div class="key-desc">history · events, audit trail, context</div>
+            </div>
+          </div>
+
+          <div class="uptime-badge">
+            <div class="row">
+              <div class="live-dot"></div>
+              <div class="uptime-label">Production uptime</div>
+            </div>
+            <div class="row" style="gap: 14px;">
+              <div class="uptime-num">30+</div>
+              <div class="uptime-unit">days · 9 agents · 8k events</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 2 — THE PROBLEM
+  ═════════════════════════════════════════════ -->
+  <section data-label="02 The problem">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">02 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">02 · THE PROBLEM</div>
+        <div class="right">npm install @madezmedia/acmi</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">02 · The problem</div>
+      <h1 class="title-h1" style="margin-top: 28px;">Multi-agent systems are stuck<br>in pairwise hacks.</h1>
+      <p class="lede" style="margin-top: 28px;">Agents share a GPU but not state. With no protocol, every team rebuilds memory, handoff, and audit from scratch — and the cost is combinatorial.</p>
+
+      <div class="s2-grid" style="margin-top: 28px;">
+        <div class="hairball-wrap">
+          <div class="diagram-label"><b>Today</b><span>9 agents · 36 contracts</span></div>
+          <div class="diagram-frame">
+            <svg viewBox="0 0 460 380" width="100%" style="max-height: 380px;">
+              <!-- 9 agent nodes around a circle, fully connected hairball -->
+              <g id="hairball">
+                <!-- generate connections -->
+                <g stroke="#2A4A3E" stroke-width="0.8" opacity="0.55" fill="none">
+                  <line x1="230" y1="60" x2="370" y2="100"/>
+                  <line x1="230" y1="60" x2="420" y2="200"/>
+                  <line x1="230" y1="60" x2="370" y2="320"/>
+                  <line x1="230" y1="60" x2="230" y2="320"/>
+                  <line x1="230" y1="60" x2="90" y2="320"/>
+                  <line x1="230" y1="60" x2="40" y2="200"/>
+                  <line x1="230" y1="60" x2="90" y2="100"/>
+                  <line x1="230" y1="60" x2="305" y2="80"/>
+                  <line x1="370" y1="100" x2="420" y2="200"/>
+                  <line x1="370" y1="100" x2="370" y2="320"/>
+                  <line x1="370" y1="100" x2="230" y2="320"/>
+                  <line x1="370" y1="100" x2="90" y2="320"/>
+                  <line x1="370" y1="100" x2="40" y2="200"/>
+                  <line x1="370" y1="100" x2="90" y2="100"/>
+                  <line x1="370" y1="100" x2="305" y2="80"/>
+                  <line x1="420" y1="200" x2="370" y2="320"/>
+                  <line x1="420" y1="200" x2="230" y2="320"/>
+                  <line x1="420" y1="200" x2="90" y2="320"/>
+                  <line x1="420" y1="200" x2="40" y2="200"/>
+                  <line x1="420" y1="200" x2="90" y2="100"/>
+                  <line x1="420" y1="200" x2="305" y2="80"/>
+                  <line x1="370" y1="320" x2="230" y2="320"/>
+                  <line x1="370" y1="320" x2="90" y2="320"/>
+                  <line x1="370" y1="320" x2="40" y2="200"/>
+                  <line x1="370" y1="320" x2="90" y2="100"/>
+                  <line x1="370" y1="320" x2="305" y2="80"/>
+                  <line x1="230" y1="320" x2="90" y2="320"/>
+                  <line x1="230" y1="320" x2="40" y2="200"/>
+                  <line x1="230" y1="320" x2="90" y2="100"/>
+                  <line x1="230" y1="320" x2="305" y2="80"/>
+                  <line x1="90" y1="320" x2="40" y2="200"/>
+                  <line x1="90" y1="320" x2="90" y2="100"/>
+                  <line x1="90" y1="320" x2="305" y2="80"/>
+                  <line x1="40" y1="200" x2="90" y2="100"/>
+                  <line x1="40" y1="200" x2="305" y2="80"/>
+                  <line x1="90" y1="100" x2="305" y2="80"/>
+                </g>
+                <!-- nodes -->
+                <g fill="#2A4A3E">
+                  <circle cx="230" cy="60" r="8"/>
+                  <circle cx="305" cy="80" r="8"/>
+                  <circle cx="370" cy="100" r="8"/>
+                  <circle cx="420" cy="200" r="8"/>
+                  <circle cx="370" cy="320" r="8"/>
+                  <circle cx="230" cy="320" r="8"/>
+                  <circle cx="90" cy="320" r="8"/>
+                  <circle cx="40" cy="200" r="8"/>
+                  <circle cx="90" cy="100" r="8"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <div class="mono-caption" style="font-size: 22px;">// pairwise contracts, exponentially.</div>
+        </div>
+
+        <div class="clean-wrap">
+          <div class="diagram-label"><b>With ACMI</b><span>1 timeline · n agents</span></div>
+          <div class="diagram-frame" style="background: var(--ink-deep); border-color: var(--ink-deep);">
+            <svg viewBox="0 0 600 380" width="100%" style="max-height: 380px;">
+              <!-- ZSET timeline: horizontal axis with events -->
+              <line x1="40" y1="200" x2="560" y2="200" stroke="#F5F1E8" stroke-width="2"/>
+              <!-- ticks -->
+              <g stroke="#F5F1E8" stroke-width="1" opacity="0.6">
+                <line x1="80" y1="195" x2="80" y2="205"/>
+                <line x1="160" y1="195" x2="160" y2="205"/>
+                <line x1="240" y1="195" x2="240" y2="205"/>
+                <line x1="320" y1="195" x2="320" y2="205"/>
+                <line x1="400" y1="195" x2="400" y2="205"/>
+                <line x1="480" y1="195" x2="480" y2="205"/>
+                <line x1="560" y1="195" x2="560" y2="205"/>
+              </g>
+              <!-- events along timeline -->
+              <g>
+                <rect x="60" y="120" width="50" height="42" fill="#F5F1E8" rx="2"/>
+                <text x="85" y="146" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#1F3A30">A</text>
+                <line x1="85" y1="162" x2="85" y2="200" stroke="#F5F1E8" stroke-width="1"/>
+
+                <rect x="140" y="240" width="50" height="42" fill="#C97B4A" rx="2"/>
+                <text x="165" y="266" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#1F3A30">B</text>
+                <line x1="165" y1="200" x2="165" y2="240" stroke="#C97B4A" stroke-width="1"/>
+
+                <rect x="220" y="100" width="50" height="42" fill="#F5F1E8" rx="2"/>
+                <text x="245" y="126" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#1F3A30">C</text>
+                <line x1="245" y1="142" x2="245" y2="200" stroke="#F5F1E8" stroke-width="1"/>
+
+                <rect x="300" y="240" width="50" height="42" fill="#F5F1E8" rx="2"/>
+                <text x="325" y="266" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#1F3A30">A</text>
+                <line x1="325" y1="200" x2="325" y2="240" stroke="#F5F1E8" stroke-width="1"/>
+
+                <rect x="380" y="120" width="50" height="42" fill="#C97B4A" rx="2"/>
+                <text x="405" y="146" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#1F3A30">B</text>
+                <line x1="405" y1="162" x2="405" y2="200" stroke="#C97B4A" stroke-width="1"/>
+
+                <rect x="460" y="240" width="50" height="42" fill="#F5F1E8" rx="2"/>
+                <text x="485" y="266" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#1F3A30">C</text>
+                <line x1="485" y1="200" x2="485" y2="240" stroke="#F5F1E8" stroke-width="1"/>
+              </g>
+              <text x="40" y="40" font-family="JetBrains Mono" font-size="14" fill="#B5C9BF" letter-spacing="2">ZSET TIMELINE — append-only</text>
+              <text x="40" y="350" font-family="JetBrains Mono" font-size="14" fill="#B5C9BF" letter-spacing="2">t →</text>
+            </svg>
+          </div>
+          <div class="mono-caption" style="font-size: 22px;">// one append-only stream. read it, write to it, done.</div>
+        </div>
+      </div>
+
+
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 3 — THE INSIGHT
+  ═════════════════════════════════════════════ -->
+  <section data-label="03 The insight">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">03 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">03 · THE INSIGHT</div>
+        <div class="right">npm install @madezmedia/acmi</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">03 · The insight</div>
+      <h1 class="title-h1" style="margin-top: 28px; line-height: 1.2; font-size: 68px; padding-bottom: 8px;">Agent memory has only ever needed three keys.</h1>
+      <p class="lede" style="margin-top: 88px; max-width: 1400px;">Everything else is consolidation. Profile, signals, timeline — that's the minimum viable agent memory model, and it's what makes agents composable across vendors, runtimes, and teams.</p>
+
+      <div class="s3-keys" style="margin-top: 48px;">
+        <div class="s3-key">
+          <div class="s3-key-num">Key 01</div>
+          <div class="s3-key-q">who?</div>
+          <div class="s3-key-name">Profile.</div>
+          <div class="s3-key-desc">Identity, capabilities, role. The static description an agent broadcasts about what it can do.</div>
+          <div class="s3-key-meta">// HSET acmi:profile:&lt;id&gt;</div>
+        </div>
+        <div class="s3-key warm">
+          <div class="s3-key-num">Key 02</div>
+          <div class="s3-key-q">now?</div>
+          <div class="s3-key-name">Signals.</div>
+          <div class="s3-key-desc">Current state, focus, availability. The fast-mutating &ldquo;what am I doing right this second&rdquo; surface.</div>
+          <div class="s3-key-meta">// HSET acmi:signals:&lt;id&gt;</div>
+        </div>
+        <div class="s3-key dark">
+          <div class="s3-key-num">Key 03</div>
+          <div class="s3-key-q">history?</div>
+          <div class="s3-key-name">Timeline.</div>
+          <div class="s3-key-desc">Append-only stream of events. Audit trail, handoff context, replay surface for every agent in the fleet.</div>
+          <div class="s3-key-meta">// ZADD acmi:timeline:&lt;id&gt;</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 4 — WHY AMD
+  ═════════════════════════════════════════════ -->
+  <section data-label="04 Why AMD">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">04 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">04 · WHY AMD</div>
+        <div class="right">ROCm 7.2 · MI300X · Ollama</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">04 · Why AMD</div>
+      <h1 class="title-h1" style="margin-top: 28px;">Local LLM inference on ROCm <br>changes the economics of swarms.</h1>
+
+      <div class="s4-grid">
+        <div class="gpu-frame">
+          <div class="row" style="justify-content: space-between;">
+            <div>
+              <div class="gpu-label">AMD Instinct</div>
+              <div class="gpu-name">MI300X</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="gpu-label">HBM3</div>
+              <div class="gpu-spec" style="font-size: 24px; color: var(--paper);">192 GB</div>
+            </div>
+          </div>
+          <div class="rule" style="background: rgba(245,241,232,0.35); opacity: 1;"></div>
+          <div class="gpu-label">3 LLMs co-resident</div>
+          <div class="gpu-stack">
+            <div class="llm-pill"><span class="dot"></span><span class="name">Llama 3.3 — 70B Q4</span><span class="vram">~42 GB</span></div>
+            <div class="llm-pill"><span class="dot"></span><span class="name">Qwen 2.5 — 32B</span><span class="vram">~28 GB</span></div>
+            <div class="llm-pill"><span class="dot"></span><span class="name">Mistral Small</span><span class="vram">~14 GB</span></div>
+          </div>
+          <div class="gpu-bar">
+            <div class="l">VRAM USED</div>
+            <div class="r">~84 / 192 GB</div>
+          </div>
+        </div>
+
+        <div class="s4-points">
+          <div class="s4-point">
+            <div class="s4-point-num">01</div>
+            <div>
+              <div class="s4-point-h">ROCm 7.2 hits CUDA parity.</div>
+              <div class="s4-point-b">As of March 2026, the stack runs the models we care about at the throughput we expect — without a Nvidia tax.</div>
+            </div>
+          </div>
+          <div class="s4-point">
+            <div class="s4-point-num">02</div>
+            <div>
+              <div class="s4-point-h">No round-trip, no markup.</div>
+              <div class="s4-point-b">Local inference removes the cloud hop, the per-token bill, and the rate-limit ceiling all at once.</div>
+            </div>
+          </div>
+          <div class="s4-point">
+            <div class="s4-point-num">03</div>
+            <div>
+              <div class="s4-point-h">192 GB is one swarm in a box.</div>
+              <div class="s4-point-b">Three production-grade LLMs co-resident on one MI300X — that's an agent fleet, not a demo.</div>
+            </div>
+          </div>
+          <div class="s4-equation">
+            ACMI&nbsp;&nbsp;+&nbsp;&nbsp;AMD&nbsp;&nbsp;=&nbsp;&nbsp;swarm economics that actually work.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 5 — LIVE DEMO
+  ═════════════════════════════════════════════ -->
+  <section data-label="05 Live demo">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">05 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">05 · LIVE DEMO</div>
+        <div class="right">3 agents · 1 timeline · AMD Developer Cloud</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">05 · Live demo</div>
+      <h1 class="title-h1" style="margin-top: 28px;">Three agents coordinating <br>on the AMD Developer Cloud.</h1>
+      <p class="lede" style="margin-top: 24px;">Watch them hand off through the timeline — no orchestrator, no shared memory, no pairwise glue. Just append, read, append.</p>
+
+      <div class="s5-arch">
+        <div class="arch-board">
+          <!-- arrows behind cards -->
+          <svg style="position:absolute; inset: 44px 56px; z-index: 1;" preserveAspectRatio="none" viewBox="0 0 1000 100" width="100%" height="100%">
+            <defs>
+              <marker id="arr5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="#2A4A3E"/>
+              </marker>
+            </defs>
+            <line x1="320" y1="50" x2="360" y2="50" stroke="#2A4A3E" stroke-width="2" marker-end="url(#arr5)"/>
+            <line x1="650" y1="50" x2="690" y2="50" stroke="#2A4A3E" stroke-width="2" marker-end="url(#arr5)"/>
+          </svg>
+
+          <div class="agent-card">
+            <div class="agent-tag">Agent A · research</div>
+            <div class="agent-name">Researcher.</div>
+            <div class="agent-job">Queries Llama 3.3 70B via Ollama on ROCm. Drops findings to the timeline.</div>
+            <div class="agent-out">→ kind=research-output</div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-tag">Agent B · synthesis</div>
+            <div class="agent-name">Synthesizer.</div>
+            <div class="agent-job">Reads timeline, condenses with Qwen 2.5 32B, posts a structured synthesis.</div>
+            <div class="agent-out">→ kind=synthesis-complete</div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-tag">Agent C · publish</div>
+            <div class="agent-name">Publisher.</div>
+            <div class="agent-job">Reads timeline, drafts with Mistral Small, ships with an evidence URL.</div>
+            <div class="agent-out">→ kind=published &nbsp;url=…</div>
+          </div>
+        </div>
+
+        <div class="arch-bus">
+          <div>
+            <div class="bus-label">ACMI MCP</div>
+            <div class="bus-stack-name">Upstash Redis · ZSET</div>
+          </div>
+          <div class="bus-tape">
+            <span class="bus-event">A · research-output · t+0.4s</span>
+            <span class="bus-event b">B · synthesis-complete · t+1.7s</span>
+            <span class="bus-event">A · signals · focus=idle</span>
+            <span class="bus-event">C · published · t+3.1s</span>
+          </div>
+          <div style="text-align: right;">
+            <div class="bus-label">Append-only</div>
+            <div class="bus-stack-name">acmi:timeline</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 6 — UNDER THE HOOD
+  ═════════════════════════════════════════════ -->
+  <section data-label="06 Under the hood">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">06 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">06 · UNDER THE HOOD</div>
+        <div class="right">Comms v1.1 · Rules 8 &amp; 9</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">06 · Under the hood</div>
+      <h1 class="title-h1" style="margin-top: 28px;">Protocol engineering for production multi-agent systems.</h1>
+
+      <div class="s6-grid">
+        <div class="codeblock">
+          <div class="codeblock-cap">// comms v1.1 envelope</div>
+<pre style="margin: 0; font-family: inherit; font-size: inherit; line-height: inherit; color: inherit; white-space: pre;">{
+  <span class="c-key">"v"</span>:    <span class="c-str">"1.1"</span>,
+  <span class="c-key">"id"</span>:   <span class="c-str">"evt_01HXQ…"</span>,
+  <span class="c-key">"ts"</span>:   <span class="c-num">1746567231</span>,
+  <span class="c-key">"actor"</span>: <span class="c-str">"agent-a"</span>,
+  <span class="c-key">"kind"</span>: <span class="c-str">"research-output"</span>,
+  <span class="c-key">"refs"</span>: [<span class="c-str">"evt_01HXQ…"</span>],
+  <span class="c-key">"body"</span>: {
+    <span class="c-key">"summary"</span>: <span class="c-str">"…"</span>,
+    <span class="c-key">"links"</span>:   [<span class="c-str">"…"</span>]
+  }
+}</pre>
+        </div>
+
+        <div>
+          <div class="rule-list">
+            <div class="rule-row">
+              <div class="rule-tag">Storage</div>
+              <div>
+                <div class="rule-name">ZSET timelines.</div>
+                <div class="rule-desc">Append-only event store. Score = timestamp; reads are O(log n) range queries.</div>
+              </div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-tag">Rule 8</div>
+              <div>
+                <div class="rule-name">Tolerant on read.</div>
+                <div class="rule-desc">Malformed events don't crash consumers — they're flagged, isolated, and surfaced for triage.</div>
+              </div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-tag">Rule 9</div>
+              <div>
+                <div class="rule-name">Atomic commits.</div>
+                <div class="rule-desc">Profile + signals + timeline updates land in one transaction. No partial state, ever.</div>
+              </div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-tag">Daemon</div>
+              <div>
+                <div class="rule-name">Drift-remediator.</div>
+                <div class="rule-desc">Autonomous quarantine when an agent diverges from spec. Self-heals or pages a human.</div>
+              </div>
+            </div>
+            <div class="rule-row" style="border-bottom: none;">
+              <div class="rule-tag">Shipped</div>
+              <div>
+                <div class="rule-name">First npm-installable coordination protocol.</div>
+                <div class="rule-desc">30+ days production, 8,000+ events, multi-tenant ready in v1.3.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 7 — RECEIPTS
+  ═════════════════════════════════════════════ -->
+  <section data-label="07 Receipts">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">07 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">07 · RECEIPTS</div>
+        <div class="right">acmi-product.vercel.app</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">07 · Receipts</div>
+      <h1 class="title-h1" style="margin-top: 28px;">Receipts, not claims.</h1>
+      <p class="lede" style="margin-top: 24px; max-width: 1500px;">Every number below comes from real production logs and the public npm registry. The dashboard is live; the timeline is queryable.</p>
+
+      <div class="s7-grid">
+        <div class="stat-tile">
+          <div class="stat-cap">Production uptime</div>
+          <div class="stat-num">30<small>+</small></div>
+          <div class="stat-sub">days running 9 agents on real workloads</div>
+        </div>
+        <div class="stat-tile warm">
+          <div class="stat-cap">Timeline events</div>
+          <div class="stat-num">8k<small>+</small></div>
+          <div class="stat-sub">real coordinated events on production timelines</div>
+        </div>
+        <div class="stat-tile dark">
+          <div class="stat-cap">npm downloads · day 1</div>
+          <div class="stat-num">43<small>+</small></div>
+          <div class="stat-sub">developers pulled v1.2.0 the day it shipped</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-cap">Agents in fleet</div>
+          <div class="stat-num">9</div>
+          <div class="stat-sub">distinct production agents · one shared protocol</div>
+        </div>
+      </div>
+
+      <div class="s7-evidence">
+        <div class="ev-cell"><b>Live</b> &nbsp; acmi-product.vercel.app</div>
+        <div class="ev-dot"></div>
+        <div class="ev-cell"><b>npm</b> &nbsp; @madezmedia/acmi · v1.2.0 · 2026-05-01</div>
+        <div class="ev-dot"></div>
+        <div class="ev-cell"><b>License</b> &nbsp; MIT · open from day one</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 8 — ROADMAP
+  ═════════════════════════════════════════════ -->
+  <section data-label="08 Roadmap">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">08 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">08 · ROADMAP</div>
+        <div class="right">From protocol to platform</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">08 · Roadmap</div>
+      <h1 class="title-h1" style="margin-top: 28px;">From protocol to platform.</h1>
+
+      <div class="s8-track">
+        <div class="s8-rail"></div>
+
+        <div class="s8-col now">
+          <div class="s8-marker"></div>
+          <div class="s8-phase">Now &nbsp;·&nbsp; Q2 2026</div>
+          <div class="s8-version">v1.3</div>
+          <ul class="s8-features">
+            <li>Multi-actor &amp; multi-tenant</li>
+            <li>Enhanced drift detection</li>
+            <li>Tighter MCP integration</li>
+          </ul>
+          <div class="s8-status">In flight · this hackathon</div>
+        </div>
+
+        <div class="s8-col">
+          <div class="s8-marker"></div>
+          <div class="s8-phase">Next &nbsp;·&nbsp; H2 2026</div>
+          <div class="s8-version">Phase 2</div>
+          <ul class="s8-features">
+            <li>MCP-as-a-Service consumer product</li>
+            <li>Observability + tracing</li>
+            <li>Hosted timeline with managed durability</li>
+          </ul>
+          <div class="s8-status">Design complete</div>
+        </div>
+
+        <div class="s8-col">
+          <div class="s8-marker"></div>
+          <div class="s8-phase">Future &nbsp;·&nbsp; 2027</div>
+          <div class="s8-version">v2.0</div>
+          <ul class="s8-features">
+            <li>ACMI-Sigil: cryptographic agent identity</li>
+            <li>Federation across organizations</li>
+            <li>ACMI marketplace for agent capabilities</li>
+          </ul>
+          <div class="s8-status">Spec drafted</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 9 — THE ASK
+  ═════════════════════════════════════════════ -->
+  <section class="dark" data-label="09 The ask">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">09 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">09 · THE ASK</div>
+        <div class="right">For the judges</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">09 · The ask</div>
+      <h1 class="title-h1" style="margin-top: 28px;">Pick the protocol, not another app.</h1>
+
+      <div class="s9-grid" style="margin-top: 50px;">
+        <div class="s9-rails">
+          <div class="s9-rail-row">
+            <div class="s9-tag">01</div>
+            <div class="s9-claim">We build the <em>rails</em>; everyone else built a <em>vehicle</em>.</div>
+          </div>
+          <div class="s9-rail-row">
+            <div class="s9-tag">02</div>
+            <div class="s9-claim">Future winners will use ACMI to coordinate their fleets.</div>
+          </div>
+          <div class="s9-rail-row">
+            <div class="s9-tag">03</div>
+            <div class="s9-claim">The only npm-installable coordination protocol—<em>shipping today</em>.</div>
+          </div>
+        </div>
+
+        <div class="s9-quote-card">
+          <p class="s9-quote">
+            “Pick the protocol that other teams will build on. We're shipping the rails so they can.”
+          </p>
+          <div class="s9-quote-sig" style="margin-top: 12px;">— The ask, in one line</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════
+       SLIDE 10 — CLOSING
+  ═════════════════════════════════════════════ -->
+  <section class="dark" data-label="10 Ship it">
+    <div class="chrome">
+      <div class="chrome-row">
+        <div class="left"><span class="wordmark-mini">ACMI</span></div>
+        <div class="right"><span class="pagenum">10 / 10</span></div>
+      </div>
+      <div class="chrome-row">
+        <div class="left">10 · SHIP IT</div>
+        <div class="right">Three keys per agent. One protocol for the fleet.</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eyebrow">10 · Ship it</div>
+
+      <div class="s10-grid" style="margin-top: 32px;">
+        <div style="display: flex; flex-direction: column; justify-content: space-between;">
+          <h1 class="s10-tagline">
+            <span class="uline2">Three keys per&nbsp;agent.</span><br>
+            One protocol for the&nbsp;fleet.
+          </h1>
+
+          <div class="s10-contact" style="margin-top: 40px;">
+            <div class="s10-contact-row">
+              <div class="l">npm</div>
+              <div class="v">npm install @madezmedia/acmi</div>
+            </div>
+            <div class="s10-contact-row">
+              <div class="l">mcp</div>
+              <div class="v">npx @madezmedia/acmi-mcp</div>
+            </div>
+            <div class="s10-contact-row">
+              <div class="l">github</div>
+              <div class="v">github.com/madezmedia/acmi</div>
+            </div>
+            <div class="s10-contact-row">
+              <div class="l">live</div>
+              <div class="v">acmi-product.vercel.app</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; justify-content: space-between; align-items: center; gap: 32px;">
+          <div class="s10-qr">
+            <div class="qr-cap">scan · github</div>
+            <!-- procedurally rendered QR-like grid -->
+            <div id="qr-render" style="width: 240px; height: 240px;"></div>
+            <div class="qr-cap">github.com/madezmedia/acmi</div>
+          </div>
+          <div style="font-family: var(--serif); font-style: italic; font-weight: 700; font-size: 80px; color: var(--paper); line-height: 0.95; text-align: center; letter-spacing: -0.02em;">
+            ACMI
+            <div style="height: 2.5px; background: var(--paper); margin: 8px auto 0; width: 60%;"></div>
+            <div style="height: 2.5px; background: var(--paper); margin-top: 4px; width: 60%; margin-left: auto; margin-right: auto;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</deck-stage>
+
+<script src="deck-stage.js"></script>
+
+<script>
+// Render a stylized QR-like block. Not a real QR; visual only — replace with a real one when shipping.
+(function renderQR() {
+  const el = document.getElementById('qr-render');
+  if (!el) return;
+  const N = 25;
+  // deterministic pseudo-random fill from a seed
+  const seed = 'acmi-github-2026';
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  function rnd() { h = (h * 1103515245 + 12345) >>> 0; return (h / 0xFFFFFFFF); }
+
+  const grid = [];
+  for (let y = 0; y < N; y++) {
+    const row = [];
+    for (let x = 0; x < N; x++) row.push(rnd() > 0.5 ? 1 : 0);
+    grid.push(row);
+  }
+  // Carve out three finder corners (top-left, top-right, bottom-left) and a small bottom-right
+  function finder(x0, y0) {
+    for (let y = y0; y < y0 + 7; y++) {
+      for (let x = x0; x < x0 + 7; x++) {
+        const onEdge = (x === x0 || x === x0 + 6 || y === y0 || y === y0 + 6);
+        const inner = (x >= x0 + 2 && x <= x0 + 4 && y >= y0 + 2 && y <= y0 + 4);
+        grid[y][x] = onEdge || inner ? 1 : 0;
+      }
+    }
+    // 1px white margin around finder
+    for (let y = y0 - 1; y <= y0 + 7; y++) {
+      for (let x = x0 - 1; x <= x0 + 7; x++) {
+        if (y === y0 - 1 || y === y0 + 7 || x === x0 - 1 || x === x0 + 7) {
+          if (y >= 0 && y < N && x >= 0 && x < N) {
+            const onF = (x >= x0 && x <= x0 + 6 && y >= y0 && y <= y0 + 6);
+            if (!onF) grid[y][x] = 0;
+          }
+        }
+      }
+    }
+  }
+  finder(0, 0);
+  finder(N - 7, 0);
+  finder(0, N - 7);
+
+  // build SVG
+  const cell = 240 / N;
+  let svg = `<svg viewBox="0 0 ${240} ${240}" width="240" height="240" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect width="240" height="240" fill="#F5F1E8"/>`;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      if (grid[y][x]) {
+        svg += `<rect x="${x * cell}" y="${y * cell}" width="${cell}" height="${cell}" fill="#1F3A30"/>`;
+      }
+    }
+  }
+  svg += `</svg>`;
+  el.innerHTML = svg;
+})();
+</script>
+
+</body>
+</html>
