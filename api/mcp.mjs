@@ -22,8 +22,11 @@ import { createRedis } from "./_lib/redis.mjs";
 import { registerAcmiTools } from "./_lib/mcp-tools.mjs";
 
 export const config = {
-  // Vercel: explicit Node runtime (default in /api but documenting intent)
-  runtime: "nodejs20.x",
+  // Vercel: explicit Node runtime. Node version is selected from
+  // package.json engines.node (>=20.0.0 here). The legacy config format
+  // only accepts "edge" / "experimental-edge" / "nodejs" — NOT
+  // "nodejs20.x" (that's the newer framework-specific format).
+  runtime: "nodejs",
   // Allow longer execution (MCP can hold connections for streaming)
   maxDuration: 60,
 };
