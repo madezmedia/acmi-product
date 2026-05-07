@@ -97,7 +97,21 @@ export default async function handler(req, res) {
     });
     await server.connect(transport);
 
-    // 6. Hand the request body to the transport
+    // 6. Tolerate clients that don't send both Accept types.
+    // Spec requires Accept: application/json AND text/event-stream, and the
+    // SDK's StreamableHTTP transport returns 406 if either is missing.
+    // Real clients (Claude.ai, some proxies) only send application/json — we
+    // augment the header so the SDK accepts the request. The response is
+    // still SSE; SSE-incapable proxies that wanted JSON-only see SSE frames
+    // (they parse the `data:` line as the JSON-RPC response — works in
+    // practice for Smithery's proxy and Claude's integration).
+    const accept = String(req.headers.accept || "");
+    const parts = new Set(accept.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean));
+    if (!parts.has("application/json") && !parts.has("*/*")) parts.add("application/json");
+    if (!parts.has("text/event-stream") && !parts.has("*/*")) parts.add("text/event-stream");
+    req.headers.accept = Array.from(parts).join(", ");
+
+    // 7. Hand the request body to the transport
     // Vercel Node functions pre-parse JSON bodies to req.body. The transport
     // expects either a parsed object or undefined for GET probes.
     await transport.handleRequest(req, res, req.body);
