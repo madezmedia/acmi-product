@@ -16,7 +16,7 @@
 // Runtime: Node.js (not Edge — @modelcontextprotocol/sdk needs Node
 // stream/http types that aren't available in Edge runtime).
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createRedis } from "./_lib/redis.mjs";
 import { registerAcmiTools } from "./_lib/mcp-tools.mjs";
@@ -86,11 +86,9 @@ export default async function handler(req, res) {
     // 3. Build a scoped redis client for this request only
     const redis = createRedis({ url, token });
 
-    // 4. Build a fresh MCP server instance per request (stateless)
-    const server = new Server(
-      { name: "acmi", version: "1.3.0" },
-      { capabilities: { tools: {} } }
-    );
+    // 4. Build a fresh MCP server instance per request (stateless).
+    // McpServer (high-level) exposes .tool(...) which mcp-tools.mjs uses.
+    const server = new McpServer({ name: "acmi", version: "1.3.0" });
     registerAcmiTools(server, redis);
 
     // 5. Stateless Streamable HTTP transport
