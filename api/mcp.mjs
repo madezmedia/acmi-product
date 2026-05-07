@@ -1,38 +1,39 @@
-// api/mcp.mjs — Streamable HTTP MCP server.
+// api/mcp.mjs — Streamable HTTP MCP server with JSON-RPC fallback.
 //
 // URL: https://acmi-product.vercel.app/api/mcp
-// Listed at: https://smithery.ai/server/madezmediapartners/acmi-mcp (URL-published)
+// Listed at: https://smithery.ai/servers/madezmediapartners/acmi-mcp
 //
-// Smithery passes per-tenant Upstash credentials as base64-encoded JSON in
-// the ?config= query param. The route decodes them per-request, builds a
-// scoped redis client, and connects a fresh stateless Streamable HTTP
-// transport. No server-side env-var fallback — leaking Mikey's tenant to
-// hosted Smithery clients would be a security failure.
+// Two transport paths:
+//   1. SSE-capable clients (Smithery proxy, sophisticated MCP clients) get the
+//      SDK's StreamableHTTPServerTransport returning event-stream framed
+//      JSON-RPC responses.
+//   2. JSON-only clients (Claude Web's "add MCP integration" form, simple
+//      curl probes) get a hand-rolled JSON-RPC dispatcher returning plain
+//      application/json.
 //
-// Pattern: stateless (sessionIdGenerator: undefined), per-request server
-// instance, deterministic teardown after handleRequest returns. Suitable
-// for Vercel Node functions (serverless, stateless by nature).
+// Credential resolution:
+//   - Smithery: ?config=<base64> with upstashRedisRestUrl + upstashRedisRestToken
+//   - Direct (Claude Web): falls back to server env UPSTASH_REDIS_REST_URL /
+//     UPSTASH_REDIS_REST_TOKEN (deploy owner's tenant — same creds the
+//     read-only api/* edge endpoints already use)
 //
-// Runtime: Node.js (not Edge — @modelcontextprotocol/sdk needs Node
-// stream/http types that aren't available in Edge runtime).
+// Runtime: Node.js (the SDK needs Node http types).
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createRedis } from "./_lib/redis.mjs";
 import { registerAcmiTools } from "./_lib/mcp-tools.mjs";
+import { TOOL_DEFS } from "./_lib/mcp-tool-defs.mjs";
 
 export const config = {
-  // Vercel: explicit Node runtime. Node version is selected from
-  // package.json engines.node (>=20.0.0 here). The legacy config format
-  // only accepts "edge" / "experimental-edge" / "nodejs" — NOT
-  // "nodejs20.x" (that's the newer framework-specific format).
   runtime: "nodejs",
-  // Allow longer execution (MCP can hold connections for streaming)
   maxDuration: 60,
 };
 
+const SERVER_INFO = { name: "acmi", version: "1.3.0" };
+const PROTOCOL_VERSION = "2024-11-05";
+
 function decodeSmitheryConfig(req) {
-  // Smithery: ?config=<base64-encoded JSON>
   const url = new URL(req.url || "/api/mcp", "https://acmi-product.vercel.app");
   const cfgB64 = url.searchParams.get("config");
   if (!cfgB64) return {};
@@ -44,27 +45,107 @@ function decodeSmitheryConfig(req) {
   }
 }
 
-function extractCreds(cfg, req) {
-  // Accept both schema-naming conventions Smithery may forward:
-  //   - configSchema property names (camelCase: upstashRedisRestUrl)
-  //   - env-var-style ALL_CAPS (UPSTASH_REDIS_REST_URL)
-  // Also accept Authorization header pass-through if the host wraps it.
-  const url =
+function extractCreds(cfg) {
+  // Priority 1: per-request config (Smithery multi-tenant)
+  let url =
     cfg.upstashRedisRestUrl ||
     cfg.UPSTASH_REDIS_REST_URL ||
     cfg.url ||
     null;
-  const token =
+  let token =
     cfg.upstashRedisRestToken ||
     cfg.UPSTASH_REDIS_REST_TOKEN ||
     cfg.token ||
     null;
+
+  // Priority 2: server env (Claude Web direct, dev probes, default tenant).
+  // The deploy-owner's tenant becomes the default for clients that can't
+  // pass query params. Same creds as the read-only api/* endpoints — no
+  // additional exposure surface.
+  if (!url) url = process.env.UPSTASH_REDIS_REST_URL || null;
+  if (!token) token = process.env.UPSTASH_REDIS_REST_TOKEN || null;
+
   return { url, token };
 }
 
-export default async function handler(req, res) {
+// ─── Manual JSON-RPC dispatcher (for Accept: application/json clients) ──
+
+function buildToolRegistry(redis) {
+  const tools = {};
+  const shim = {
+    tool: (name, description, _schema, handler) => {
+      tools[name] = { name, description, handler };
+    },
+  };
+  registerAcmiTools(shim, redis);
+  return tools;
+}
+
+async function dispatchJsonRpc(msg, tools) {
+  const { id, method, params } = msg || {};
   try {
-    // 1. Decode Smithery config
+    if (method === "initialize") {
+      return {
+        jsonrpc: "2.0",
+        id: id ?? null,
+        result: {
+          protocolVersion: PROTOCOL_VERSION,
+          capabilities: { tools: { listChanged: false } },
+          serverInfo: SERVER_INFO,
+        },
+      };
+    }
+    if (method === "notifications/initialized" || method === "initialized") {
+      // notification — no response per JSON-RPC 2.0 spec
+      return null;
+    }
+    if (method === "tools/list") {
+      return { jsonrpc: "2.0", id: id ?? null, result: { tools: TOOL_DEFS } };
+    }
+    if (method === "tools/call") {
+      const name = params?.name;
+      const args = params?.arguments || {};
+      const t = tools[name];
+      if (!t) {
+        return {
+          jsonrpc: "2.0",
+          id: id ?? null,
+          error: { code: -32601, message: `Tool not found: ${name}` },
+        };
+      }
+      const result = await t.handler(args);
+      return { jsonrpc: "2.0", id: id ?? null, result };
+    }
+    if (method === "ping") {
+      return { jsonrpc: "2.0", id: id ?? null, result: {} };
+    }
+    return {
+      jsonrpc: "2.0",
+      id: id ?? null,
+      error: { code: -32601, message: `Unknown method: ${method}` },
+    };
+  } catch (e) {
+    return {
+      jsonrpc: "2.0",
+      id: id ?? null,
+      error: { code: -32603, message: e.message || String(e) },
+    };
+  }
+}
+
+// ─── Main handler ───────────────────────────────────────────────────────
+
+export default async function handler(req, res) {
+  // CORS for browser-initiated MCP clients
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, MCP-Session-Id, MCP-Protocol-Version");
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+
+  try {
     let cfg;
     try {
       cfg = decodeSmitheryConfig(req);
@@ -73,50 +154,61 @@ export default async function handler(req, res) {
       return;
     }
 
-    // 2. Extract tenant creds — NEVER fall back to process.env
-    const { url, token } = extractCreds(cfg, req);
+    const { url, token } = extractCreds(cfg);
     if (!url || !token) {
-      res.status(400).json({
-        error: "missing upstashRedisRestUrl + upstashRedisRestToken in ?config=<base64>",
-        hint: "Smithery passes these from the user's session config; if you're calling /api/mcp directly, encode JSON {\"upstashRedisRestUrl\":\"...\",\"upstashRedisRestToken\":\"...\"} as base64 and pass as ?config=",
+      res.status(500).json({
+        error: "no credentials available — neither ?config= nor server env vars",
+        hint: "set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN on the deploy, or pass per-request via ?config=<base64 JSON>",
       });
       return;
     }
 
-    // 3. Build a scoped redis client for this request only
     const redis = createRedis({ url, token });
 
-    // 4. Build a fresh MCP server instance per request (stateless).
-    // McpServer (high-level) exposes .tool(...) which mcp-tools.mjs uses.
-    const server = new McpServer({ name: "acmi", version: "1.3.0" });
-    registerAcmiTools(server, redis);
+    // Branch on Accept: SSE-capable clients get the SDK transport (preserves
+    // server-initiated streaming for tool progress); JSON-only clients get a
+    // plain JSON-RPC response.
+    const acceptHdr = String(req.headers.accept || "").toLowerCase();
+    const wantsSSE = acceptHdr.includes("text/event-stream");
 
-    // 5. Stateless Streamable HTTP transport
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined, // stateless mode
-    });
-    await server.connect(transport);
+    if (wantsSSE) {
+      const server = new McpServer(SERVER_INFO);
+      registerAcmiTools(server, redis);
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+      });
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+      return;
+    }
 
-    // 6. Tolerate clients that don't send both Accept types.
-    // Spec requires Accept: application/json AND text/event-stream, and the
-    // SDK's StreamableHTTP transport returns 406 if either is missing.
-    // Real clients (Claude.ai, some proxies) only send application/json — we
-    // augment the header so the SDK accepts the request. The response is
-    // still SSE; SSE-incapable proxies that wanted JSON-only see SSE frames
-    // (they parse the `data:` line as the JSON-RPC response — works in
-    // practice for Smithery's proxy and Claude's integration).
-    const accept = String(req.headers.accept || "");
-    const parts = new Set(accept.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean));
-    if (!parts.has("application/json") && !parts.has("*/*")) parts.add("application/json");
-    if (!parts.has("text/event-stream") && !parts.has("*/*")) parts.add("text/event-stream");
-    req.headers.accept = Array.from(parts).join(", ");
+    // JSON-only path
+    if (req.method === "GET") {
+      // Smithery / health probe — return server card-style metadata
+      res.status(200).json({
+        ...SERVER_INFO,
+        protocolVersion: PROTOCOL_VERSION,
+        capabilities: { tools: { listChanged: false } },
+        transport: "streamable-http",
+        toolCount: TOOL_DEFS.length,
+      });
+      return;
+    }
 
-    // 7. Hand the request body to the transport
-    // Vercel Node functions pre-parse JSON bodies to req.body. The transport
-    // expects either a parsed object or undefined for GET probes.
-    await transport.handleRequest(req, res, req.body);
+    if (req.method !== "POST") {
+      res.status(405).json({ error: "Method not allowed", allowed: ["GET", "POST", "OPTIONS"] });
+      return;
+    }
+
+    const msg = req.body;
+    const tools = buildToolRegistry(redis);
+    const reply = await dispatchJsonRpc(msg, tools);
+    if (reply === null) {
+      res.status(202).end();
+      return;
+    }
+    res.status(200).setHeader("Content-Type", "application/json").end(JSON.stringify(reply));
   } catch (e) {
-    // Avoid leaking stack traces; return a structured error.
     if (!res.headersSent) {
       res.status(500).json({ error: e.message || String(e), where: "mcp.handler" });
     }
