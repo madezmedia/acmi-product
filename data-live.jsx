@@ -23,7 +23,40 @@
   async function bootstrapStories() {
     const r = await fetch("/api/stories").then(r => r.json());
     if (!r?.ok) throw new Error(r?.error || "no stories");
-    return r.columns || {};
+    // Defense-in-depth: even if the API ever drifts, sanitize every card so
+    // React never sees an object/array where it expects a string/number.
+    const cols = r.columns || {};
+    const sanitized = {};
+    for (const [col, cards] of Object.entries(cols)) {
+      sanitized[col] = (cards || []).map(sanitizeStoryCard).filter(Boolean);
+    }
+    return sanitized;
+  }
+
+  function safeStr(v, fallback = "—") {
+    if (typeof v === "string") return v;
+    if (typeof v === "number" || typeof v === "boolean") return String(v);
+    return fallback;
+  }
+  function safeNum(v, fallback = 0) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && /^\d+$/.test(v)) return parseInt(v, 10);
+    if (Array.isArray(v)) return v.length;
+    if (v && typeof v === "object") return Object.keys(v).length;
+    return fallback;
+  }
+  function sanitizeStoryCard(c) {
+    if (!c || typeof c !== "object") return null;
+    return {
+      id: safeStr(c.id, "unknown"),
+      title: safeStr(c.title, c.id || "(untitled)"),
+      owner: safeStr(c.owner, "—"),
+      age: safeStr(c.age, "—"),
+      evidence: safeNum(c.evidence, 0),
+      fw: safeStr(c.fw, "ad"),
+      live: !!c.live,
+      status: safeStr(c.status, "DRAFT"),
+    };
   }
   async function bootstrapComms() {
     const r = await fetch("/api/comms?thread=agent-coordination&limit=12").then(r => r.json());

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanban — ACMI</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* Optional additional inline overrides if needed */
+  main { max-width: 1400px; } /* Wider layout for Kanban */
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="nav-inner" style="max-width: 1400px;">
+    <a href="index.html" class="logo">ACMI <span style="font-size: 12px; margin-left: 8px; color: var(--mzm-ink-mute); font-family: var(--mzm-font-mono);">v1.3</span></a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="ops-center.html">Ops Center</a>
+      <a href="kanban.html" class="active">Kanban</a>
+      <a href="product.html">Product</a>
+      <a href="amd.html">AMD Hackathon</a>
+    </div>
+  </div>
+</nav>
+
+<main style="padding-top: 40px;">
+  <div class="ops-header">
+    <h1 style="font-size: 2.5rem; margin: 0;">Project Kanban</h1>
+    <div class="instance-switcher" id="instance-switcher" title="Switch ACMI instance via cookie pin or ?instance= query param">
+      <div class="status-dot"></div>
+      <span style="font-weight: 500;" id="instance-name">default</span>
+      <span style="color: var(--mzm-ink-mute); font-family: var(--mzm-font-mono); font-size: 0.7rem;" id="instance-meta">cookie-pinned</span>
+      <span style="color: var(--mzm-ink-mute);">▼</span>
+    </div>
+  </div>
+
+  <div class="kanban-board" id="kanban-container">
+    <!-- Columns will be rendered here by JS -->
+    <div style="font-family: var(--mzm-font-mono); color: var(--mzm-ink-mute);">Loading API data...</div>
+  </div>
+</main>
+
+<script>
+  // Frontend logic to fetch and render the Kanban board
+  async function loadKanban() {
+    const container = document.getElementById('kanban-container');
+    
+    try {
+      const res = await fetch('/api/stories');
+      const data = await res.json();
+      
+      if (!data.ok || !data.vocab) {
+        throw new Error(data.error || "Failed to load stories.");
+      }
+
+      container.innerHTML = ''; // Clear loading text
+
+      data.vocab.forEach(colName => {
+        const colDiv = document.createElement('div');
+        colDiv.className = 'kanban-col';
+        
+        const items = data.columns[colName] || [];
+        
+        colDiv.innerHTML = `
+          <div class="kanban-col-header">
+            <span>${colName}</span>
+            <span style="background: var(--mzm-paper); padding: 2px 6px; border-radius: 9px; color: var(--mzm-ink);">${items.length}</span>
+          </div>
+          <div class="col-items" style="display: flex; flex-direction: column; gap: 12px;"></div>
+        `;
+        
+        const itemsContainer = colDiv.querySelector('.col-items');
+        
+        items.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'kanban-card';
+          
+          const fwClass = item.fw ? item.fw.toLowerCase().substring(0, 2) : 'ad';
+          
+          card.innerHTML = `
+            <div class="title">${item.title}</div>
+            <div class="meta-row">
+              <div class="owner">
+                <span class="fw-badge ${fwClass}">${item.fw || 'ACMI'}</span>
+                <span>${item.owner}</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="evidence">🔗 ${item.evidence}</span>
+                <span style="color: var(--mzm-ink-quiet);">${item.age}</span>
+              </div>
+            </div>
+          `;
+          itemsContainer.appendChild(card);
+        });
+
+        if (items.length === 0) {
+           itemsContainer.innerHTML = `<div style="color: var(--mzm-ink-quiet); font-size: 13px; font-style: italic; padding: 12px 0;">No items</div>`;
+        }
+        
+        container.appendChild(colDiv);
+      });
+
+    } catch (e) {
+      container.innerHTML = `<div style="color: var(--red); font-family: var(--mzm-font-mono);">Error: ${e.message}. <br/><br/> Note: If viewing via local static server, /api/stories route won't execute Edge functions.</div>`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadKanban);
+</script>
+
+</body>
+</html>

@@ -52,6 +52,38 @@ export async function redis(instance, ...cmd) {
   return data.result;
 }
 
+/**
+ * Factory for arbitrary-tenant Upstash clients. Used by the HTTP MCP route
+ * (api/mcp.mjs) which receives Upstash creds per-request via Smithery's
+ * base64 config rather than from server-side env vars.
+ *
+ * Pattern: const r = createRedis({url, token}); await r('GET', 'acmi:agent:foo:profile')
+ *
+ * NEVER pass process.env.UPSTASH_REDIS_REST_URL into this — that would leak
+ * the Mikey-tenant to Smithery-hosted clients. The MCP route is for
+ * customer-supplied tenant creds only.
+ */
+export function createRedis({ url, token }) {
+  if (!url || !token) {
+    throw new Error("createRedis: url and token required");
+  }
+  const endpoint = url.replace(/\/$/, "") + "/";
+  return async function redisCall(...cmd) {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(cmd),
+    });
+    if (!res.ok) throw new Error(`Upstash ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(`Upstash: ${data.error}`);
+    return data.result;
+  };
+}
+
 // Try to JSON.parse a string; return original on failure.
 export function tryParse(s) {
   if (typeof s !== "string") return s;
