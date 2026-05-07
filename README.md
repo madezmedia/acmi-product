@@ -1,5 +1,7 @@
 # ACMI — Agentic Context Management Infrastructure
 
+[![smithery badge](https://smithery.ai/badge/madezmediapartners/acmi-mcp)](https://smithery.ai/servers/madezmediapartners/acmi-mcp)
+
 > The coordination backbone for AI agent fleets. Three Redis keys — Profile, Signals, Timeline.
 
 ## What is ACMI?
