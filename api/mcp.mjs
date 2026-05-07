@@ -46,7 +46,19 @@ function decodeSmitheryConfig(req) {
 }
 
 function extractCreds(cfg, req) {
-  // Priority 1: per-request config (Smithery multi-tenant). Always allowed.
+  // Priority 1a: x-from headers (Smithery gateway forwarding per configSchema
+  // x-from declarations in mcp-tool-defs.mjs). This is the multi-user
+  // one-URL path — Smithery's hosted form collects per-user Upstash creds
+  // and injects them as headers when proxying to us.
+  const headerUrl = req.headers["x-upstash-url"] || null;
+  const headerToken = req.headers["x-upstash-token"] || null;
+  if (headerUrl && headerToken) {
+    return { url: headerUrl, token: headerToken, source: "header" };
+  }
+
+  // Priority 1b: per-request config blob via ?config=<base64> (legacy /
+  // direct-with-embedded-creds path). Still works for clients that paste
+  // a URL with the config query param baked in.
   const cfgUrl =
     cfg.upstashRedisRestUrl ||
     cfg.UPSTASH_REDIS_REST_URL ||
