@@ -45,27 +45,45 @@ function decodeSmitheryConfig(req) {
   }
 }
 
-function extractCreds(cfg) {
-  // Priority 1: per-request config (Smithery multi-tenant)
-  let url =
+function extractCreds(cfg, req) {
+  // Priority 1: per-request config (Smithery multi-tenant). Always allowed.
+  const cfgUrl =
     cfg.upstashRedisRestUrl ||
     cfg.UPSTASH_REDIS_REST_URL ||
     cfg.url ||
     null;
-  let token =
+  const cfgToken =
     cfg.upstashRedisRestToken ||
     cfg.UPSTASH_REDIS_REST_TOKEN ||
     cfg.token ||
     null;
+  if (cfgUrl && cfgToken) {
+    return { url: cfgUrl, token: cfgToken, source: "config" };
+  }
 
-  // Priority 2: server env (Claude Web direct, dev probes, default tenant).
-  // The deploy-owner's tenant becomes the default for clients that can't
-  // pass query params. Same creds as the read-only api/* endpoints — no
-  // additional exposure surface.
-  if (!url) url = process.env.UPSTASH_REDIS_REST_URL || null;
-  if (!token) token = process.env.UPSTASH_REDIS_REST_TOKEN || null;
+  // Priority 2: env-var fallback — ONLY behind Bearer auth.
+  // The deploy owns Upstash creds (acmi-product reads from those for the
+  // ops-center edge endpoints). Direct clients (Claude Web) can use them
+  // IF they prove they're authorized via Authorization: Bearer <token>
+  // matching the MCP_DIRECT_AUTH_TOKEN env var.
+  //
+  // If MCP_DIRECT_AUTH_TOKEN is unset, env fallback is disabled entirely —
+  // anonymous direct callers get 401, preserving the original deny-by-default
+  // posture.
+  const requiredToken = process.env.MCP_DIRECT_AUTH_TOKEN || null;
+  if (requiredToken) {
+    const authHeader = String(req.headers.authorization || req.headers.Authorization || "");
+    const presented = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+    if (presented && presented === requiredToken) {
+      return {
+        url: process.env.UPSTASH_REDIS_REST_URL || null,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN || null,
+        source: "env-authed",
+      };
+    }
+  }
 
-  return { url, token };
+  return { url: null, token: null, source: "none" };
 }
 
 // ─── Manual JSON-RPC dispatcher (for Accept: application/json clients) ──
@@ -154,14 +172,17 @@ export default async function handler(req, res) {
       return;
     }
 
-    const { url, token } = extractCreds(cfg);
+    const { url, token, source } = extractCreds(cfg, req);
     if (!url || !token) {
-      res.status(500).json({
-        error: "no credentials available — neither ?config= nor server env vars",
-        hint: "set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN on the deploy, or pass per-request via ?config=<base64 JSON>",
+      // 401 (not 400) — this is an auth failure, not a malformed request
+      res.status(401).json({
+        error: "authentication required",
+        hint: "either pass ?config=<base64 JSON with upstashRedisRestUrl + upstashRedisRestToken> (Smithery pattern), or send Authorization: Bearer <MCP_DIRECT_AUTH_TOKEN> if the deploy owner has enabled direct access",
       });
       return;
     }
+    // Surface which credential path was used (for debugging only — not secret)
+    res.setHeader("X-MCP-Cred-Source", source);
 
     const redis = createRedis({ url, token });
 
