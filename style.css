@@ -960,3 +960,128 @@ footer:not(.site-foot) a:hover {
 
 /* ─── Google Fonts import (subset for performance) ─── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+
+/* ─── Ops Center Kanban ─── */
+.ops-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.instance-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--mzm-paper-warm);
+  border: 1px solid var(--mzm-accent-soft);
+  padding: 6px 12px;
+  border-radius: var(--mzm-radius-sm);
+  font-family: var(--mzm-font-sans);
+  font-size: var(--mzm-text-sm);
+  color: var(--mzm-ink);
+  cursor: pointer;
+}
+
+.instance-switcher .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22C55E; /* active */
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: 24px;
+  min-height: 60vh;
+}
+
+.kanban-col {
+  background: var(--mzm-paper-warm);
+  border: 1px solid var(--mzm-ink-rule);
+  border-radius: var(--mzm-radius-md);
+  padding: 16px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kanban-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mzm-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--mzm-tracking-wide);
+  color: var(--mzm-ink-mute);
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--mzm-ink-rule);
+  margin-bottom: 4px;
+}
+
+.kanban-card {
+  background: var(--mzm-paper);
+  border: 1px solid var(--mzm-ink-rule);
+  border-radius: var(--mzm-radius-sm);
+  padding: 12px;
+  box-shadow: var(--mzm-shadow-sm);
+  transition: transform var(--mzm-dur-fast), border-color var(--mzm-dur-fast);
+}
+
+.kanban-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--mzm-accent-soft);
+  box-shadow: var(--mzm-shadow-md);
+}
+
+.kanban-card .title {
+  font-family: var(--mzm-font-sans);
+  font-weight: 500;
+  font-size: var(--mzm-text-sm);
+  color: var(--mzm-ink);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  word-wrap: break-word;
+}
+
+.kanban-card .meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mzm-font-sans);
+  font-size: 12px;
+  color: var(--mzm-ink-fade);
+  margin-top: 8px;
+}
+
+.kanban-card .owner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kanban-card .fw-badge {
+  font-family: var(--mzm-font-mono);
+  font-size: 9px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  background: var(--mzm-ink-rule);
+  color: var(--mzm-ink-soft);
+  text-transform: uppercase;
+}
+
+.kanban-card .fw-badge.ad { background: var(--mzm-paper-shadow); color: var(--mzm-ink-fade); }
+.kanban-card .fw-badge.lg { background: #e0e7ff; color: #3730a3; } /* Indigo for LangGraph */
+.kanban-card .fw-badge.cr { background: #ede9fe; color: #5b21b6; } /* Violet for CrewAI */
+
+.kanban-card .evidence {
+  font-family: var(--mzm-font-mono);
+  font-size: 11px;
+}

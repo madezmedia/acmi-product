@@ -17,6 +17,24 @@ function ageOf(ts) {
   return `${Math.round(s / 86400)}d`;
 }
 
+// Coerce evidence to a number for the kanban card badge.
+// Real ACMI profiles often store .evidence as a structured object (keys =
+// individual evidence items). The kanban only needs a count.
+function evidenceCount(p) {
+  if (typeof p.evidence_count === "number") return p.evidence_count;
+  if (typeof p.evidence === "number") return p.evidence;
+  if (Array.isArray(p.evidence)) return p.evidence.length;
+  if (p.evidence && typeof p.evidence === "object") return Object.keys(p.evidence).length;
+  return 0;
+}
+
+// Same defensive coercion for owner/title — must be strings for React.
+function asString(v, fallback = "—") {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return fallback;
+}
+
 export default async function handler(req) {
   try {
     const instance = resolveInstance(req);
@@ -39,11 +57,11 @@ export default async function handler(req) {
       const finalStatus = vocab.includes(status) ? status : "DRAFT";
       items.push({
         id,
-        title: profile.title || profile.name || id,
-        owner: profile.owner || profile.assignee || "—",
+        title: asString(profile.title || profile.name || id, id),
+        owner: asString(profile.owner || profile.assignee, "—"),
         age: ageOf(profile.created_ts || profile.ts),
-        evidence: profile.evidence_count || profile.evidence || 0,
-        fw: profile.framework || "ad",
+        evidence: evidenceCount(profile),
+        fw: asString(profile.framework, "ad"),
         status: finalStatus,
         live: !!profile.live,
       });

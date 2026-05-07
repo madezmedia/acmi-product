@@ -1,0 +1,13 @@
+{
+  "name": "acmi-product",
+  "version": "1.0.0",
+  "description": "ACMI marketing site + ops-center + serverless API endpoints (edge + node).",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=20.0.0" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.24.0"
+  }
+}
