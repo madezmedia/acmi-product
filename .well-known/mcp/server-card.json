@@ -279,11 +279,16 @@
         "additionalProperties": false
       },
       "outputSchema": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "Array of entity IDs in the namespace"
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of entity IDs in the namespace"
+          }
+        }
       },
       "annotations": {
         "title": "List Namespace Entities",
@@ -503,9 +508,14 @@
         "additionalProperties": false
       },
       "outputSchema": {
-        "type": "array",
-        "items": {
-          "type": "string"
+        "type": "object",
+        "properties": {
+          "work_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       },
       "annotations": {
@@ -544,21 +554,26 @@
         "additionalProperties": false
       },
       "outputSchema": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "timestamp": {
-              "type": "string"
-            },
-            "source_key": {
-              "type": "string"
-            },
-            "kind": {
-              "type": "string"
-            },
-            "summary": {
-              "type": "string"
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "timestamp": {
+                  "type": "string"
+                },
+                "source_key": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
