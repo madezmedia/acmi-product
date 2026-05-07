@@ -120,6 +120,15 @@ async function dispatchJsonRpc(msg, tools) {
     if (method === "tools/list") {
       return { jsonrpc: "2.0", id: id ?? null, result: { tools: TOOL_DEFS } };
     }
+    if (method === "resources/list") {
+      return { jsonrpc: "2.0", id: id ?? null, result: { resources: [] } };
+    }
+    if (method === "prompts/list") {
+      return { jsonrpc: "2.0", id: id ?? null, result: { prompts: [] } };
+    }
+    if (method === "triggers/list") {
+      return { jsonrpc: "2.0", id: id ?? null, result: { triggers: [] } };
+    }
     if (method === "tools/call") {
       const name = params?.name;
       const args = params?.arguments || {};
@@ -154,14 +163,20 @@ async function dispatchJsonRpc(msg, tools) {
 // ─── Main handler ───────────────────────────────────────────────────────
 
 // Methods that return public metadata only — no Upstash access needed.
-// Smithery's deployment proxy probes initialize + tools/list without creds
-// during the publish/scan flow; if we 401 those, serverInfo comes back null
-// and the publish UI gets stuck in "connected but no metadata" state.
+// Smithery's deployment proxy probes a wider set than just initialize +
+// tools/list during scan; resources/list, prompts/list, triggers/list are
+// also part of the discovery sweep. We don't expose any resources, prompts,
+// or triggers, so these all return empty arrays — but they must succeed
+// (200 + JSON-RPC result), not 401, or Smithery wraps the error into an
+// authorizationUrl response and the scan flags them as auth-failures.
 const PUBLIC_METHODS = new Set([
   "initialize",
   "notifications/initialized",
   "initialized",
   "tools/list",
+  "resources/list",
+  "prompts/list",
+  "triggers/list",
   "ping",
 ]);
 
