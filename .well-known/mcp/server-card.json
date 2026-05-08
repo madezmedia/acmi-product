@@ -12,7 +12,7 @@
   },
   "displayName": "ACMI",
   "description": "ACMI (Agent Communication & Memory Infrastructure) — multi-agent coordination protocol on Upstash Redis. 16 tools for entity profiles/signals/timelines, work item tracking, and cross-agent context bootstrap. Production-proven across 8 agents over 30+ days.",
-  "iconUrl": "https://acmi-product.vercel.app/icon.svg",
+  "iconUrl": "https://acmi-product.vercel.app/brand/glyph.svg",
   "homepage": "https://acmi-product.vercel.app",
   "repository": "https://github.com/madezmedia/acmi-product",
   "documentation": "https://acmi-product.vercel.app/mcp.html",

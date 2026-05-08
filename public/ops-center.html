@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACMI Ops Center — Mad EZ Media</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ═══ madezmedia v3 design tokens — editorial-tech ═══ */
+    :root {
+      --paper:        #faf9f5;
+      --paper-warm:   #f4f2eb;
+      --paper-shadow: #ebe8de;
+      --ink:          #1a1a1a;
+      --ink-soft:     #2c2c2a;
+      --ink-mute:     #4a4a48;
+      --ink-fade:     #7a7a76;
+      --ink-quiet:    #9a9a96;
+      --ink-rule:     #d4d2cc;
+      --accent:       #2d4a3e;
+      --accent-soft:  #5a7d6f;
+      --accent-quiet: #1c3027;
+      --quote-rule:   #b8b0a0;
+      --quote-deep:   #5c5648;
+      --underline:    #1a1a1a;
+      --underline-em: #2d4a3e;
+      --font-serif:   'Source Serif 4', Georgia, serif;
+      --font-sans:    'Inter', system-ui, sans-serif;
+      --font-mono:    'JetBrains Mono', 'SF Mono', Consolas, monospace;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 14px rgba(0,0,0,0.07);
+      /* Framework colors */
+      --fw-langgraph: #c4572a;
+      --fw-crewai:    #c9a227;
+      --fw-agno:      #6b7a3d;
+      --fw-autogen:   #8b6e5a;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { font-size:16px; }
+    body { font-family:var(--font-sans); background:var(--paper); color:var(--ink); line-height:1.45; -webkit-font-smoothing:antialiased; }
+
+    /* ═══ UTILITIES ═══ */
+    .mono { font-family:var(--font-mono); }
+    .serif { font-family:var(--font-serif); }
+    .meta { font-size:0.7rem; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-fade); }
+    .row { display:flex; align-items:center; }
+    .gap-2 { gap:0.5rem; }
+    .gap-3 { gap:0.75rem; }
+    .rule { border:none; border-top:1px solid var(--ink-rule); margin:0; }
+    .rule.dotted { border-style:dashed; }
+    .btn { font-family:var(--font-sans); font-size:0.8rem; font-weight:500; border:1px solid var(--ink-rule); border-radius:var(--radius); background:transparent; color:var(--ink); cursor:pointer; padding:6px 12px; transition:all 0.15s; }
+    .btn:hover { border-color:var(--ink-mute); }
+    .btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn.primary:hover { background:var(--accent-soft); }
+    .btn.ghost { border-color:transparent; }
+    .btn.ghost:hover { background:var(--paper-warm); }
+
+    /* ═══ TOP BAR ═══ */
+    .topbar {
+      position:sticky; top:0; z-index:100;
+      background:rgba(250,249,245,0.88); backdrop-filter:blur(14px);
+      border-bottom:1px solid var(--ink-rule);
+      padding:0 1.5rem; height:48px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .topbar-left { display:flex; align-items:center; gap:0.75rem; }
+    .topbar-logo { font-family:var(--font-serif); font-weight:600; font-size:1.1rem; color:var(--accent); }
+    .topbar-logo span { color:var(--ink); }
+    .topbar-badge { font-size:0.6rem; font-weight:700; padding:0.12rem 0.45rem; border-radius:3px; background:var(--accent); color:#fff; text-transform:uppercase; letter-spacing:0.5px; }
+    .topbar-right { display:flex; align-items:center; gap:1rem; font-size:0.75rem; color:var(--ink-fade); }
+    .live-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; animation:pulse 2s infinite; }
+    .live-dot.err { background:#ef4444; animation:none; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    .refresh-info { font-family:var(--font-mono); font-size:0.7rem; color:var(--ink-quiet); }
+
+    /* ═══ LAYOUT ═══ */
+    .layout { display:grid; grid-template-columns:260px 1fr 300px; height:calc(100vh - 48px); overflow:hidden; }
+    @media(max-width:1100px) { .layout { grid-template-columns:1fr; grid-template-rows:auto 1fr auto; } }
+
+    /* ═══ SIDEBAR: Fleet Tree ═══ */
+    .sidebar { border-right:1px solid var(--ink-rule); overflow-y:auto; padding:0.75rem 0; background:#fff; }
+    .sidebar-title { padding:0 0.85rem 0.65rem; border-bottom:1px solid var(--ink-rule); margin-bottom:0.4rem; }
+    .agent-group { display:flex; align-items:center; gap:0.35rem; padding:0.3rem 0.85rem; font-size:0.65rem; font-weight:700; color:var(--ink-fade); text-transform:uppercase; letter-spacing:0.12em; cursor:pointer; user-select:none; }
+    .agent-group:hover { color:var(--ink-mute); }
+    .agent-toggle { font-size:0.55rem; transition:transform 0.15s; display:inline-block; }
+    .agent-toggle.collapsed { transform:rotate(-90deg); }
+    .agent-item { display:flex; align-items:center; gap:0.45rem; padding:0.28rem 0.85rem; cursor:default; font-size:0.82rem; transition:background 0.12s; }
+    .agent-item:hover { background:var(--paper-warm); }
+    .agent-item.selected { background:var(--paper-warm); }
+    .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .dot.ok { background:#22c55e; }
+    .dot.warn { background:#f59e0b; }
+    .dot.err { background:#ef4444; }
+    .dot.idle { background:var(--ink-rule); }
+    .agent-label { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.82rem; }
+    .agent-fw { font-size:0.6rem; font-weight:600; padding:0.08rem 0.35rem; border-radius:3px; letter-spacing:0.04em; }
+    .fw-lg { background:#fef2f2; color:var(--fw-langgraph); }
+    .fw-cr { background:#fef3c7; color:var(--fw-crewai); }
+    .fw-ag { background:#ecfccb; color:var(--fw-agno); }
+    .fw-ad { background:#f5f0eb; color:var(--fw-autogen); }
+    .fw-or { background:#ede9fe; color:#7c3aed; }
+    .indent { padding-left:1.2rem; }
+    .indent-2 { padding-left:2rem; }
+    .sidebar-footer { padding:0.75rem 0.85rem; border-top:1px solid var(--ink-rule); margin-top:0.5rem; }
+    .legend-row { display:flex; align-items:center; gap:0.4rem; font-size:0.7rem; color:var(--ink-fade); margin-bottom:0.25rem; }
+
+    /* ═══ MAIN PANEL ═══ */
+    .main { overflow-y:auto; padding:1.25rem; display:flex; flex-direction:column; gap:1.25rem; }
+
+    /* HITL BAR */
+    .hitl-bar { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.85rem 1rem; box-shadow:var(--shadow); }
+    .hitl-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem; }
+    .hitl-title { font-size:0.85rem; font-weight:700; }
+    .hitl-pip { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.7rem; font-weight:700; padding:0.12rem 0.5rem; border-radius:3px; background:#fef2f2; color:#dc2626; }
+    .hitl-pip::before { content:''; width:5px; height:5px; border-radius:50%; background:#dc2626; animation:pulse 1.5s infinite; }
+    .hitl-list { display:flex; flex-direction:column; gap:0.15rem; }
+    .hitl-item { display:flex; gap:0.5rem; align-items:flex-start; padding:0.4rem 0; font-size:0.8rem; border-bottom:1px solid var(--paper-shadow); }
+    .hitl-item:last-child { border-bottom:none; }
+    .hitl-time { font-family:var(--font-mono); font-size:0.68rem; color:var(--ink-quiet); white-space:nowrap; margin-top:0.1rem; }
+    .hitl-text { flex:1; color:var(--ink-soft); }
+    .hitl-source { font-size:0.65rem; color:var(--ink-quiet); margin-top:0.1rem; }
+
+    /* SECTION HEADERS */
+    .sec-hdr { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:0.6rem; }
+    .sec-title { font-family:var(--font-serif); font-size:1.15rem; font-weight:600; color:var(--ink); }
+    .sec-sub { font-size:0.72rem; color:var(--ink-quiet); }
+
+    /* WORK ITEMS: Card grid */
+    .work-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:0.6rem; }
+    .work-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.8rem 0.9rem; box-shadow:var(--shadow); transition:border-color 0.15s; }
+    .work-card:hover { border-color:var(--accent); }
+    .work-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem; }
+    .work-name { font-weight:600; font-size:0.85rem; color:var(--ink); }
+    .work-pct { font-family:var(--font-mono); font-size:0.78rem; font-weight:700; }
+    .work-pct.high { color:#16a34a; }
+    .work-pct.med { color:#d97706; }
+    .work-pct.low { color:#dc2626; }
+    .work-bar { height:3px; background:var(--paper-shadow); border-radius:2px; margin-bottom:0.5rem; overflow:hidden; }
+    .work-bar-fill { height:100%; border-radius:2px; transition:width 0.4s; }
+    .work-bar-fill.high { background:#22c55e; }
+    .work-bar-fill.med { background:#f59e0b; }
+    .work-bar-fill.low { background:#ef4444; }
+    .work-tags { display:flex; flex-wrap:wrap; gap:0.25rem; }
+    .work-tag { font-size:0.65rem; padding:0.1rem 0.4rem; border-radius:3px; font-weight:500; }
+    .work-tag.shipped { background:#dcfce7; color:#166534; }
+    .work-tag.live { background:#dbeafe; color:#1e40af; }
+    .work-tag.deployed { background:#f0e7ff; color:#6d28d9; }
+    .work-tag.ready { background:#fef3c7; color:#92400e; }
+    .work-tag.draft { background:var(--paper-warm); color:var(--ink-fade); }
+    .work-tag.in-progress { background:#ede9fe; color:#5b21b6; }
+
+    /* EVENTS TIMELINE */
+    .event-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.65rem 0.85rem; box-shadow:var(--shadow); margin-bottom:0.35rem; transition:border-color 0.12s; }
+    .event-card:hover { border-color:var(--accent-soft); }
+    .event-card.new { animation:flash 0.8s ease; }
+    @keyframes flash { 0%{background:#f0fdf4;} 100%{background:#fff;} }
+    .event-meta { display:flex; gap:0.5rem; align-items:center; margin-bottom:0.3rem; flex-wrap:wrap; }
+    .event-time { font-family:var(--font-mono); font-size:0.68rem; color:var(--ink-quiet); }
+    .event-who { font-weight:600; font-size:0.78rem; }
+    .event-kind-tag { font-size:0.6rem; font-weight:700; padding:0.08rem 0.35rem; border-radius:3px; text-transform:uppercase; letter-spacing:0.03em; background:var(--paper-warm); color:var(--ink-mute); }
+    .event-kind-tag.hitl { background:#fef2f2; color:#dc2626; }
+    .event-kind-tag.milestone { background:#fef3c7; color:#92400e; }
+    .event-kind-tag.roundtable { background:#ede9fe; color:#6d28d9; }
+    .event-kind-tag.drift { background:#fef3c7; color:#b45309; }
+    .event-kind-tag.shipped { background:#dcfce7; color:#166534; }
+    .event-text { font-size:0.82rem; color:var(--ink-soft); line-height:1.5; }
+    .event-text b { color:var(--accent); font-weight:600; }
+    .event-text em { font-style:normal; color:var(--ink-fade); }
+
+    /* ═══ RIGHT PANEL: Comms ═══ */
+    .right { border-left:1px solid var(--ink-rule); overflow-y:auto; background:#fff; display:flex; flex-direction:column; }
+    .right-hdr { padding:0.75rem 0.85rem; border-bottom:1px solid var(--ink-rule); position:sticky; top:0; background:#fff; z-index:2; }
+    .right-hdr h4 { font-family:var(--font-serif); font-size:0.95rem; font-weight:600; }
+    .comms-list { padding:0.5rem 0; flex:1; overflow-y:auto; }
+    .comm-item { padding:0.55rem 0.85rem; border-bottom:1px solid var(--paper-shadow); }
+    .comm-item:last-child { border-bottom:none; }
+    .comm-meta { display:flex; gap:0.4rem; align-items:center; margin-bottom:0.2rem; }
+    .comm-time { font-family:var(--font-mono); font-size:0.65rem; color:var(--ink-quiet); }
+    .comm-who { font-weight:600; font-size:0.75rem; }
+    .comm-text { font-size:0.78rem; color:var(--ink-soft); line-height:1.45; }
+    .comm-text b { color:var(--accent); font-weight:600; }
+
+    /* ═══ LOADING / ERROR ═══ */
+    .loading { text-align:center; padding:1.5rem; color:var(--ink-fade); font-size:0.85rem; }
+    .loading::after { content:''; display:inline-block; width:14px; height:14px; border:2px solid var(--ink-rule); border-top-color:var(--accent); border-radius:50%; animation:spin 0.6s linear infinite; margin-left:0.4rem; vertical-align:middle; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .err-banner { background:#fef2f2; color:#dc2626; padding:0.6rem 0.85rem; border-radius:var(--radius); font-size:0.82rem; }
+
+    /* ═══ MCP PANEL ═══ */
+    .mcp-strip { display:flex; gap:1rem; flex-wrap:wrap; font-size:0.72rem; color:var(--ink-fade); }
+    .mcp-kv dt { font-weight:600; margin-right:0.3rem; }
+    .mcp-kv dd { display:inline; font-family:var(--font-mono); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--ink-rule); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--ink-fade); }
+  </style>
+</head>
+<body>
+
+<!-- ═══ TOP BAR ═══ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">ACMI <span>Ops Center</span></div>
+    <span class="topbar-badge">Live</span>
+  </div>
+  <div class="topbar-right">
+    <span class="live-dot" id="dot"></span>
+    <span id="statusLabel">connecting</span>
+    <span class="refresh-info" id="refreshInfo"></span>
+  </div>
+</div>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+  <!-- SIDEBAR: Fleet -->
+  <div class="sidebar">
+    <div class="sidebar-title"><span class="meta">Fleet · <span id="agentCount">—</span> agents</span></div>
+    <div id="fleetTree"><div class="loading">Loading…</div></div>
+    <div class="sidebar-footer">
+      <div class="legend-row"><span class="dot ok"></span> active</div>
+      <div class="legend-row"><span class="dot warn"></span> degraded</div>
+      <div class="legend-row"><span class="dot err"></span> offline</div>
+      <div class="legend-row"><span class="dot idle"></span> idle</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- MCP status strip -->
+    <div class="mcp-strip" id="mcpStrip"><div class="loading">MCP…</div></div>
+
+    <!-- HITL Queue -->
+    <div class="hitl-bar" id="hitlBar" style="display:none">
+      <div class="hitl-header">
+        <div class="hitl-title">⚡ Action Inbox</div>
+        <div class="hitl-pip" id="hitlPip">0 pending</div>
+      </div>
+      <div class="hitl-list" id="hitlList"></div>
+    </div>
+
+    <!-- Work Items -->
+    <div>
+      <div class="sec-hdr">
+        <div class="sec-title">Work Tracker</div>
+        <div class="sec-sub" id="workSub"></div>
+      </div>
+      <div class="work-grid" id="workGrid"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- Events -->
+    <div>
+      <div class="sec-hdr">
+        <div class="sec-title">Activity</div>
+        <div class="sec-sub" id="eventSub"></div>
+      </div>
+      <div id="eventList"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Comms -->
+  <div class="right">
+    <div class="right-hd">
+      <h4>Coordination</h4>
+      <div class="sec-sub" id="commsSub" style="margin-top:0.15rem"></div>
+    </div>
+    <div class="comms-list" id="commsList"><div class="loading">Loading…</div></div>
+  </div>
+
+</div>
+
+<script>
+const BASE = window.location.origin;
+const INTERVAL = 30000;
+let countdown = INTERVAL / 1000;
+let state = { fleet:null, events:null, comms:null, hitl:null, mcp:null, stories:null };
+
+// ─── Helpers ───
+function ts(ms) {
+  if (!ms) return '—';
+  const d = new Date(ms);
+  return d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+}
+function timeAgo(ms) {
+  if (!ms) return '';
+  const m = Math.floor((Date.now() - ms) / 60000);
+  if (m < 1) return 'now';
+  if (m < 60) return m + 'm';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h';
+  return Math.floor(h / 24) + 'd';
+}
+function trunc(s, n = 180) { return s && s.length > n ? s.substring(0, n) + '…' : (s || ''); }
+function fmtKind(k) {
+  if (!k) return '';
+  return k.replace(/^\[|\]$/g, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function agentColor(id) {
+  const map = { 'claude-engineer':'#7c3aed','claude-engineer-cloud':'#7c3aed','claude-web':'#7c3aed','claude-desktop':'#7c3aed','claude-opus-4-7':'#7c3aed','claude-sonnet-4-6':'#7c3aed','claude-haiku-4-5':'#7c3aed','claude-3-haiku':'#7c3aed','bentley':'#2d4a3e','bentley-temp':'#2d4a3e','antigravity':'#c4572a','gemini-cli':'#2563eb','folana':'#db2777','drift-remediator':'#f59e0b','claude-local':'#7c3aed','claude':'#7c3aed','claude-web-sonnet':'#7c3aed','claude-web-opus':'#7c3aed','claude-web-haiku':'#7c3aed','claude-engineer-opus':'#7c3aed' };
+  return map[id] || map[id?.toLowerCase()] || '#6b7280';
+}
+function fwClass(fw) {
+  const m = { langgraph:'fw-lg', crewai:'fw-cr', agno:'fw-ag', autogen:'fw-ad', orchestrator:'fw-or' };
+  return m[fw?.toLowerCase()] || '';
+}
+function statusClass(s) { return s === 'ok' ? 'ok' : s === 'warn' ? 'warn' : s === 'err' ? 'err' : 'idle'; }
+function pctClass(p) { return p >= 75 ? 'high' : p >= 40 ? 'med' : 'low'; }
+function tagClass(s) { return s === 'SHIPPED' ? 'shipped' : s === 'LIVE' ? 'live' : s === 'DEPLOYED' ? 'deployed' : s === 'READY' ? 'ready' : 'draft'; }
+
+// ─── Render: Fleet Tree ───
+function renderFleet() {
+  const el = document.getElementById('fleetTree');
+  const f = state.fleet;
+  if (!f || !f.fleet) { el.innerHTML = '<div class="err-banner">Fleet API error</div>'; return; }
+
+  let count = 0;
+  function countAll(n) { if (n.model || n.status) count++; (n.children||[]).forEach(countAll); }
+  countAll(f.fleet);
+  document.getElementById('agentCount').textContent = count;
+
+  let html = '';
+  function renderNode(n, depth = 0) {
+    const cls = depth === 0 ? '' : depth === 1 ? 'indent' : 'indent-2';
+    const hasKids = n.children?.length > 0;
+    if (!n.model && !n.status) {
+      html += `<div class="agent-group ${cls}" onclick="this.querySelector('.agent-toggle')?.classList.toggle('collapsed');for(let s=this.nextElementSibling;s&&s.classList.contains(cls);s=s.nextElementSibling)s.style.display=s.style.display==='none'?'':'none'">
+        <span class="agent-toggle">▼</span> ${n.label || n.id}
+      </div>`;
+    } else {
+      const sc = statusClass(n.status);
+      const fw = fwClass(n.framework);
+      const mdl = (n.model || '').split('/').pop();
+      html += `<div class="agent-item ${cls}">
+        <span class="dot ${sc}"></span>
+        <span class="agent-label">${n.label || n.id}</span>
+        ${fw ? `<span class="agent-fw ${fw}">${(n.framework||'').slice(0,2).toUpperCase()}</span>` : ''}
+      </div>`;
+    }
+    (n.children || []).forEach(c => renderNode(c, depth + 1));
+  }
+  renderNode(f.fleet);
+  el.innerHTML = html;
+}
+
+// ─── Render: HITL ───
+function renderHITL() {
+  const bar = document.getElementById('hitlBar');
+  const list = document.getElementById('hitlList');
+  const pip = document.getElementById('hitlPip');
+  const h = state.hitl;
+  if (!h || !h.pending?.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  pip.textContent = h.count_pending + ' pending';
+  const seen = new Set();
+  let html = '';
+  h.pending.slice(0, 6).forEach(item => {
+    const key = trunc(item.summary, 60);
+    if (seen.has(key)) return;
+    seen.add(key);
+    html += `<div class="hitl-item">
+      <span class="hitl-time">${ts(item.ts)}</span>
+      <span class="hitl-text">${trunc(item.summary, 150)}</span>
+      <span class="hitl-source">${item.source || ''}</span>
+    </div>`;
+  });
+  if (h.count_pending > 6) html += `<div style="font-size:0.75rem;color:var(--ink-quiet);padding:0.35rem 0;">+${h.count_pending - 6} more</div>`;
+  list.innerHTML = html;
+}
+
+// ─── Render: Events ───
+function renderEvents() {
+  const el = document.getElementById('eventList');
+  const sub = document.getElementById('eventSub');
+  const ev = state.events;
+  if (!ev?.events) { el.innerHTML = '<div class="err-banner">Events API error</div>'; return; }
+  sub.textContent = ev.count + ' events';
+
+  const seen = new Set();
+  let html = '';
+  ev.events.slice(0, 35).forEach(e => {
+    const key = trunc(e.summary || e.text, 50) + e.kind;
+    if (key.includes('drift') && seen.has('drift')) return;
+    if (key.includes('drift')) seen.add('drift');
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    let kindCls = 'event-kind-tag';
+    const k = e.kind || '';
+    if (k.includes('hitl')) kindCls += ' hitl';
+    else if (k.includes('milestone') || k.includes('shipped') || k.includes('asset-shipped')) kindCls += ' shipped';
+    else if (k.includes('roundtable')) kindCls += ' roundtable';
+    else if (k.includes('drift')) kindCls += ' drift';
+
+    const ac = agentColor(e.a || e.source || '');
+    let text = trunc(e.text || e.summary || '', 280);
+    text = text.replace(/\[([^\]]+)\]/g, '<b>[$1]</b>');
+    text = text.replace(/@([\w-]+)/g, '<em> @$1</em>');
+
+    html += `<div class="event-card">
+      <div class="event-meta">
+        <span class="event-time">${ts(e.ts)}</span>
+        <span class="event-who" style="color:${ac}">${e.a || e.source || ''}</span>
+        <span class="${kindCls}">${fmtKind(k)}</span>
+      </div>
+      <div class="event-text">${text}</div>
+    </div>`;
+  });
+  el.innerHTML = html || '<div style="color:var(--ink-quiet);font-size:0.85rem;">No events</div>';
+}
+
+// ─── Render: Comms ───
+function renderComms() {
+  const el = document.getElementById('commsList');
+  const sub = document.getElementById('commsSub');
+  const c = state.comms;
+  if (!c?.events) { el.innerHTML = '<div class="err-banner">Comms API error</div>'; return; }
+  sub.textContent = c.count + ' messages';
+
+  let html = '';
+  c.events.slice(0, 30).forEach(e => {
+    const ac = agentColor(e.a || e.source || '');
+    let text = trunc(e.summary || '', 200);
+    text = text.replace(/\[([^\]]+)\]/g, '<b>[$1]</b>');
+    text = text.replace(/@([\w-]+)/g, '<em> @$1</em>');
+    html += `<div class="comm-item">
+      <div class="comm-meta">
+        <span class="comm-time">${ts(e.ts)}</span>
+        <span class="comm-who" style="color:${ac}">${e.a || e.source || ''}</span>
+      </div>
+      <div class="comm-text">${text}</div>
+    </div>`;
+  });
+  el.innerHTML = html || '<div style="color:var(--ink-quiet);font-size:0.85rem;">No messages</div>';
+}
+
+// ─── Render: Stories (Work Items) ───
+function renderStories() {
+  const el = document.getElementById('workGrid');
+  const sub = document.getElementById('workSub');
+  const s = state.stories;
+  if (!s?.columns) { el.innerHTML = '<div class="err-banner">Stories API error</div>'; return; }
+
+  let total = 0, shipped = 0;
+  Object.values(s.columns).forEach(items => { total += items.length; });
+  sub.textContent = total + ' items across ' + s.vocab.join(' → ');
+
+  // Show all items, newest first (SHIPPED → LIVE → DEPLOYED → READY → DRAFT)
+  let allItems = [];
+  const order = ['DRAFT','READY','SHIPPED','DEPLOYED','LIVE'];
+  order.forEach(col => {
+    (s.columns[col] || []).forEach(item => {
+      allItems.push({ ...item, status: col });
+    });
+  });
+  // Reverse: show highest status first
+  allItems.reverse();
+
+  let html = '';
+  allItems.slice(0, 24).forEach(item => {
+    const tagCls = tagClass(item.status);
+    const owner = item.owner && item.owner !== '—' ? item.owner : '';
+    const evidence = item.evidence > 0 ? `<span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-quiet)">${item.evidence} evidence</span>` : '';
+    html += `<div class="work-card">
+      <div class="work-hdr">
+        <div class="work-name">${item.title || item.id}</div>
+        <span class="work-tag ${tagCls}">${item.status}</span>
+      </div>
+      ${owner ? `<div style="font-size:0.72rem;color:var(--ink-fade);margin-bottom:0.35rem">${owner} · ${item.age || '—'} ${evidence}</div>` : `<div style="font-size:0.72rem;color:var(--ink-fade);margin-bottom:0.35rem">${item.age || '—'} ${evidence}</div>`}
+      ${item.live ? '<span style="font-size:0.6rem;font-weight:700;color:#22c55e">● LIVE</span>' : ''}
+    </div>`;
+  });
+  el.innerHTML = html || '<div style="color:var(--ink-quiet);font-size:0.85rem;">No work items</div>';
+}
+
+// ─── Render: MCP ───
+function renderMCP() {
+  const el = document.getElementById('mcpStrip');
+  const m = state.mcp;
+  if (!m) { el.innerHTML = '<span class="meta">MCP offline</span>'; return; }
+  el.innerHTML = `
+    <div class="mcp-kv"><dt>MCP Server</dt><dd class="mono">${m.name || '—'} v${m.version || '?'}</dd></div>
+    <div class="mcp-kv"><dt>Protocol</dt><dd class="mono">${m.protocolVersion || '?'}</dd></div>
+    <div class="mcp-kv"><dt>Tools</dt><dd class="mono">${m.toolCount || 0}</dd></div>
+    <div class="mcp-kv"><dt>Transport</dt><dd class="mono">${m.transport || '?'}</dd></div>
+  `;
+}
+
+// ─── Fetch All ───
+async function fetchAll() {
+  const [fleet, hitl, events, comms, mcp, stories] = await Promise.all([
+    fetch(BASE + '/api/fleet').then(r => r.json()).catch(() => null),
+    fetch(BASE + '/api/hitl').then(r => r.json()).catch(() => null),
+    fetch(BASE + '/api/events?limit=100').then(r => r.json()).catch(() => null),
+    fetch(BASE + '/api/comms').then(r => r.json()).catch(() => null),
+    fetch(BASE + '/api/mcp').then(r => r.json()).catch(() => null),
+    fetch(BASE + '/api/stories').then(r => r.json()).catch(() => null),
+  ]);
+
+  state = { fleet, events, comms, hitl, mcp, stories };
+
+  // Status indicator
+  const dot = document.getElementById('dot');
+  const label = document.getElementById('statusLabel');
+  const ok = fleet && events && comms;
+  dot.className = ok ? 'live-dot' : 'live-dot err';
+  label.textContent = ok ? 'live · ' + new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false}) : 'partial';
+
+  renderFleet();
+  renderHITL();
+  renderEvents();
+  renderComms();
+  renderStories();
+  renderMCP();
+
+  countdown = INTERVAL / 1000;
+}
+
+function tick() {
+  const el = document.getElementById('refreshInfo');
+  if (countdown > 0) {
+    el.textContent = countdown + 's';
+    countdown--;
+    setTimeout(tick, 1000);
+  }
+}
+
+// ─── Init ───
+fetchAll();
+tick();
+setInterval(fetchAll, INTERVAL);
+</script>
+</body>
+</html>
