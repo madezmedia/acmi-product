@@ -13,6 +13,7 @@
     { fn: bootstrapComms,   field: "COMMS" },
     { fn: bootstrapHitl,    field: "HITL" },
     { fn: bootstrapEvents,  field: "SEED_EVENTS" },
+    { fn: bootstrapChain,   field: "CHAIN" },
   ];
 
   async function bootstrapFleet() {
@@ -73,6 +74,18 @@
     if (!r?.ok) throw new Error(r?.error || "no events");
     return r.events || [];
   }
+  async function bootstrapChain() {
+    // MI300X live activity — the chain happening on the GPU right now.
+    const r = await fetch("/api/chain?thread=demo-amd-chain&limit=24").then(r => r.json());
+    if (!r?.ok) throw new Error(r?.error || "no chain");
+    return {
+      eventCount: r.event_count || 0,
+      chainCount: r.chain_count || 0,
+      chains: r.chains || [],
+      events: r.events || [],
+      ts: r.ts,
+    };
+  }
 
   // Map a raw ACMI event into the COMMS shape the dashboard expects.
   function toCommsShape(ev, idx) {
@@ -129,6 +142,11 @@
       } else if (field === "SEED_EVENTS") {
         if (Array.isArray(value) && value.length > 0) {
           window.ACMI.SEED_EVENTS = value;
+          updated++;
+        }
+      } else if (field === "CHAIN") {
+        if (value) {
+          window.ACMI.CHAIN = value;
           updated++;
         }
       }

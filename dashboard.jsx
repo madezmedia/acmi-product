@@ -1,6 +1,94 @@
 // Dashboard view — 4 panels + comms
 const { useState: useStateD, useEffect: useEffectD, useRef: useRefD, useMemo: useMemoD } = React;
 
+// MI300X Live Activity — surfaces the GPU team's chain activity at the top
+// of the dashboard. Reads from window.ACMI.CHAIN (loaded by data-live.jsx
+// from /api/chain). Designed to be the first thing judges see during the
+// AMD demo recording.
+function MI300XLivePanel() {
+  const chain = (window.ACMI && window.ACMI.CHAIN) || { chains: [], events: [], chainCount: 0, eventCount: 0 };
+  const recent = (chain.chains || []).slice(0, 5);
+  const totalChains = chain.chainCount || 0;
+  const lastEvent = (chain.events || [])[0];
+  const isLive = lastEvent && (Date.now() - lastEvent.ts < 10 * 60 * 1000);
+  return (
+    <div className="panel mi300x-live" style={{
+      gridColumn: "1 / -1",
+      marginBottom: 12,
+      borderTop: "3px solid var(--forest)",
+    }}>
+      <div className="panel-hd" style={{ background: "var(--paper-elev)" }}>
+        <div className="row gap-3">
+          <h4 style={{ color: "var(--forest-deep)" }}>
+            MI300X Team — Live Activity
+          </h4>
+          <span className="hd-meta">
+            <span className={"sd " + (isLive ? "ok pulse" : "warn")} style={{ display: "inline-block", marginRight: 6 }} />
+            {totalChains} chains · {chain.eventCount || 0} events · 192GB HBM3
+          </span>
+        </div>
+        <div className="row gap-2" style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--ink-4)" }}>
+          <span>llama 70b</span><span>·</span>
+          <span>qwen 32b</span><span>·</span>
+          <span>mistral 24b</span><span>·</span>
+          <span>qwen 7b</span>
+        </div>
+      </div>
+      <div className="panel-bd flush" style={{ padding: "8px 14px 12px" }}>
+        {recent.length === 0 && (
+          <div style={{ fontSize: 12, color: "var(--ink-4)", padding: "8px 0" }}>
+            Waiting for the first chain to land. <span style={{ fontFamily: "var(--mono)", fontSize: 11 }}>acmi:thread:demo-amd-chain:timeline</span>
+          </div>
+        )}
+        {recent.map((c) => {
+          const time = new Date(c.started_ts).toISOString().slice(11, 19);
+          const wallSec = c.wall_clock_ms ? (c.wall_clock_ms / 1000).toFixed(1) + "s" : "—";
+          const tokensOut = (c.steps || []).reduce((s, e) => s + (e.tokens_out || 0), 0);
+          return (
+            <div key={c.cid} style={{
+              display: "grid",
+              gridTemplateColumns: "60px 130px 1fr 90px 80px",
+              gap: 8,
+              padding: "6px 0",
+              borderBottom: "1px solid var(--divider)",
+              fontSize: 12,
+              alignItems: "baseline",
+            }}>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--ink-4)" }}>{time}</span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-2)" }}>{c.cid}</span>
+              <span className="row gap-1" style={{ fontSize: 11 }}>
+                {(c.steps || []).map((s, i) => (
+                  <React.Fragment key={i}>
+                    <span style={{
+                      padding: "1px 6px",
+                      borderRadius: 3,
+                      background: s.kind === "research-output" ? "rgba(45,74,62,0.10)"
+                                : s.kind === "synthesis-output" ? "rgba(184,134,45,0.10)"
+                                : s.kind === "publish-output" ? "rgba(194,96,46,0.10)"
+                                : "rgba(122,122,120,0.10)",
+                      color: s.kind === "research-output" ? "var(--forest-deep)"
+                           : s.kind === "synthesis-output" ? "var(--warn)"
+                           : s.kind === "publish-output" ? "var(--fw-lg)"
+                           : "var(--ink-3)",
+                      fontFamily: "var(--mono)",
+                      fontSize: 10,
+                    }}>
+                      {(s.kind || "").replace("-output", "").replace("-request", "•")}
+                    </span>
+                    {i < (c.steps || []).length - 1 && <span style={{ color: "var(--ink-5)" }}>→</span>}
+                  </React.Fragment>
+                ))}
+              </span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-3)", textAlign: "right" }}>{wallSec}</span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-3)", textAlign: "right" }}>{tokensOut}t</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ selectedAgentId, setSelectedAgentId, eventSpeed, onShowHitl, hitlActive }) {
   const [expandedMap, setExpandedMap] = React.useState({});
   const [events, setEvents] = React.useState(window.ACMI.SEED_EVENTS);
@@ -37,6 +125,9 @@ function Dashboard({ selectedAgentId, setSelectedAgentId, eventSpeed, onShowHitl
 
   return (
     <div className="dash">
+      {/* MI300X Live Activity — front-and-center for AMD demo recording */}
+      <MI300XLivePanel />
+
       {/* Top row: Tree | Pipeline+Timeline | Kanban */}
       <div className="dash-top">
         {/* Panel 1: Fleet */}
