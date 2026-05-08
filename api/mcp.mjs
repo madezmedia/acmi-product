@@ -24,6 +24,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createRedis } from "./_lib/redis.mjs";
 import { registerAcmiTools } from "./_lib/mcp-tools.mjs";
 import { TOOL_DEFS } from "./_lib/mcp-tool-defs.mjs";
+import { lookupAccessToken } from "./oauth/_lib/storage.mjs";
 
 export const config = {
   runtime: "nodejs",
@@ -45,7 +46,7 @@ function decodeSmitheryConfig(req) {
   }
 }
 
-function extractCreds(cfg, req) {
+async function extractCreds(cfg, req) {
   // Priority 1a: x-from headers (Smithery gateway forwarding per configSchema
   // x-from declarations in mcp-tool-defs.mjs). This is the multi-user
   // one-URL path — Smithery's hosted form collects per-user Upstash creds
@@ -73,26 +74,34 @@ function extractCreds(cfg, req) {
     return { url: cfgUrl, token: cfgToken, source: "config" };
   }
 
-  // Priority 2: env-var fallback — ONLY behind Bearer auth.
-  // The deploy owns Upstash creds (acmi-product reads from those for the
-  // ops-center edge endpoints). Direct clients (Claude Web) can use them
-  // IF they prove they're authorized via Authorization: Bearer <token>
-  // matching the MCP_DIRECT_AUTH_TOKEN env var.
-  //
-  // If MCP_DIRECT_AUTH_TOKEN is unset, env fallback is disabled entirely —
-  // anonymous direct callers get 401, preserving the original deny-by-default
-  // posture.
-  const requiredToken = process.env.MCP_DIRECT_AUTH_TOKEN || null;
-  if (requiredToken) {
-    const authHeader = String(req.headers.authorization || req.headers.Authorization || "");
-    const presented = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
-    if (presented && presented === requiredToken) {
-      return {
-        url: process.env.UPSTASH_REDIS_REST_URL || null,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN || null,
-        source: "env-authed",
-      };
+  // Priority 1c: OAuth 2.1 Bearer access token. Token store binds creds to
+  // sub. MCP clients (Claude Web/Desktop) that completed /api/oauth/authorize
+  // arrive here with a Bearer token issued by /api/oauth/token.
+  const authHeader = String(req.headers.authorization || req.headers.Authorization || "");
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  if (bearer) {
+    try {
+      const tok = await lookupAccessToken(bearer);
+      if (tok && tok.upstash_url && tok.upstash_token && (tok.expires_at ?? 0) > Math.floor(Date.now() / 1000)) {
+        return { url: tok.upstash_url, token: tok.upstash_token, source: "oauth", sub: tok.sub };
+      }
+    } catch {
+      // fall through to env-bearer / anon
     }
+  }
+
+  // Priority 2: env-var fallback — ONLY behind a deploy-owner emergency
+  // Bearer token (MCP_DIRECT_AUTH_TOKEN). Distinct from OAuth: this is the
+  // operator break-glass path for ops-center / smoke tests when OAuth flow
+  // is unavailable. If MCP_DIRECT_AUTH_TOKEN is unset, env fallback is
+  // disabled entirely.
+  const requiredToken = process.env.MCP_DIRECT_AUTH_TOKEN || null;
+  if (requiredToken && bearer && bearer === requiredToken) {
+    return {
+      url: process.env.UPSTASH_REDIS_REST_URL || null,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN || null,
+      source: "env-authed",
+    };
   }
 
   return { url: null, token: null, source: "none" };
@@ -217,15 +226,22 @@ export default async function handler(req, res) {
     const method = req.body && req.body.method;
     const requiresAuth = req.method === "POST" && !PUBLIC_METHODS.has(method);
 
-    const { url, token, source } = extractCreds(cfg, req);
+    const { url, token, source, sub } = await extractCreds(cfg, req);
     let redis;
     if (url && token) {
       redis = createRedis({ url, token });
       res.setHeader("X-MCP-Cred-Source", source);
+      if (sub) res.setHeader("X-MCP-Sub", sub);
     } else if (requiresAuth) {
+      // RFC 9728 — point unauthenticated clients at the protected resource
+      // metadata so MCP clients (Claude Web/Desktop) can discover OAuth flow.
+      const proto = (req.headers["x-forwarded-proto"] || "https").split(",")[0];
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const issuer = `${proto}://${host}`;
+      res.setHeader("WWW-Authenticate", `Bearer realm="acmi-mcp", resource_metadata="${issuer}/.well-known/oauth-protected-resource"`);
       res.status(401).json({
         error: "authentication required for tool execution",
-        hint: "either pass ?config=<base64 JSON with upstashRedisRestUrl + upstashRedisRestToken> (Smithery pattern), or send Authorization: Bearer <MCP_DIRECT_AUTH_TOKEN> if the deploy owner has enabled direct access. initialize and tools/list don't require auth.",
+        hint: "OAuth 2.1 + PKCE flow available. Discover via /.well-known/oauth-authorization-server. Or pass ?config=<base64 upstash creds> (Smithery legacy) or Bearer <MCP_DIRECT_AUTH_TOKEN> (deploy-owner break-glass).",
       });
       return;
     } else {
