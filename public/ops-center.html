@@ -260,8 +260,14 @@
 <!-- ═══ TOP BAR ═══ -->
 <div class="topbar">
   <div class="topbar-left">
-    <div class="topbar-logo">ACMI <span>Ops Center</span></div>
+    <a href="index.html" class="topbar-logo" style="text-decoration:none">ACMI <span>Ops Center</span></a>
     <span class="topbar-badge">Live</span>
+    <span class="topbar-nav-sep" style="border-left:1px solid var(--ink-rule);height:18px;margin:0 0.35rem"></span>
+    <a href="index.html" class="topbar-navlink" style="font-size:0.75rem;color:var(--ink-fade);text-decoration:none">Home</a>
+    <a href="deck.html" class="topbar-navlink" style="font-size:0.75rem;color:var(--ink-fade);text-decoration:none">Pitch Deck</a>
+    <a href="amd.html" class="topbar-navlink" style="font-size:0.75rem;color:var(--ink-fade);text-decoration:none">AMD</a>
+    <a href="mcp.html" class="topbar-navlink" style="font-size:0.75rem;color:var(--ink-fade);text-decoration:none">MCP</a>
+    <a href="https://github.com/madezmedia/acmi-product" class="topbar-navlink" style="font-size:0.75rem;color:var(--ink-fade);text-decoration:none">GitHub</a>
   </div>
   <div class="topbar-right">
     <span class="live-dot" id="dot"></span>
@@ -269,6 +275,7 @@
     <span class="refresh-info" id="refreshInfo"></span>
   </div>
 </div>
+<style>.topbar-navlink:hover { color: var(--ink-mute); }</style>
 
 <!-- ═══ LAYOUT ═══ -->
 <div class="layout">
