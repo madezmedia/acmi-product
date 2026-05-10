@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Competitive Analysis — ACMI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="top">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="ops-center.html">Ops Center</a>
+      <a href="kanban.html">Kanban</a>
+      <a href="product.html">Product</a>
+      <a href="bugs.html">Bug Tracker</a>
+      <a href="competitive.html" class="active">Competitive</a>
+      <a href="roundtable.html">Roundtable</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<div class="page-content">
+<h1 class="page-title">Competitive Analysis</h1>
+
+<p>The agent infrastructure space is bifurcating into two layers: <strong>memory systems</strong> (per-agent recall) and <strong>coordination systems</strong> (multi-agent orchestration). ACMI occupies the coordination layer. This is a different problem than what Hindsight, Mem0, Zep, and Letta solve.</p>
+
+<h2>ACMI vs The Field</h2>
+
+<table>
+<tr>
+<th></th>
+<th style="color:var(--mzm-accent);">ACMI</th>
+<th>Hindsight</th>
+<th>Mem0</th>
+<th>Letta (MemGPT)</th>
+<th>Zep</th>
+</tr>
+<tr>
+<td><strong>Focus</strong></td>
+<td>Multi-agent coordination</td>
+<td>Per-agent memory</td>
+<td>Per-agent memory</td>
+<td>Agent runtime + memory</td>
+<td>Memory + knowledge graph</td>
+</tr>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>3 Redis keys (Profile/Signals/Timeline)</td>
+<td>4 memory networks (biomimetic)</td>
+<td>Graph + vector memory</td>
+<td>OS-inspired memory paging</td>
+<td>Temporal knowledge graph</td>
+</tr>
+<tr>
+<td><strong>LLM Dependency</strong></td>
+<td>None (core ops)</td>
+<td>Required (retain/reflect)</td>
+<td>Required (extraction)</td>
+<td>Required (memory management)</td>
+<td>Required (entity extraction)</td>
+</tr>
+<tr>
+<td><strong>Read Latency</strong></td>
+<td>&lt;5ms</td>
+<td>~200ms (multi-strategy)</td>
+<td>~100ms (vector search)</td>
+<td>~150ms (paging)</td>
+<td>~150ms (graph query)</td>
+</tr>
+<tr>
+<td><strong>Multi-Agent</strong></td>
+<td>✅ Fleet primitives, lock protocol</td>
+<td>❌ Single-agent</td>
+<td>❌ Single-agent</td>
+<td>⚠️ Limited</td>
+<td>⚠️ Limited</td>
+</tr>
+<tr>
+<td><strong>Lock Protocol</strong></td>
+<td>✅ coord-claim/release</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td><strong>Heartbeat/Stall</strong></td>
+<td>✅ 48h STALLED detection</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td><strong>Language</strong></td>
+<td>Node.js</td>
+<td>Python</td>
+<td>Python</td>
+<td>Python</td>
+<td>Python/Go</td>
+</tr>
+<tr>
+<td><strong>Transport</strong></td>
+<td>CLI + MCP (stdio)</td>
+<td>REST API</td>
+<td>REST API + SDKs</td>
+<td>REST API + SDKs</td>
+<td>REST API + SDKs</td>
+</tr>
+<tr>
+<td><strong>License</strong></td>
+<td>MIT</td>
+<td>MIT</td>
+<td>MIT</td>
+<td>Apache</td>
+<td>MIT</td>
+</tr>
+<tr>
+<td><strong>Funding</strong></td>
+<td>Bootstrapped</td>
+<td>$3.6M (Vectorize.io)</td>
+<td>$24M</td>
+<td>$10M</td>
+<td>Unknown</td>
+</tr>
+<tr>
+<td><strong>Benchmark</strong></td>
+<td>N/A (coordination, not memory)</td>
+<td>91.4% LongMemEval</td>
+<td>93.4% LongMemEval</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</table>
+
+<h2>Key Insight: Complementary, Not Competing</h2>
+
+<div style="background:var(--mzm-paper-warm);border:1px solid var(--mzm-accent);border-radius:var(--mzm-radius-md);padding:1.5rem;margin:1.5rem 0;">
+<p style="font-size:1rem;color:var(--mzm-ink);line-height:1.7;">
+<strong>Hindsight answers "what does this agent know?"</strong><br>
+<strong>ACMI answers "what are all our agents doing, and who's doing what next?"</strong><br><br>
+Any serious multi-agent deployment needs both: deep memory per agent, and shallow-but-wide coordination across agents. ACMI is the coordination layer that works with any memory system.
+</p>
+</div>
+
+<h2>Hindsight Deep Dive</h2>
+<p><strong>Source:</strong> <code>~/clawd/docs/hindsight-vs-acmi-comparison.md</code> — full analysis published May 2026.</p>
+<p>Hindsight (Vectorize.io + Virginia Tech + Washington Post) models agent memory on human cognition with four types: World Facts, Experience Facts, Observations, Mental Models. Their TEMPR multi-strategy retrieval achieves 91.4% on LongMemEval.</p>
+<h3>Integration Blueprint</h3>
+<p>ACMI handles coordination, Hindsight handles semantic memory. The bridge: sync ACMI timeline events to Hindsight memory banks for semantic indexing, while ACMI maintains the real-time coordination layer.</p>
+
+<h2>Redis Agent Memory Server</h2>
+<p>Redis Inc.'s own reference implementation (Python, Apache). Same Redis-native thesis as ACMI. Strategy: don't fight — become the canonical Node.js/Upstash community implementation. Build relationship with Redis Inc.</p>
+
+<h2>Market Positioning</h2>
+
+<div class="arch-diagram">
+┌───────────────────────────────────────────────────────────────┐
+│                    AGENT INFRASTRUCTURE STACK                  │
+│                                                               │
+│  ┌─────────────────┐  ← Agent Runtime (Claude, Gemini, etc.) │
+│  │  Agent Framework │                                        │
+│  └────────┬────────┘                                         │
+│           │                                                   │
+│  ┌────────▼────────┐  ← ACMI lives HERE                      │
+│  │  COORDINATION   │     Lock Protocol, Roundtables,          │
+│  │  LAYER          │     Handoffs, Heartbeats, Work Items     │
+│  └────────┬────────┘                                         │
+│           │                                                   │
+│  ┌────────▼────────┐  ← Memory Systems (Hindsight, Mem0)     │
+│  │  MEMORY LAYER   │     Semantic recall, embeddings, beliefs │
+│  └────────┬────────┘                                         │
+│           │                                                   │
+│  ┌────────▼────────┐  ← Storage (Redis, Postgres, vectors)   │
+│  │  DATA LAYER     │                                         │
+│  └─────────────────┘                                         │
+└───────────────────────────────────────────────────────────────┘
+</div>
+
+<h2>Integration Opportunities</h2>
+<ul>
+<li><strong>Hindsight + ACMI</strong> — Sync ACMI timelines to Hindsight for semantic indexing. ACMI coordination events become searchable memories.</li>
+<li><strong>Mem0 + ACMI</strong> — Enrich agent memory via Mem0's graph, surface insights via ACMI signals.</li>
+<li><strong>Zep + ACMI</strong> — Use Zep's temporal knowledge graph for entity relationships, ACMI for real-time coordination.</li>
+<li><strong>MCP Ecosystem</strong> — ACMI's MCP server works with any MCP-compatible tool. 22,850+ MCP servers in the ecosystem (Glama registry).</li>
+</ul>
+
+<h2>Risks</h2>
+<table>
+<tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr>
+<tr><td>Category consolidation around Mem0/Letta/Zep</td><td>HIGH</td><td>Lead with Node-first + Fleet wedge; anchor brand on idea not artifact</td></tr>
+<tr><td>Big-lab official protocol (MCP→Linux Foundation)</td><td>HIGH</td><td>Make ACMI explicitly MCP-compatible; consider donating to foundation at >5K stars</td></tr>
+<tr><td>"Three pillars" phrase collision with Mem0</td><td>MED</td><td>Switch to "Profile / Signals / Timeline" or "Three Keys"</td></tr>
+<tr><td>Redis Inc. ships 3-key pattern</td><td>MED</td><td>Build relationship; lean Upstash over Redis Inc.</td></tr>
+<tr><td>Solo-founder bandwidth</td><td>HIGH</td><td>Decide: cash-flow business OR full focus by month 6</td></tr>
+</table>
+
+<p class="meta" style="text-align:center; margin-top:2rem; font-size:0.8rem; color:var(--mzm-ink-soft);">
+Analysis sourced from <code>docs/hindsight-vs-acmi-comparison.md</code>, <code>memory/reddit-agent-landscape.md</code>, and <code>docs/ACMI-BRAND-STRATEGY-v2.md</code>.
+</p>
+</div>
+</main>
+
+<footer>
+  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+</footer>
+</body>
+</html>

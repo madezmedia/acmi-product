@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACMI — Agentic Context Management Infrastructure</title>
+<link rel="stylesheet" href="style.css">
+<meta name="description" content="ACMI is the open protocol for multi-agent coordination. Profile, Signals, Timeline — three Redis keys that replace 800 lines of agent memory code.">
+<meta property="og:title" content="ACMI — Agentic Context Management Infrastructure">
+<meta property="og:description" content="The coordination backbone for AI agent fleets. Three keys. That's the whole protocol.">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+
+<nav class="top">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="product.html">Product</a>
+      <a href="bugs.html">Bug Tracker</a>
+      <a href="competitive.html">Competitive</a>
+      <a href="roundtable.html">Roundtable</a>
+      <a href="ops-center.html">Ops Center</a>
+      <a href="kanban.html">Kanban</a>
+      <a href="amd.html">AMD Hackathon</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<section class="hero">
+  <div class="hero-meta">
+    <span class="badge">Open Source · MIT License</span>
+  </div>
+  <h1>Three keys.<br>That's the whole <span class="em">protocol</span>.</h1>
+  <p class="tagline">ACMI gives AI agents persistent, real-time context with a single Redis KV engine. No vector databases. No knowledge graphs. No LLM calls for core operations.</p>
+  <div class="hero-actions">
+    <a href="architecture.html" class="btn-primary">Read the Architecture →</a>
+    <a href="https://github.com/madezmedia/acmi" class="btn-outline">GitHub</a>
+    <a href="mcp.html" class="btn-secondary">MCP Server Docs</a>
+  </div>
+</section>
+
+<section class="keys-section">
+  <div class="eyebrow">N° 01 <span class="num">How it works</span></div>
+  <h2>Three keys per entity. That's the whole protocol.</h2>
+  <div class="pillars">
+    <div class="pillar">
+      <div class="key-eyebrow"><span class="key-letter">P</span> Profile — <span class="key-q">who</span></div>
+      <code>acmi:{ns}:{id}:profile</code>
+      <p>Hard state snapshot — name, stage, budget, specs. Written by explicit updates.</p>
+    </div>
+    <div class="pillar">
+      <div class="key-eyebrow"><span class="key-letter">S</span> Signals — <span class="key-q">now</span></div>
+      <code>acmi:{ns}:{id}:signals</code>
+      <p>AI-synthesized soft state — churn risk, sentiment, next best action. Updated by agents.</p>
+    </div>
+    <div class="pillar">
+      <div class="key-eyebrow"><span class="key-letter">T</span> Timeline — <span class="key-q">then</span></div>
+      <code>acmi:{ns}:{id}:timeline</code>
+      <p>Chronological event stream (Redis ZSET). Merges events from every platform into one story.</p>
+    </div>
+  </div>
+</section>
+
+<section class="quickstart">
+  <div class="eyebrow">N° 02 <span class="num">Quick Start</span></div>
+  <h2>Get running in 30 seconds.</h2>
+  <div class="code-block">
+    <pre><span class="comment"># 1. Set your Upstash Redis credentials</span>
+export UPSTASH_REDIS_REST_URL="https://your-endpoint.upstash.io"
+export UPSTASH_REDIS_REST_TOKEN="your-token"
+
+<span class="comment"># 2. Write a profile</span>
+node acmi.mjs profile sales acme-corp '{"contact":"Jane","stage":"proposal","value":50000}'
+
+<span class="comment"># 3. Log an event</span>
+node acmi.mjs event sales acme-corp email "Sent proposal PDF"
+
+<span class="comment"># 4. Update signals</span>
+node acmi.mjs signal sales acme-corp '{"sentiment":"positive","next_action":"Follow up Friday"}'
+
+<span class="comment"># 5. Read everything back</span>
+node acmi.mjs get sales acme-corp</pre>
+  </div>
+</section>
+
+<section class="features">
+  <div class="eyebrow">N° 03 <span class="num">Built for agent fleets</span></div>
+  <h2>One pattern. Any scale.</h2>
+  <div class="feature-grid">
+    <div class="feature">
+      <h3>Lock Protocol</h3>
+      <p>Prevent duplicate work between parallel agents. Claim → Verify → Hedge → Release.</p>
+    </div>
+    <div class="feature">
+      <h3>Roundtables</h3>
+      <p>Structured multi-agent deliberation. Open → Input → Synthesis → Plan.</p>
+    </div>
+    <div class="feature">
+      <h3>Work Items</h3>
+      <p>Cross-session projects with stable identity and session ledger. Ideas survive restarts.</p>
+    </div>
+    <div class="feature">
+      <h3>MCP Server</h3>
+      <p>14 tools via stdio transport. Works with Claude Desktop, Cursor, Cline, Windsurf.</p>
+    </div>
+    <div class="feature">
+      <h3>Anti-Dead Heartbeats</h3>
+      <p>48-hour stall detection. Auto-escalate stalled projects to human-in-the-loop.</p>
+    </div>
+    <div class="feature">
+      <h3>&lt;5ms Reads</h3>
+      <p>Redis KV reads with zero LLM dependency. Sub-millisecond latency for core operations.</p>
+    </div>
+  </div>
+</section>
+
+<section class="usecases">
+  <div class="eyebrow">N° 04 <span class="num">One pattern, any domain</span></div>
+  <div class="uc-grid">
+    <div class="uc"><span class="uc-ns">sales</span>CRM pipeline tracking</div>
+    <div class="uc"><span class="uc-ns">support</span>Customer ticket context</div>
+    <div class="uc"><span class="uc-ns">fleet</span>Dispatch & vehicle tracking</div>
+    <div class="uc"><span class="uc-ns">agent</span>Multi-agent coordination</div>
+    <div class="uc"><span class="uc-ns">thread</span>Conversation state</div>
+    <div class="uc"><span class="uc-ns">work</span>Cross-session projects</div>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>Start building.</h2>
+  <div class="cta-links">
+    <a href="architecture.html" class="btn-primary">Read the Architecture →</a>
+    <a href="mcp.html" class="btn-secondary">MCP Server Docs</a>
+    <a href="https://github.com/madezmedia/acmi" class="btn-outline">GitHub →</a>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="inner">
+    <div class="left"><strong>ACMI</strong> — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</div>
+    <div class="links">
+      <a href="https://github.com/madezmedia/acmi">GitHub</a>
+      <a href="https://www.npmjs.com/package/@madezmedia/acmi">npm</a>
+      <a href="https://smithery.ai/servers/madezmediapartners/acmi-mcp">Smithery</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

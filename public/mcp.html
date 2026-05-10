@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP Server — ACMI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="top">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html" class="active">MCP Server</a>
+      <a href="ops-center.html">Ops Center</a>
+      <a href="kanban.html">Kanban</a>
+      <a href="product.html">Product</a>
+      <a href="bugs.html">Bug Tracker</a>
+      <a href="competitive.html">Competitive</a>
+      <a href="roundtable.html">Roundtable</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<div class="page-content">
+<h1 class="page-title">MCP Server</h1>
+
+<p>ACMI ships as a Model Context Protocol (MCP) server with 14 tools, running over stdio transport. Works with Claude Desktop, Cursor, Cline, Windsurf, and any MCP-compatible client.</p>
+
+<div class="arch-diagram">
+┌──────────────────┐     stdio      ┌──────────────────┐     HTTP      ┌──────────────┐
+│  MCP Client      │ ◄────────────► │  ACMI MCP Server │ ◄───────────► │ Upstash Redis │
+│  (Claude/Cursor) │                │  (mcp-server.mjs)│               │ (KV Store)   │
+└──────────────────┘                └──────────────────┘               └──────────────┘
+
+Client sends tool calls → Server translates to Redis commands → Returns JSON results
+</div>
+
+<h2>Setup Guide</h2>
+
+<h3>Claude Desktop</h3>
+<p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>:</p>
+<div class="code-block">
+<pre>{
+  "mcpServers": {
+    "acmi": {
+      "command": "node",
+      "args": ["/path/to/.openclaw/skills/acmi/mcp-server.mjs"],
+      "env": {
+        "UPSTASH_REDIS_REST_URL": "your-url",
+        "UPSTASH_REDIS_REST_TOKEN": "your-token"
+      }
+    }
+  }
+}</pre>
+</div>
+
+<h3>Cursor / Cline / Windsurf</h3>
+<p>Same pattern — add to your MCP settings with <code>command: "node"</code>, <code>args: ["path/to/mcp-server.mjs"]</code>, and the two env vars. Restart your client after editing.</p>
+
+<h2>Tool Reference (14 Tools)</h2>
+
+<div class="tool-grid">
+
+<div class="tool-card">
+<h4>1. acmi_profile</h4>
+<p>Create or update an entity's hard state (name, stage, specs).</p>
+<p class="params">Params: <code>namespace</code> <code>id</code> <code>profile</code> (JSON string)</p>
+</div>
+
+<div class="tool-card">
+<h4>2. acmi_signal</h4>
+<p>Update AI-synthesized soft state (sentiment, priorities, scores). Mutable, changes frequently.</p>
+<p class="params">Params: <code>namespace</code> <code>id</code> <code>signals</code> (JSON string)</p>
+</div>
+
+<div class="tool-card">
+<h4>3. acmi_event</h4>
+<p><strong>The workhorse.</strong> Log a timestamped event to the timeline. Follows Communication Standard v1.1.</p>
+<p class="params">Params: <code>namespace</code> <code>id</code> <code>source</code> <code>summary</code> <code>kind</code> (optional) <code>correlationId</code> (optional)</p>
+</div>
+
+<div class="tool-card">
+<h4>4. acmi_get</h4>
+<p>Fetch complete entity context: profile + signals + last 10 timeline events.</p>
+<p class="params">Params: <code>namespace</code> <code>id</code></p>
+</div>
+
+<div class="tool-card">
+<h4>5. acmi_list</h4>
+<p>List all entity IDs in a namespace.</p>
+<p class="params">Params: <code>namespace</code></p>
+</div>
+
+<div class="tool-card">
+<h4>6. acmi_work_create</h4>
+<p>Create a cross-session project, task, or idea.</p>
+<p class="params">Params: <code>id</code> <code>profile</code> (JSON string)</p>
+</div>
+
+<div class="tool-card">
+<h4>7. acmi_work_event</h4>
+<p>Log progress on a work item. Optionally bind to a session ID.</p>
+<p class="params">Params: <code>id</code> <code>source</code> <code>summary</code> <code>sessionId</code> (optional)</p>
+</div>
+
+<div class="tool-card">
+<h4>8. acmi_work_signal</h4>
+<p>Update work item signals (progress, blockers, metrics).</p>
+<p class="params">Params: <code>id</code> <code>signals</code> (JSON string)</p>
+</div>
+
+<div class="tool-card">
+<h4>9. acmi_work_get</h4>
+<p>Read a work item's full context: profile + signals + timeline (last 50) + sessions.</p>
+<p class="params">Params: <code>id</code></p>
+</div>
+
+<div class="tool-card">
+<h4>10. acmi_work_list</h4>
+<p>List all work item IDs.</p>
+<p class="params">Params: none</p>
+</div>
+
+<div class="tool-card">
+<h4>11. acmi_cat</h4>
+<p>Multi-stream merge view. Combines timeline events from multiple entities, sorted by timestamp. Supports time filtering.</p>
+<p class="params">Params: <code>keys</code> (string array) <code>since</code> (e.g. "24h", "7d") <code>limit</code></p>
+</div>
+
+<div class="tool-card">
+<h4>12. acmi_spawn</h4>
+<p>Log an agent session start. Records when an agent boots, with model and session info.</p>
+<p class="params">Params: <code>agentId</code> <code>sessionId</code> (optional) <code>modelId</code> (optional)</p>
+</div>
+
+<div class="tool-card">
+<h4>13. acmi_bootstrap</h4>
+<p>One-shot agent context bundle. Fetches everything a fresh session needs: profile, signals, active threads, rollup, recent timeline, and spawns.</p>
+<p class="params">Params: <code>agentId</code></p>
+</div>
+
+<div class="tool-card">
+<h4>14. acmi_active</h4>
+<p>Track agent thread engagement. Add/remove threads or list current active threads.</p>
+<p class="params">Params: <code>agentId</code> <code>action</code> ("add"|"remove"|"list") <code>threadKey</code> <code>role</code></p>
+</div>
+
+</div>
+
+<h2>Package Config</h2>
+<div class="code-block">
+<pre>{
+  "name": "@madezmedia/acmi-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "mcp-server.mjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.24.0"
+  }
+}</pre>
+</div>
+
+<h2>Example: Multi-Agent Coordination</h2>
+<div class="code-block">
+<pre><span class="comment"># Agent 1 claims a task</span>
+acmi_event("thread", "agent-coordination", "claude-engineer",
+  "Claiming README rewrite for batch execution",
+  { kind: "coord-claim", correlationId: "lock-readme-1745947200000" })
+
+<span class="comment"># Agent 2 sees the claim and defers</span>
+acmi_cat(["thread:agent-coordination"], { since: "10m" })
+<span class="comment"># → sees coord-claim from claude-engineer → defers</span>
+
+<span class="comment"># Agent 1 completes the task</span>
+acmi_event("thread", "agent-coordination", "claude-engineer",
+  "[done] README.md v1.2 — 320 lines",
+  { kind: "coord-release", correlationId: "lock-readme-1745947200000" })</pre>
+</div>
+
+</div>
+</main>
+
+<footer>
+  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+</footer>
+</body>
+</html>
