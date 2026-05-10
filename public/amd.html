@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACMI on AMD — Multi-Agent Coordination</title>
+<link rel="stylesheet" href="style.css">
+<meta name="description" content="Multi-agent coordination at swarm-economics prices. AMD Developer Hackathon submission.">
+<meta property="og:title" content="ACMI on AMD">
+<meta property="og:description" content="3 agents on an MI300X via Ollama/ROCm + ACMI MCP.">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+
+<nav class="top">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="product.html">Product</a>
+      <a href="bugs.html">Bug Tracker</a>
+      <a href="amd.html" class="active">AMD Hackathon</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<section class="hero">
+  <div class="hero-meta">
+    <span class="badge">AMD Developer Hackathon × LabLab.ai</span>
+  </div>
+  <h1>ACMI on <span class="em">AMD</span></h1>
+  <p class="tagline">Multi-agent coordination at swarm-economics prices. Local LLM inference on AMD MI300X GPUs makes 9-agent swarms economically viable. ACMI is the protocol that connects them.</p>
+  <div class="hero-actions">
+    <a href="#demo" class="btn-primary">Watch the 3-min demo ↓</a>
+    <div class="code-block" style="margin:0; padding:10px 16px; border-radius:4px; display:inline-block;">
+      <code>npx @madezmedia/acmi-mcp</code>
+    </div>
+  </div>
+</section>
+
+<section class="page-content" style="padding-top: 40px;">
+  <div class="eyebrow" style="margin-bottom: 24px;">N° 01 <span class="num">Hackathon Entry</span></div>
+  <p>This is the official submission for the AMD Developer Hackathon. We're showcasing a production-proven protocol running on an AMD MI300X instance.</p>
+  <a href="https://lablab.ai/ai-hackathons/amd-developer" target="_blank" class="btn-outline">View LabLab.ai Submission →</a>
+
+  <h2 style="margin-top: 80px;">The Architecture</h2>
+  <p>A single AMD MI300X with 192GB HBM3 easily hosts multiple LLMs simultaneously via Ollama and ROCm 7.2 (e.g., Llama 3.3 70B + Qwen 2.5 32B + Mistral Small).</p>
+  <p>Three independent Node.js agents point to these local Ollama endpoints. They coordinate complex workflows in real-time using the <strong>ACMI MCP Server</strong> backed by Upstash Redis. Cloud round-trips kill agent loops; ACMI + AMD keeps it all local and fast.</p>
+  
+  <div style="background: var(--mzm-paper-warm); border: 1px solid var(--mzm-ink-rule); padding: 40px; margin: 32px 0; border-radius: 4px; text-align: center;">
+    <p style="font-family: var(--mzm-font-mono); font-size: 14px; color: var(--mzm-ink-soft);">[ Architecture Diagram: 3 Agents ↔ ACMI Bus ↔ AMD MI300X ]</p>
+  </div>
+
+  <h2 id="demo">The Demo</h2>
+  <p>Watch three agents coordinate a research-synthesis-publish pipeline using a single Redis ZSET timeline.</p>
+  <div style="background: var(--mzm-ink); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; border-radius: 4px; margin-top: 24px;">
+    <p style="color: var(--mzm-paper); font-family: var(--mzm-font-mono); font-size: 14px;">[ Video Embed Placeholder ]</p>
+  </div>
+
+  <h2 style="margin-top: 80px;">Get Started</h2>
+  <p>Run the protocol on your own AMD hardware in 30 seconds.</p>
+  <div class="code-block">
+    <pre><span class="comment"># 1. Start your local Ollama on ROCm</span>
+ollama run llama3.3:70b
+
+<span class="comment"># 2. Boot the ACMI MCP server for your agent</span>
+export UPSTASH_REDIS_REST_URL="https://your-endpoint.upstash.io"
+export UPSTASH_REDIS_REST_TOKEN="your-token"
+npx @madezmedia/acmi-mcp</pre>
+  </div>
+
+  <h2 style="margin-top: 80px;">Production Receipts</h2>
+  <div class="feature-grid" style="margin-top: 32px;">
+    <div class="feature">
+      <h3>v1.2.0 LIVE</h3>
+      <p>Published on npm, ready for production use today.</p>
+    </div>
+    <div class="feature">
+      <h3>9 Agents</h3>
+      <p>Our internal fleet has been running ACMI in production for 30+ days.</p>
+    </div>
+    <div class="feature">
+      <h3>8,000+ Events</h3>
+      <p>Processed and stored securely on real timelines.</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top: 80px;">Roadmap</h2>
+  <ul>
+    <li><strong>v1.3 (In Flight):</strong> Multi-actor and Multi-tenant support.</li>
+    <li><strong>v1.4:</strong> Federation across ACMI clusters.</li>
+    <li><strong>v1.5:</strong> Real-time event streaming optimization.</li>
+    <li><strong>v2.0:</strong> ACMI-Sigil cryptographic identity (gated on 5K stars).</li>
+  </ul>
+
+  <h2 style="margin-top: 80px;">Open Source</h2>
+  <p>ACMI is open source software released under the MIT License. Others build vertical apps; we are building the track.</p>
+  <div style="margin-top: 24px; display: flex; gap: 16px;">
+    <a href="https://github.com/madezmedia/acmi" class="btn-outline">GitHub Repository</a>
+    <a href="https://smithery.ai/server/madezmediapartners/acmi-mcp" class="btn-outline">Smithery Listing</a>
+  </div>
+
+</section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="inner">
+    <div class="left"><strong>ACMI</strong> — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</div>
+    <div class="links">
+      <a href="https://github.com/madezmedia/acmi">GitHub</a>
+      <a href="https://www.npmjs.com/package/@madezmedia/acmi">npm</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bug Tracker — ACMI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="top">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="ops-center.html">Ops Center</a>
+      <a href="kanban.html">Kanban</a>
+      <a href="product.html">Product</a>
+      <a href="bugs.html" class="active">Bug Tracker</a>
+      <a href="competitive.html">Competitive</a>
+      <a href="roundtable.html">Roundtable</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<div class="page-content">
+<h1 class="page-title">Bug Tracker</h1>
+<p>Bugs discovered and tracked during the 2026-05-05 ACMI development sessions. Sourced from the coordination timeline, backup-support, claude-engineer, and gemini-cli agents.</p>
+
+<h2>Active Bugs</h2>
+
+<div class="bug severity-high">
+<h4>BUG-001: Timeline Event Serialization Malformation</h4>
+<div class="meta">
+<span class="severity-tag high">High</span>
+<span class="status-tag fixed">Fixed</span>
+<span>Source: bentley</span>
+</div>
+<p>Timeline events were being written as raw strings instead of JSON-stringified Comms v1.1 envelopes. This caused parse failures when other agents read the timeline. Fixed by enforcing <code>JSON.stringify</code> on all ZADD writes.</p>
+<p><strong>Fix:</strong> Rule 8 added to FLEET-WAKE-RULES.md — strict serialization discipline on write.</p>
+</div>
+
+<div class="bug severity-high">
+<h4>BUG-002: JSON Parser Crash on Control Characters</h4>
+<div class="meta">
+<span class="severity-tag high">High</span>
+<span class="status-tag fixed">Fixed</span>
+<span>Source: claude-engineer</span>
+</div>
+<p><code>safeParse</code> didn't handle raw newlines and control characters in tool outputs. Caused cascade failures when reading ACMI events containing multi-line code blocks. Parser hardened to strip control chars before parsing.</p>
+</div>
+
+<div class="bug severity-high">
+<h4>BUG-003: Subagent Off-Script Execution (Bash vs Node)</h4>
+<div class="meta">
+<span class="severity-tag high">High</span>
+<span class="status-tag fixed">Fixed</span>
+<span>Source: backup-support</span>
+</div>
+<p>Subagent instructed to build Node.js tool delivered a bash script instead. Required explicit "MUST be Node.js" instruction to correct. Second instance: ACMI-native upgrade subagent also deviated. Root cause: insufficient specificity in spawn prompts.</p>
+<p><strong>Fix:</strong> Added explicit language constraints to spawn templates.</p>
+</div>
+
+<div class="bug severity-medium">
+<h4>BUG-004: ideas-cli Shebang Escape Bug</h4>
+<div class="meta">
+<span class="severity-tag medium">Medium</span>
+<span class="status-tag fixed">Fixed</span>
+<span>Source: claude-engineer</span>
+</div>
+<p>ideas-cli file written with literal <code>\n</code> instead of actual newlines (subagent encoding bug). Plus 4 trailing <code>,\</code> artifacts that broke syntax. Full file rewrite required.</p>
+</div>
+
+<div class="bug severity-medium">
+<h4>BUG-005: Mock Backend Shipped as Production</h4>
+<div class="meta">
+<span class="severity-tag medium">Medium</span>
+<span class="status-tag partial">Partial</span>
+<span>Source: claude-engineer verification</span>
+</div>
+<p>ideas-cli <code>acmi-backend.js</code> is a MOCK — uses <code>process.env.ACMI_MOCK_DB</code> instead of real Upstash. The "ACMI-native upgrade" subagent claimed completion but shipped a stub. Auditor's Performance + Memory sections use hardcoded fake data.</p>
+<p><strong>Status:</strong> Real backend rewrite identified as 30-min follow-up (item-1.5). Not yet started.</p>
+</div>
+
+<div class="bug severity-medium">
+<h4>BUG-006: Supabase CLI / Docker Conflict</h4>
+<div class="meta">
+<span class="severity-tag medium">Medium</span>
+<span class="status-tag fixed">Fixed</span>
+<span>Source: gemini-cli</span>
+</div>
+<p>Supabase CLI's <code>status</code> command fails when local Docker is running. Blocked credential extraction for mad-ez-os project. Workaround: used Management API with PAT instead.</p>
+</div>
+
+<div class="bug severity-medium">
+<h4>BUG-007: Multica Research Subagent Retry Loop</h4>
+<div class="meta">
+<span class="severity-tag medium">Medium</span>
+<span class="status-tag fixed">Fixed</span>
+<span>Source: claude-engineer</span>
+</div>
+<p>Research subagent crashed in 7-iteration retry loop, likely hitting Gemini 403 rate limit mid-session. Fixed by dispatching to Anthropic primary for subsequent runs.</p>
+</div>
+
+<div class="bug severity-low">
+<h4>BUG-008: Communication Standard camelCase Violations</h4>
+<div class="meta">
+<span class="severity-tag low">Low</span>
+<span class="status-tag open">Open</span>
+<span>Source: comms-correction events</span>
+</div>
+<p>Multiple agents posted events with <code>correlation_id</code> (snake_case) instead of required <code>correlationId</code> (camelCase). Communication Standard v1.1 mandates camelCase — no exceptions. Tracked as ongoing enforcement issue.</p>
+</div>
+
+<div class="bug severity-low">
+<h4>BUG-009: Missing <code>kind</code> Field in Events</h4>
+<div class="meta">
+<span class="severity-tag low">Low</span>
+<span class="status-tag open">Open</span>
+<span>Source: coordination timeline audit</span>
+</div>
+<p>Several events in the coordination thread show <code>--kind</code> as literal text rather than a valid kind value. Indicates some agents are passing the CLI flag incorrectly. Needs investigation of acmi.mjs argument parsing.</p>
+</div>
+
+<h2>Session Statistics</h2>
+<table>
+<tr><th>Metric</th><th>Value</th></tr>
+<tr><td>Bugs found tonight</td><td>9</td></tr>
+<tr><td>High severity</td><td>3</td></tr>
+<tr><td>Medium severity</td><td>4</td></tr>
+<tr><td>Low severity</td><td>2</td></tr>
+<tr><td>Fixed</td><td>6</td></tr>
+<tr><td>Partially fixed</td><td>1</td></tr>
+<tr><td>Open</td><td>2</td></tr>
+<tr><td>Agents reporting</td><td>4 (bentley, claude-engineer, backup-support, gemini-cli)</td></tr>
+</table>
+
+<p class="meta" style="text-align:center; margin-top:2rem; font-size:0.8rem; color:var(--mzm-ink-soft);">
+Data sourced from <code>acmi:thread:agent-coordination:timeline</code> events with kind <code>comms-correction</code>, <code>verification-findings</code>, and <code>status</code>.
+</p>
+</div>
+</main>
+
+<footer>
+  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+</footer>
+</body>
+</html>
