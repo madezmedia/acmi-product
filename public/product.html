@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Plan — ACMI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="top">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">ACMI</a>
+    <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+    <div class="nav-links">
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP Server</a>
+      <a href="ops-center.html">Ops Center</a>
+      <a href="kanban.html">Kanban</a>
+      <a href="product.html" class="active">Product</a>
+      <a href="bugs.html">Bug Tracker</a>
+      <a href="competitive.html">Competitive</a>
+      <a href="roundtable.html">Roundtable</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<div class="page-content">
+<h1 class="page-title">Product Plan</h1>
+
+<p>ACMI's commercial strategy: open protocol + paid cloud layer. The same model as Next.js→Vercel, Postgres→Supabase, MCP→Anthropic.</p>
+
+<h2>The Pitch</h2>
+<div style="background:var(--mzm-paper-warm);border:1px solid var(--mzm-ink-rule);border-radius:var(--mzm-radius-md);padding:1.5rem;margin:1.5rem 0;">
+<p style="font-size:1.1rem;color:var(--mzm-ink);line-height:1.7;">
+<strong>ACMI is the coordination backbone for AI agent fleets.</strong> Three Redis keys — Profile, Signals, Timeline — replace 800 lines of agent memory code. No vector databases. No knowledge graphs. No LLM calls for core operations. Sub-5ms reads. Model-agnostic. Works with every agent framework.
+</p>
+</div>
+
+<h2>User Personas</h2>
+
+<div class="feature-grid" style="margin-bottom:2rem;">
+  <div class="feature">
+    <h3>🛠️ Indie AI Builder</h3>
+    <p><strong>Who:</strong> Solo dev building multi-agent tools. Uses Claude Code, Cursor, or similar.</p>
+    <p><strong>Pain:</strong> Agents lose context between sessions. No cheap way to coordinate 2-5 agents.</p>
+    <p><strong>Value:</strong> Free tier covers their fleet. 10-minute setup. MCP-native.</p>
+  </div>
+  <div class="feature">
+    <h3>🏢 Startup CTO</h3>
+    <p><strong>Who:</strong> Leading a 5-20 person AI team. Building autonomous agent products.</p>
+    <p><strong>Pain:</strong> Agent coordination breaks at scale. No observability. Duplicate work.</p>
+    <p><strong>Value:</strong> Lock protocol prevents conflicts. Fleet dashboard shows everything.</p>
+  </div>
+  <div class="feature">
+    <h3>🔬 Research Lab</h3>
+    <p><strong>Who:</strong> Academic or corporate research team studying multi-agent systems.</p>
+    <p><strong>Pain:</strong> Need a reproducible coordination baseline for experiments.</p>
+    <p><strong>Value:</strong> MIT license. Event-sourced audit trail. Benchmark-friendly.</p>
+  </div>
+</div>
+
+<h2>Pricing Tiers</h2>
+<table>
+<tr><th>Tier</th><th>Price</th><th>Included</th></tr>
+<tr><td><strong>Open Source</strong></td><td>Free forever</td><td>Full protocol, CLI, MCP server, MIT license. Self-host with your own Redis.</td></tr>
+<tr><td><strong>Hyvmynd Cloud</strong></td><td>$0 (free tier) / $29/mo (pro)</td><td>Managed Upstash hosting, fleet dashboard, webhook ingestion, multi-tenant workspaces.</td></tr>
+<tr><td><strong>Hyvmynd Studio</strong></td><td>$49/mo</td><td>Visual debugger for Profile/Signals/Timeline, fleet visualization, team collaboration.</td></tr>
+<tr><td><strong>Enterprise</strong></td><td>Contact</td><td>On-premise, SLA, custom integrations, dedicated support.</td></tr>
+</table>
+
+<h2>MVP Scope</h2>
+<h3>✅ Shipped (v1.0–v1.2)</h3>
+<ul>
+<li>Profile, Signals, Timeline CRUD via CLI</li>
+<li>Communication Standard v1.1</li>
+<li>Lock Protocol for duplicate-work prevention</li>
+<li>MCP Server (14 tools, stdio transport)</li>
+<li>Agent extensions: spawn, bootstrap, active context, rollups</li>
+<li>Work Items for cross-session projects</li>
+<li>Multi-stream cat view</li>
+<li>Anti-dead heartbeat monitoring</li>
+</ul>
+
+<h3>🔄 Next (v1.3)</h3>
+<ul>
+<li>Webhook ingestion pipeline (Gmail, Slack, Stripe)</li>
+<li>Multi-tenant workspaces with namespace isolation</li>
+<li>REST API gateway (for non-MCP agents)</li>
+<li>Fleet dashboard (real-time visualization)</li>
+</ul>
+
+<h3>📋 Roadmap (v2.0)</h3>
+<ul>
+<li>Schema validation layer (reject malformed events at storage)</li>
+<li>Reinforcement learning loop with persistent quality scores</li>
+<li>Memory adapter interface (Hindsight, Mem0, Zep plugins)</li>
+<li>npm package as standalone install</li>
+<li>Conformance test suite for third-party adapters</li>
+</ul>
+
+<h2>Ship Timeline</h2>
+<table>
+<tr><th>Phase</th><th>Timeline</th><th>Key Deliverables</th></tr>
+<tr><td><strong>Phase 1: Indie Dev Hero</strong></td><td>Months 1–6</td><td>Manifesto essay, npm package, 5 YouTube explainers, Show HN launch, benchmark numbers</td></tr>
+<tr><td><strong>Phase 2: Thought Leader</strong></td><td>Months 6–18</td><td>Conference talks, Hyvmynd Cloud beta, arXiv preprint, podcast circuit, 10K stars</td></tr>
+<tr><td><strong>Phase 3: Founder Cred</strong></td><td>Months 18–36</td><td>Fundraise decision gate, Hyvmynd Studio launch, book deal, possible foundation donation</td></tr>
+</table>
+
+<h2>Competitive Moat</h2>
+<ul>
+<li><strong>Fleet primitives</strong> — Lock Protocol, Anti-Dead Heartbeats, RL cycle. No other memory system ships these.</li>
+<li><strong>Node.js-first</strong> — Most competitors are Python-only. ACMI targets the JS/TS ecosystem gap.</li>
+<li><strong>Redis-native thesis</strong> — Anti-SQL opinion. Sub-5ms reads with zero LLM dependency.</li>
+<li><strong>MCP-native</strong> — Works out of the box with every MCP-compatible tool. Growing standard.</li>
+<li><strong>Brand strategy</strong> — Anchor on the idea ("Agent Context Engineering"), not the artifact. Protocol-not-product positioning.</li>
+</ul>
+
+<h2>Distribution Strategy</h2>
+<ol>
+<li><strong>Show HN</strong> — "Three Redis keys for multi-agent memory." Technical credibility play.</li>
+<li><strong>Twitter/X threads</strong> — 8-12 tweet threads showing the 10-line quickstart.</li>
+<li><strong>YouTube</strong> — "Profile / Signals / Timeline in 5 minutes" weekly series.</li>
+<li><strong>Conference circuit</strong> — AI Engineer World's Fair, AI Tinkerers, Latent Space podcast.</li>
+<li><strong>Dev communities</strong> — r/LocalLLaMA, r/MachineLearning, Dev.to, Hashnode.</li>
+<li><strong>Newsletter</strong> — <code>theagentcontext.dev</code> — weekly, survives pivots.</li>
+<li><strong>Developer relations</strong> — Cold outreach to swyx, Cole Medin, Charity Majors, Upstash/Redis devrel.</li>
+</ol>
+
+</div>
+</main>
+
+<footer>
+  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+</footer>
+</body>
+</html>
