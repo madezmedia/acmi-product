@@ -77,7 +77,7 @@
     .refresh-info { font-family:var(--font-mono); font-size:0.7rem; color:var(--ink-quiet); }
 
     /* ═══ LAYOUT ═══ */
-    .layout { display:grid; grid-template-columns:260px 1fr 300px; height:calc(100vh - 48px); overflow:hidden; }
+    .layout { display:grid; grid-template-columns:260px 1fr 320px; height:calc(100vh - 48px); overflow:hidden; }
     @media(max-width:1100px) { .layout { grid-template-columns:1fr; grid-template-rows:auto 1fr auto; } }
 
     /* ═══ SIDEBAR: Fleet Tree ═══ */
@@ -87,9 +87,9 @@
     .agent-group:hover { color:var(--ink-mute); }
     .agent-toggle { font-size:0.55rem; transition:transform 0.15s; display:inline-block; }
     .agent-toggle.collapsed { transform:rotate(-90deg); }
-    .agent-item { display:flex; align-items:center; gap:0.45rem; padding:0.28rem 0.85rem; cursor:default; font-size:0.82rem; transition:background 0.12s; }
+    .agent-item { display:flex; align-items:center; gap:0.45rem; padding:0.28rem 0.85rem; cursor:pointer; font-size:0.82rem; transition:background 0.12s; border-left:2px solid transparent; }
     .agent-item:hover { background:var(--paper-warm); }
-    .agent-item.selected { background:var(--paper-warm); }
+    .agent-item.selected { background:var(--paper-warm); border-left-color:var(--accent); }
     .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
     .dot.ok { background:#22c55e; }
     .dot.warn { background:#f59e0b; }
@@ -129,28 +129,51 @@
     .sec-sub { font-size:0.72rem; color:var(--ink-quiet); }
 
     /* WORK ITEMS: Card grid */
-    .work-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:0.6rem; }
-    .work-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.8rem 0.9rem; box-shadow:var(--shadow); transition:border-color 0.15s; }
+    .work-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:0.6rem; }
+    .work-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.75rem 0.85rem; box-shadow:var(--shadow); transition:border-color 0.15s; display:flex; flex-direction:column; gap:0.45rem; }
     .work-card:hover { border-color:var(--accent); }
-    .work-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem; }
-    .work-name { font-weight:600; font-size:0.85rem; color:var(--ink); }
-    .work-pct { font-family:var(--font-mono); font-size:0.78rem; font-weight:700; }
-    .work-pct.high { color:#16a34a; }
-    .work-pct.med { color:#d97706; }
-    .work-pct.low { color:#dc2626; }
-    .work-bar { height:3px; background:var(--paper-shadow); border-radius:2px; margin-bottom:0.5rem; overflow:hidden; }
-    .work-bar-fill { height:100%; border-radius:2px; transition:width 0.4s; }
-    .work-bar-fill.high { background:#22c55e; }
-    .work-bar-fill.med { background:#f59e0b; }
-    .work-bar-fill.low { background:#ef4444; }
-    .work-tags { display:flex; flex-wrap:wrap; gap:0.25rem; }
-    .work-tag { font-size:0.65rem; padding:0.1rem 0.4rem; border-radius:3px; font-weight:500; }
+    .work-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:0.5rem; }
+    .work-name { font-weight:600; font-size:0.9rem; color:var(--ink); line-height:1.3; flex:1; }
+    .work-tags-row { display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; }
+    .work-tag { font-size:0.62rem; padding:0.1rem 0.4rem; border-radius:3px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; }
     .work-tag.shipped { background:#dcfce7; color:#166534; }
     .work-tag.live { background:#dbeafe; color:#1e40af; }
     .work-tag.deployed { background:#f0e7ff; color:#6d28d9; }
     .work-tag.ready { background:#fef3c7; color:#92400e; }
     .work-tag.draft { background:var(--paper-warm); color:var(--ink-fade); }
     .work-tag.in-progress { background:#ede9fe; color:#5b21b6; }
+    .pri-pip { font-size:0.62rem; font-weight:800; padding:0.1rem 0.38rem; border-radius:3px; letter-spacing:0.04em; }
+    .pri-p0 { background:#fef2f2; color:#dc2626; }
+    .pri-p1 { background:#fef3c7; color:#b45309; }
+    .pri-p2 { background:var(--paper-warm); color:var(--ink-fade); }
+    .work-meta { font-size:0.7rem; color:var(--ink-fade); display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+    .work-meta b { color:var(--ink-mute); font-weight:600; }
+    .work-bar { height:4px; background:var(--paper-shadow); border-radius:2px; overflow:hidden; }
+    .work-bar-fill { height:100%; border-radius:2px; transition:width 0.4s; }
+    .work-bar-fill.high { background:#22c55e; }
+    .work-bar-fill.med { background:#f59e0b; }
+    .work-bar-fill.low { background:#ef4444; }
+    .work-phase { font-family:var(--font-mono); font-size:0.68rem; color:var(--ink-mute); }
+    .work-last { font-size:0.74rem; color:var(--ink-soft); line-height:1.4; border-top:1px solid var(--paper-shadow); padding-top:0.4rem; }
+    .work-last-kind { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-quiet); margin-right:0.35rem; }
+    .work-evidence { font-family:var(--font-mono); font-size:0.62rem; color:var(--accent); font-weight:600; }
+
+    /* SWIM LANES (Active Pipeline) */
+    .lanes-wrap { display:flex; flex-direction:column; gap:0.45rem; }
+    .lane { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.55rem 0.75rem; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:0.35rem; transition:border-color 0.12s; }
+    .lane:hover { border-color:var(--accent-soft); }
+    .lane-top { display:flex; align-items:center; gap:0.5rem; }
+    .lane-cid { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-quiet); flex-shrink:0; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lane-track { flex:1; display:flex; align-items:center; gap:0.2rem; overflow-x:auto; min-width:0; }
+    .lane-pill { display:inline-flex; align-items:center; gap:0.25rem; font-family:var(--font-mono); font-size:0.6rem; font-weight:600; padding:0.12rem 0.4rem; border-radius:8px; background:var(--paper-warm); color:var(--ink-mute); white-space:nowrap; cursor:default; }
+    .lane-pill .pill-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+    .lane-arrow { font-size:0.55rem; color:var(--ink-quiet); flex-shrink:0; }
+    .lane-status { flex-shrink:0; font-size:0.68rem; }
+    .lane-status.complete { color:#16a34a; }
+    .lane-status.active { color:#2563eb; display:inline-flex; align-items:center; gap:0.25rem; }
+    .lane-status.active::before { content:''; width:6px; height:6px; border-radius:50%; background:#2563eb; animation:pulse 1.5s infinite; }
+    .lane-summary { font-size:0.74rem; color:var(--ink-soft); padding-left:128px; line-height:1.4; }
+    @media(max-width:900px) { .lane-summary { padding-left:0; } }
 
     /* EVENTS TIMELINE */
     .event-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.65rem 0.85rem; box-shadow:var(--shadow); margin-bottom:0.35rem; transition:border-color 0.12s; }
@@ -170,11 +193,13 @@
     .event-text b { color:var(--accent); font-weight:600; }
     .event-text em { font-style:normal; color:var(--ink-fade); }
 
-    /* ═══ RIGHT PANEL: Comms ═══ */
+    /* ═══ RIGHT PANEL ═══ */
     .right { border-left:1px solid var(--ink-rule); overflow-y:auto; background:#fff; display:flex; flex-direction:column; }
-    .right-hdr { padding:0.75rem 0.85rem; border-bottom:1px solid var(--ink-rule); position:sticky; top:0; background:#fff; z-index:2; }
+    .right-hdr { padding:0.7rem 0.85rem; border-bottom:1px solid var(--ink-rule); position:sticky; top:0; background:#fff; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
     .right-hdr h4 { font-family:var(--font-serif); font-size:0.95rem; font-weight:600; }
-    .comms-list { padding:0.5rem 0; flex:1; overflow-y:auto; }
+    .back-btn { font-family:var(--font-sans); font-size:0.7rem; font-weight:500; border:1px solid var(--ink-rule); border-radius:4px; background:transparent; color:var(--ink-mute); cursor:pointer; padding:3px 8px; transition:all 0.12s; }
+    .back-btn:hover { border-color:var(--ink-mute); color:var(--ink); }
+    .comms-list, .detail-pane { padding:0.5rem 0; flex:1; overflow-y:auto; }
     .comm-item { padding:0.55rem 0.85rem; border-bottom:1px solid var(--paper-shadow); }
     .comm-item:last-child { border-bottom:none; }
     .comm-meta { display:flex; gap:0.4rem; align-items:center; margin-bottom:0.2rem; }
@@ -183,11 +208,40 @@
     .comm-text { font-size:0.78rem; color:var(--ink-soft); line-height:1.45; }
     .comm-text b { color:var(--accent); font-weight:600; }
 
+    /* ═══ AGENT DETAIL PANE ═══ */
+    .detail-section { padding:0.65rem 0.85rem; border-bottom:1px solid var(--paper-shadow); }
+    .detail-section:last-child { border-bottom:none; }
+    .detail-section h5 { font-size:0.65rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-fade); margin-bottom:0.4rem; }
+    .detail-agent-hdr { display:flex; align-items:center; gap:0.5rem; padding:0.7rem 0.85rem; border-bottom:1px solid var(--paper-shadow); }
+    .detail-agent-name { font-family:var(--font-serif); font-size:1rem; font-weight:600; flex:1; }
+    .detail-kv { display:flex; gap:0.4rem; font-size:0.74rem; line-height:1.5; align-items:flex-start; }
+    .detail-kv dt { font-weight:600; color:var(--ink-mute); min-width:90px; flex-shrink:0; }
+    .detail-kv dd { color:var(--ink-soft); flex:1; word-break:break-word; }
+    .detail-kv dd.mono { font-family:var(--font-mono); font-size:0.7rem; }
+    details.detail-collapse { margin-top:0.4rem; }
+    details.detail-collapse summary { font-size:0.7rem; color:var(--ink-fade); cursor:pointer; padding:0.15rem 0; }
+    details.detail-collapse summary:hover { color:var(--ink-mute); }
+    details.detail-collapse pre { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-soft); background:var(--paper-warm); padding:0.4rem 0.5rem; border-radius:4px; margin-top:0.3rem; white-space:pre-wrap; word-break:break-word; max-height:180px; overflow-y:auto; }
+    .timeline-item { padding:0.35rem 0; border-bottom:1px dotted var(--paper-shadow); font-size:0.74rem; }
+    .timeline-item:last-child { border-bottom:none; }
+    .timeline-meta { display:flex; gap:0.35rem; align-items:center; margin-bottom:0.15rem; flex-wrap:wrap; }
+    .timeline-summary { color:var(--ink-soft); line-height:1.4; }
+    .work-touched { padding:0.35rem 0; border-bottom:1px dotted var(--paper-shadow); font-size:0.74rem; }
+    .work-touched:last-child { border-bottom:none; }
+    .work-touched-title { font-weight:600; color:var(--ink); margin-bottom:0.1rem; }
+    .work-touched-meta { font-size:0.66rem; color:var(--ink-quiet); font-family:var(--font-mono); }
+    .rollup-card { background:var(--paper-warm); border-radius:4px; padding:0.5rem 0.6rem; font-size:0.72rem; }
+    .rollup-card .rollup-cid { font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-quiet); margin-top:0.3rem; }
+    .rollup-reads { margin-top:0.4rem; }
+    .rollup-reads li { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-mute); list-style:none; padding:0.1rem 0; word-break:break-word; }
+    .rollup-reads li::before { content:'→ '; color:var(--ink-quiet); }
+
     /* ═══ LOADING / ERROR ═══ */
     .loading { text-align:center; padding:1.5rem; color:var(--ink-fade); font-size:0.85rem; }
     .loading::after { content:''; display:inline-block; width:14px; height:14px; border:2px solid var(--ink-rule); border-top-color:var(--accent); border-radius:50%; animation:spin 0.6s linear infinite; margin-left:0.4rem; vertical-align:middle; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .err-banner { background:#fef2f2; color:#dc2626; padding:0.6rem 0.85rem; border-radius:var(--radius); font-size:0.82rem; }
+    .empty { color:var(--ink-quiet); font-size:0.85rem; padding:0.6rem 0; font-style:italic; }
 
     /* ═══ MCP PANEL ═══ */
     .mcp-strip { display:flex; gap:1rem; flex-wrap:wrap; font-size:0.72rem; color:var(--ink-fade); }
@@ -246,13 +300,22 @@
       <div class="hitl-list" id="hitlList"></div>
     </div>
 
-    <!-- Work Items -->
+    <!-- Work Tracker -->
     <div>
       <div class="sec-hdr">
         <div class="sec-title">Work Tracker</div>
         <div class="sec-sub" id="workSub"></div>
       </div>
       <div class="work-grid" id="workGrid"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- Active Pipeline (Swim Lanes) -->
+    <div>
+      <div class="sec-hdr">
+        <div class="sec-title">Active Pipeline</div>
+        <div class="sec-sub" id="lanesSub"></div>
+      </div>
+      <div class="lanes-wrap" id="lanesWrap"><div class="loading">Loading…</div></div>
     </div>
 
     <!-- Events -->
@@ -265,13 +328,17 @@
     </div>
   </div>
 
-  <!-- RIGHT: Comms -->
+  <!-- RIGHT: Comms / Agent Detail -->
   <div class="right">
-    <div class="right-hd">
-      <h4>Coordination</h4>
-      <div class="sec-sub" id="commsSub" style="margin-top:0.15rem"></div>
+    <div class="right-hdr">
+      <div>
+        <h4 id="rightTitle">Coordination</h4>
+        <div class="sec-sub" id="commsSub" style="margin-top:0.15rem"></div>
+      </div>
+      <button class="back-btn" id="backBtn" style="display:none" onclick="deselectAgent()">✕ Back</button>
     </div>
     <div class="comms-list" id="commsList"><div class="loading">Loading…</div></div>
+    <div class="detail-pane" id="detailPane" style="display:none"></div>
   </div>
 
 </div>
@@ -280,7 +347,9 @@
 const BASE = window.location.origin;
 const INTERVAL = 30000;
 let countdown = INTERVAL / 1000;
-let state = { fleet:null, events:null, comms:null, hitl:null, mcp:null, stories:null };
+let state = { fleet:null, events:null, comms:null, hitl:null, mcp:null, work:null, chains:null };
+let selectedAgentId = null;
+let agentDetailCache = {};
 
 // ─── Helpers ───
 function ts(ms) {
@@ -298,9 +367,21 @@ function timeAgo(ms) {
   return Math.floor(h / 24) + 'd';
 }
 function trunc(s, n = 180) { return s && s.length > n ? s.substring(0, n) + '…' : (s || ''); }
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function fmtKind(k) {
   if (!k) return '';
   return k.replace(/^\[|\]$/g, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function kindAbbr(k) {
+  if (!k) return '?';
+  const s = k.replace(/^\[|\]$/g, '');
+  // Take first letters of each segment up to 4 chars
+  const parts = s.split(/[-_]/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0] + (parts[2]?.[0] || '')).toUpperCase();
+  return s.slice(0, 4).toUpperCase();
 }
 function agentColor(id) {
   const map = { 'claude-engineer':'#7c3aed','claude-engineer-cloud':'#7c3aed','claude-web':'#7c3aed','claude-desktop':'#7c3aed','claude-opus-4-7':'#7c3aed','claude-sonnet-4-6':'#7c3aed','claude-haiku-4-5':'#7c3aed','claude-3-haiku':'#7c3aed','bentley':'#2d4a3e','bentley-temp':'#2d4a3e','antigravity':'#c4572a','gemini-cli':'#2563eb','folana':'#db2777','drift-remediator':'#f59e0b','claude-local':'#7c3aed','claude':'#7c3aed','claude-web-sonnet':'#7c3aed','claude-web-opus':'#7c3aed','claude-web-haiku':'#7c3aed','claude-engineer-opus':'#7c3aed' };
@@ -312,7 +393,16 @@ function fwClass(fw) {
 }
 function statusClass(s) { return s === 'ok' ? 'ok' : s === 'warn' ? 'warn' : s === 'err' ? 'err' : 'idle'; }
 function pctClass(p) { return p >= 75 ? 'high' : p >= 40 ? 'med' : 'low'; }
-function tagClass(s) { return s === 'SHIPPED' ? 'shipped' : s === 'LIVE' ? 'live' : s === 'DEPLOYED' ? 'deployed' : s === 'READY' ? 'ready' : 'draft'; }
+function tagClass(s) {
+  const u = (s || '').toUpperCase();
+  return u === 'SHIPPED' ? 'shipped' : u === 'LIVE' ? 'live' : u === 'DEPLOYED' ? 'deployed' : u === 'READY' ? 'ready' : u === 'IN_PROGRESS' ? 'in-progress' : 'draft';
+}
+function priClass(p) {
+  const u = (p || '').toUpperCase();
+  if (u === 'P0') return 'pri-p0';
+  if (u === 'P1') return 'pri-p1';
+  return 'pri-p2';
+}
 
 // ─── Render: Fleet Tree ───
 function renderFleet() {
@@ -328,25 +418,54 @@ function renderFleet() {
   let html = '';
   function renderNode(n, depth = 0) {
     const cls = depth === 0 ? '' : depth === 1 ? 'indent' : 'indent-2';
-    const hasKids = n.children?.length > 0;
     if (!n.model && !n.status) {
-      html += `<div class="agent-group ${cls}" onclick="this.querySelector('.agent-toggle')?.classList.toggle('collapsed');for(let s=this.nextElementSibling;s&&s.classList.contains(cls);s=s.nextElementSibling)s.style.display=s.style.display==='none'?'':'none'">
-        <span class="agent-toggle">▼</span> ${n.label || n.id}
+      html += `<div class="agent-group ${cls}" data-group="1">
+        <span class="agent-toggle">▼</span> ${escapeHtml(n.label || n.id)}
       </div>`;
     } else {
       const sc = statusClass(n.status);
       const fw = fwClass(n.framework);
-      const mdl = (n.model || '').split('/').pop();
-      html += `<div class="agent-item ${cls}">
+      const aid = n.id || n.label || '';
+      const selCls = aid === selectedAgentId ? 'selected' : '';
+      html += `<div class="agent-item ${cls} ${selCls}" data-agent-id="${escapeHtml(aid)}" data-framework="${escapeHtml(n.framework || '')}" data-label="${escapeHtml(n.label || aid)}">
         <span class="dot ${sc}"></span>
-        <span class="agent-label">${n.label || n.id}</span>
-        ${fw ? `<span class="agent-fw ${fw}">${(n.framework||'').slice(0,2).toUpperCase()}</span>` : ''}
+        <span class="agent-label">${escapeHtml(n.label || n.id)}</span>
+        ${fw ? `<span class="agent-fw ${fw}">${escapeHtml((n.framework||'').slice(0,2).toUpperCase())}</span>` : ''}
       </div>`;
     }
     (n.children || []).forEach(c => renderNode(c, depth + 1));
   }
   renderNode(f.fleet);
   el.innerHTML = html;
+
+  // Wire group toggles
+  el.querySelectorAll('.agent-group').forEach(g => {
+    g.addEventListener('click', () => {
+      const tog = g.querySelector('.agent-toggle');
+      tog?.classList.toggle('collapsed');
+      const collapsed = tog?.classList.contains('collapsed');
+      let s = g.nextElementSibling;
+      while (s && !s.classList.contains('agent-group')) {
+        if (s.classList.contains('agent-item') || s.classList.contains('indent') || s.classList.contains('indent-2')) {
+          s.style.display = collapsed ? 'none' : '';
+        }
+        s = s.nextElementSibling;
+      }
+    });
+  });
+
+  // Wire agent click handlers
+  el.querySelectorAll('.agent-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const aid = item.getAttribute('data-agent-id');
+      if (!aid) return;
+      selectAgent(aid, {
+        label: item.getAttribute('data-label'),
+        framework: item.getAttribute('data-framework'),
+      });
+    });
+  });
 }
 
 // ─── Render: HITL ───
@@ -366,8 +485,8 @@ function renderHITL() {
     seen.add(key);
     html += `<div class="hitl-item">
       <span class="hitl-time">${ts(item.ts)}</span>
-      <span class="hitl-text">${trunc(item.summary, 150)}</span>
-      <span class="hitl-source">${item.source || ''}</span>
+      <span class="hitl-text">${escapeHtml(trunc(item.summary, 150))}</span>
+      <span class="hitl-source">${escapeHtml(item.source || '')}</span>
     </div>`;
   });
   if (h.count_pending > 6) html += `<div style="font-size:0.75rem;color:var(--ink-quiet);padding:0.35rem 0;">+${h.count_pending - 6} more</div>`;
@@ -399,15 +518,15 @@ function renderEvents() {
     else if (k.includes('drift')) kindCls += ' drift';
 
     const ac = agentColor(e.a || e.source || '');
-    let text = trunc(e.text || e.summary || '', 280);
+    let text = escapeHtml(trunc(e.text || e.summary || '', 280));
     text = text.replace(/\[([^\]]+)\]/g, '<b>[$1]</b>');
     text = text.replace(/@([\w-]+)/g, '<em> @$1</em>');
 
     html += `<div class="event-card">
       <div class="event-meta">
         <span class="event-time">${ts(e.ts)}</span>
-        <span class="event-who" style="color:${ac}">${e.a || e.source || ''}</span>
-        <span class="${kindCls}">${fmtKind(k)}</span>
+        <span class="event-who" style="color:${ac}">${escapeHtml(e.a || e.source || '')}</span>
+        <span class="${kindCls}">${escapeHtml(fmtKind(k))}</span>
       </div>
       <div class="event-text">${text}</div>
     </div>`;
@@ -421,18 +540,18 @@ function renderComms() {
   const sub = document.getElementById('commsSub');
   const c = state.comms;
   if (!c?.events) { el.innerHTML = '<div class="err-banner">Comms API error</div>'; return; }
-  sub.textContent = c.count + ' messages';
+  if (!selectedAgentId) sub.textContent = c.count + ' messages';
 
   let html = '';
   c.events.slice(0, 30).forEach(e => {
     const ac = agentColor(e.a || e.source || '');
-    let text = trunc(e.summary || '', 200);
+    let text = escapeHtml(trunc(e.summary || '', 200));
     text = text.replace(/\[([^\]]+)\]/g, '<b>[$1]</b>');
     text = text.replace(/@([\w-]+)/g, '<em> @$1</em>');
     html += `<div class="comm-item">
       <div class="comm-meta">
         <span class="comm-time">${ts(e.ts)}</span>
-        <span class="comm-who" style="color:${ac}">${e.a || e.source || ''}</span>
+        <span class="comm-who" style="color:${ac}">${escapeHtml(e.a || e.source || '')}</span>
       </div>
       <div class="comm-text">${text}</div>
     </div>`;
@@ -440,43 +559,124 @@ function renderComms() {
   el.innerHTML = html || '<div style="color:var(--ink-quiet);font-size:0.85rem;">No messages</div>';
 }
 
-// ─── Render: Stories (Work Items) ───
-function renderStories() {
+// ─── Render: Work Items ───
+function renderWork() {
   const el = document.getElementById('workGrid');
   const sub = document.getElementById('workSub');
-  const s = state.stories;
-  if (!s?.columns) { el.innerHTML = '<div class="err-banner">Stories API error</div>'; return; }
+  const w = state.work;
+  if (!w?.items) { el.innerHTML = '<div class="err-banner">Work API error</div>'; return; }
 
-  let total = 0, shipped = 0;
-  Object.values(s.columns).forEach(items => { total += items.length; });
-  sub.textContent = total + ' items across ' + s.vocab.join(' → ');
-
-  // Show all items, newest first (SHIPPED → LIVE → DEPLOYED → READY → DRAFT)
-  let allItems = [];
-  const order = ['DRAFT','READY','SHIPPED','DEPLOYED','LIVE'];
-  order.forEach(col => {
-    (s.columns[col] || []).forEach(item => {
-      allItems.push({ ...item, status: col });
-    });
+  // Sort: P0 first, then by last_event_ts desc
+  const items = [...w.items].sort((a, b) => {
+    const pa = (a.priority || 'P2').toUpperCase();
+    const pb = (b.priority || 'P2').toUpperCase();
+    if (pa !== pb) {
+      if (pa === 'P0') return -1;
+      if (pb === 'P0') return 1;
+      if (pa === 'P1') return -1;
+      if (pb === 'P1') return 1;
+    }
+    return (b.last_event_ts || 0) - (a.last_event_ts || 0);
   });
-  // Reverse: show highest status first
-  allItems.reverse();
+
+  // Sub-line counts
+  const total = items.length;
+  const liveCount = items.filter(i => (i.status || '').toUpperCase() === 'LIVE').length;
+  const p0Count = items.filter(i => (i.priority || '').toUpperCase() === 'P0').length;
+  const subParts = [`${total} item${total === 1 ? '' : 's'}`];
+  if (liveCount) subParts.push(`${liveCount} LIVE`);
+  if (p0Count) subParts.push(`${p0Count} P0`);
+  sub.textContent = subParts.join(' · ');
 
   let html = '';
-  allItems.slice(0, 24).forEach(item => {
-    const tagCls = tagClass(item.status);
+  items.slice(0, 24).forEach(item => {
+    const status = (item.status || 'DRAFT').toUpperCase();
+    const tagCls = tagClass(status);
+    const priority = (item.priority || 'P2').toUpperCase();
+    const priCls = priClass(priority);
+    const pct = item.phase_progress_pct != null
+      ? Math.max(0, Math.min(100, Math.round(item.phase_progress_pct)))
+      : (item.phases_total ? Math.round((item.phases_complete / item.phases_total) * 100) : 0);
+    const pCls = pctClass(pct);
     const owner = item.owner && item.owner !== '—' ? item.owner : '';
-    const evidence = item.evidence > 0 ? `<span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-quiet)">${item.evidence} evidence</span>` : '';
+    const lastSummary = trunc(item.last_event_summary || '', 100);
+    const lastKind = item.last_event_kind ? fmtKind(item.last_event_kind) : '';
+    const evidence = (item.evidence_count || 0) > 0 ? `<span class="work-evidence">${item.evidence_count} evidence</span>` : '';
+    const phaseStr = item.phases_total ? `${item.phases_complete || 0}/${item.phases_total}` : '';
+    const ageStr = item.last_event_ts ? timeAgo(item.last_event_ts) : (item.age_iso || '');
+
     html += `<div class="work-card">
       <div class="work-hdr">
-        <div class="work-name">${item.title || item.id}</div>
-        <span class="work-tag ${tagCls}">${item.status}</span>
+        <div class="work-name">${escapeHtml(item.title || item.id)}</div>
+        <div class="work-tags-row">
+          <span class="pri-pip ${priCls}">${escapeHtml(priority)}</span>
+          <span class="work-tag ${tagCls}">${escapeHtml(status)}</span>
+        </div>
       </div>
-      ${owner ? `<div style="font-size:0.72rem;color:var(--ink-fade);margin-bottom:0.35rem">${owner} · ${item.age || '—'} ${evidence}</div>` : `<div style="font-size:0.72rem;color:var(--ink-fade);margin-bottom:0.35rem">${item.age || '—'} ${evidence}</div>`}
-      ${item.live ? '<span style="font-size:0.6rem;font-weight:700;color:#22c55e">● LIVE</span>' : ''}
+      <div class="work-meta">
+        ${owner ? `<span><b>${escapeHtml(owner)}</b></span>` : ''}
+        ${ageStr ? `<span>· ${escapeHtml(ageStr)} ago</span>` : ''}
+        ${evidence ? `<span>· ${evidence}</span>` : ''}
+      </div>
+      ${phaseStr ? `
+      <div>
+        <div class="work-bar"><div class="work-bar-fill ${pCls}" style="width:${pct}%"></div></div>
+        <div class="work-phase">phase ${phaseStr} · ${pct}%</div>
+      </div>` : ''}
+      ${lastSummary ? `<div class="work-last">
+        ${lastKind ? `<span class="work-last-kind">${escapeHtml(lastKind)}</span>` : ''}${escapeHtml(lastSummary)}
+      </div>` : ''}
     </div>`;
   });
-  el.innerHTML = html || '<div style="color:var(--ink-quiet);font-size:0.85rem;">No work items</div>';
+  el.innerHTML = html || '<div class="empty">No work items</div>';
+}
+
+// ─── Render: Active Pipeline Swim Lanes ───
+function renderChains() {
+  const el = document.getElementById('lanesWrap');
+  const sub = document.getElementById('lanesSub');
+  const c = state.chains;
+  if (!c?.chains) { el.innerHTML = '<div class="err-banner">Chains API error</div>'; return; }
+
+  const chains = [...c.chains].sort((a, b) => (b.last_ts || 0) - (a.last_ts || 0));
+  const visible = chains.slice(0, 12);
+  sub.textContent = `Last 30 min — ${chains.length} chain${chains.length === 1 ? '' : 's'} in flight`;
+
+  if (!visible.length) {
+    el.innerHTML = '<div class="empty">No active chains in last 30 min — fleet idle</div>';
+    return;
+  }
+
+  let html = '';
+  visible.forEach(ch => {
+    const cid = ch.root_correlation_id || '—';
+    const cidShort = trunc(cid, 18);
+    const events = ch.events || [];
+    let trackHtml = '';
+    events.slice(0, 18).forEach((ev, idx) => {
+      const ac = agentColor(ev.agent || '');
+      const abbr = kindAbbr(ev.kind || '');
+      const tip = `${ev.agent || '?'} · ${ev.kind || '?'}\n${ts(ev.ts)}\n${ev.summary || ''}`;
+      trackHtml += `${idx > 0 ? '<span class="lane-arrow">›</span>' : ''}<span class="lane-pill" title="${escapeHtml(tip)}"><span class="pill-dot" style="background:${ac}"></span>${escapeHtml(abbr)}</span>`;
+    });
+    if (events.length > 18) trackHtml += `<span class="lane-arrow">… +${events.length - 18}</span>`;
+
+    const statusHtml = ch.is_complete
+      ? `<span class="lane-status complete" title="complete">✓</span>`
+      : `<span class="lane-status active" title="active">live</span>`;
+
+    const summary = trunc(ch.last_event_summary || '', 120);
+
+    html += `<div class="lane">
+      <div class="lane-top">
+        <span class="lane-cid mono" title="${escapeHtml(cid)}">${escapeHtml(cidShort)}</span>
+        <span class="lane-track">${trackHtml}</span>
+        ${statusHtml}
+      </div>
+      ${summary ? `<div class="lane-summary">${escapeHtml(summary)}</div>` : ''}
+    </div>`;
+  });
+  el.innerHTML = html;
 }
 
 // ─── Render: MCP ───
@@ -485,25 +685,185 @@ function renderMCP() {
   const m = state.mcp;
   if (!m) { el.innerHTML = '<span class="meta">MCP offline</span>'; return; }
   el.innerHTML = `
-    <div class="mcp-kv"><dt>MCP Server</dt><dd class="mono">${m.name || '—'} v${m.version || '?'}</dd></div>
-    <div class="mcp-kv"><dt>Protocol</dt><dd class="mono">${m.protocolVersion || '?'}</dd></div>
+    <div class="mcp-kv"><dt>MCP Server</dt><dd class="mono">${escapeHtml(m.name || '—')} v${escapeHtml(m.version || '?')}</dd></div>
+    <div class="mcp-kv"><dt>Protocol</dt><dd class="mono">${escapeHtml(m.protocolVersion || '?')}</dd></div>
     <div class="mcp-kv"><dt>Tools</dt><dd class="mono">${m.toolCount || 0}</dd></div>
-    <div class="mcp-kv"><dt>Transport</dt><dd class="mono">${m.transport || '?'}</dd></div>
+    <div class="mcp-kv"><dt>Transport</dt><dd class="mono">${escapeHtml(m.transport || '?')}</dd></div>
   `;
+}
+
+// ─── Agent Detail (right-pane toggle) ───
+async function selectAgent(agentId, hint) {
+  selectedAgentId = agentId;
+  // Highlight selected
+  document.querySelectorAll('.agent-item').forEach(i => {
+    i.classList.toggle('selected', i.getAttribute('data-agent-id') === agentId);
+  });
+  // Toggle pane visibility
+  document.getElementById('commsList').style.display = 'none';
+  document.getElementById('detailPane').style.display = 'block';
+  document.getElementById('backBtn').style.display = 'inline-block';
+  document.getElementById('rightTitle').textContent = 'Agent Detail';
+  document.getElementById('commsSub').textContent = hint?.label || agentId;
+
+  // Loading state
+  document.getElementById('detailPane').innerHTML = '<div class="loading">Loading agent…</div>';
+
+  try {
+    const res = await fetch(BASE + '/api/agent/' + encodeURIComponent(agentId));
+    const data = await res.json();
+    agentDetailCache[agentId] = data;
+    renderAgentDetail(agentId, data, hint);
+  } catch (err) {
+    document.getElementById('detailPane').innerHTML = `<div class="err-banner" style="margin:0.85rem;">Failed to load agent ${escapeHtml(agentId)}</div>`;
+  }
+}
+
+function deselectAgent() {
+  selectedAgentId = null;
+  document.querySelectorAll('.agent-item.selected').forEach(i => i.classList.remove('selected'));
+  document.getElementById('commsList').style.display = '';
+  document.getElementById('detailPane').style.display = 'none';
+  document.getElementById('backBtn').style.display = 'none';
+  document.getElementById('rightTitle').textContent = 'Coordination';
+  // Restore comms sub
+  if (state.comms?.count != null) {
+    document.getElementById('commsSub').textContent = state.comms.count + ' messages';
+  } else {
+    document.getElementById('commsSub').textContent = '';
+  }
+}
+
+function renderAgentDetail(agentId, data, hint) {
+  const el = document.getElementById('detailPane');
+  const profile = data?.profile || {};
+  const signals = data?.signals || {};
+  const timeline = Array.isArray(data?.timeline) ? data.timeline : [];
+  const rollup = data?.rollup_latest;
+  const ac = agentColor(agentId);
+  const fw = profile.framework || hint?.framework || '';
+  const fwCls = fwClass(fw);
+
+  // Header
+  let html = `<div class="detail-agent-hdr">
+    <span class="dot ${statusClass(signals.status)}" style="background:${ac}"></span>
+    <span class="detail-agent-name">${escapeHtml(profile.label || hint?.label || agentId)}</span>
+    ${fw ? `<span class="agent-fw ${fwCls}">${escapeHtml(fw.slice(0, 2).toUpperCase())}</span>` : ''}
+  </div>`;
+
+  // Profile
+  html += `<div class="detail-section"><h5>Profile</h5>`;
+  const profileFields = [
+    ['ID', agentId, true],
+    ['Model', profile.model || '—', true],
+    ['Role', profile.role || '—', false],
+    ['Scope', profile.scope || '—', false],
+  ];
+  profileFields.forEach(([k, v, mono]) => {
+    html += `<dl class="detail-kv"><dt>${escapeHtml(k)}</dt><dd${mono ? ' class="mono"' : ''}>${escapeHtml(String(v))}</dd></dl>`;
+  });
+  if (profile.behavioral_invariants) {
+    const bi = Array.isArray(profile.behavioral_invariants) ? profile.behavioral_invariants.join('\n') : (typeof profile.behavioral_invariants === 'object' ? JSON.stringify(profile.behavioral_invariants, null, 2) : String(profile.behavioral_invariants));
+    html += `<details class="detail-collapse"><summary>behavioral_invariants ▾</summary><pre>${escapeHtml(bi)}</pre></details>`;
+  }
+  html += `</div>`;
+
+  // Signals
+  html += `<div class="detail-section"><h5>Signals</h5>`;
+  if (Object.keys(signals).length === 0) {
+    html += `<div class="empty">No signals</div>`;
+  } else {
+    const sigOrder = ['status', 'current_focus', 'last_heartbeat', 'mode', 'lane', 'health'];
+    const seen = new Set();
+    sigOrder.forEach(k => {
+      if (signals[k] != null) {
+        seen.add(k);
+        const v = k === 'last_heartbeat' && typeof signals[k] === 'number' ? timeAgo(signals[k]) + ' ago' : signals[k];
+        html += `<dl class="detail-kv"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(String(v))}</dd></dl>`;
+      }
+    });
+    Object.keys(signals).forEach(k => {
+      if (seen.has(k)) return;
+      const v = signals[k];
+      if (v == null || typeof v === 'object') return;
+      html += `<dl class="detail-kv"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(String(v))}</dd></dl>`;
+    });
+  }
+  html += `</div>`;
+
+  // Recent Timeline
+  html += `<div class="detail-section"><h5>Recent Timeline</h5>`;
+  if (!timeline.length) {
+    html += `<div class="empty">No recent events</div>`;
+  } else {
+    timeline.slice(0, 10).forEach(e => {
+      const k = e.kind || '';
+      let kCls = 'event-kind-tag';
+      if (k.includes('hitl')) kCls += ' hitl';
+      else if (k.includes('milestone') || k.includes('shipped')) kCls += ' shipped';
+      else if (k.includes('roundtable')) kCls += ' roundtable';
+      else if (k.includes('drift')) kCls += ' drift';
+      html += `<div class="timeline-item">
+        <div class="timeline-meta">
+          <span class="event-time">${ts(e.ts)}</span>
+          <span class="${kCls}">${escapeHtml(fmtKind(k))}</span>
+        </div>
+        <div class="timeline-summary">${escapeHtml(trunc(e.summary || e.text || '', 180))}</div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  // Recent Work Items touched (derive from state.work)
+  html += `<div class="detail-section"><h5>Recent Work Items</h5>`;
+  const workItems = state.work?.items || [];
+  const touched = workItems.filter(it => it.owner === agentId || (it.signals && (it.signals.last_actor === agentId || it.signals.owner === agentId))).slice(0, 5);
+  if (!touched.length) {
+    html += `<div class="empty">No work items linked</div>`;
+  } else {
+    touched.forEach(it => {
+      const status = (it.status || 'DRAFT').toUpperCase();
+      html += `<div class="work-touched">
+        <div class="work-touched-title">${escapeHtml(it.title || it.id)}</div>
+        <div class="work-touched-meta">${escapeHtml(status)} · ${escapeHtml((it.priority || 'P2').toUpperCase())} · ${it.last_event_ts ? timeAgo(it.last_event_ts) + ' ago' : '—'}</div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  // Rollup pointer
+  if (rollup) {
+    html += `<div class="detail-section"><h5>Rollup Pointer</h5>`;
+    html += `<div class="rollup-card">
+      <div>${escapeHtml(trunc(rollup.summary || rollup.title || 'rollup', 200))}</div>
+      ${rollup.cid ? `<div class="rollup-cid">cid: ${escapeHtml(rollup.cid)}</div>` : ''}`;
+    const reads = rollup.next_session_first_reads || rollup.first_reads || [];
+    if (Array.isArray(reads) && reads.length) {
+      html += `<ul class="rollup-reads">`;
+      reads.forEach(r => {
+        html += `<li>${escapeHtml(typeof r === 'string' ? r : (r.path || r.cid || JSON.stringify(r)))}</li>`;
+      });
+      html += `</ul>`;
+    }
+    html += `</div></div>`;
+  }
+
+  el.innerHTML = html;
 }
 
 // ─── Fetch All ───
 async function fetchAll() {
-  const [fleet, hitl, events, comms, mcp, stories] = await Promise.all([
+  const [fleet, hitl, events, comms, mcp, work, chains] = await Promise.all([
     fetch(BASE + '/api/fleet').then(r => r.json()).catch(() => null),
     fetch(BASE + '/api/hitl').then(r => r.json()).catch(() => null),
     fetch(BASE + '/api/events?limit=100').then(r => r.json()).catch(() => null),
     fetch(BASE + '/api/comms').then(r => r.json()).catch(() => null),
     fetch(BASE + '/api/mcp').then(r => r.json()).catch(() => null),
-    fetch(BASE + '/api/stories').then(r => r.json()).catch(() => null),
+    fetch(BASE + '/api/work').then(r => r.json()).catch(() => null),
+    fetch(BASE + '/api/chains').then(r => r.json()).catch(() => null),
   ]);
 
-  state = { fleet, events, comms, hitl, mcp, stories };
+  state = { fleet, events, comms, hitl, mcp, work, chains };
 
   // Status indicator
   const dot = document.getElementById('dot');
@@ -516,8 +876,19 @@ async function fetchAll() {
   renderHITL();
   renderEvents();
   renderComms();
-  renderStories();
+  renderWork();
+  renderChains();
   renderMCP();
+
+  // Refresh agent detail if one is selected
+  if (selectedAgentId) {
+    try {
+      const res = await fetch(BASE + '/api/agent/' + encodeURIComponent(selectedAgentId));
+      const data = await res.json();
+      agentDetailCache[selectedAgentId] = data;
+      renderAgentDetail(selectedAgentId, data, { label: selectedAgentId });
+    } catch (e) { /* keep prior render */ }
+  }
 
   countdown = INTERVAL / 1000;
 }
