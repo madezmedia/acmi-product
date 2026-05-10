@@ -175,6 +175,38 @@
     .lane-summary { font-size:0.74rem; color:var(--ink-soft); padding-left:128px; line-height:1.4; }
     @media(max-width:900px) { .lane-summary { padding-left:0; } }
 
+    /* GPU AGENTS (mirrors HF Space loop) */
+    .gpu-hero { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.5rem; margin-bottom:0.75rem; }
+    .gpu-stat { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.55rem 0.75rem; box-shadow:var(--shadow); }
+    .gpu-stat-label { font-size:0.62rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-fade); margin-bottom:0.2rem; }
+    .gpu-stat-value { font-family:var(--font-serif); font-size:1.45rem; font-weight:600; color:var(--ink); line-height:1; }
+    .gpu-stat-sub { font-family:var(--font-mono); font-size:0.6rem; color:var(--ink-quiet); margin-top:0.2rem; }
+    .gpu-frameworks { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:0.4rem; margin-bottom:0.75rem; }
+    .gpu-fw { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.5rem 0.7rem; box-shadow:var(--shadow); }
+    .gpu-fw-row { display:flex; align-items:baseline; justify-content:space-between; gap:0.4rem; }
+    .gpu-fw-label { font-size:0.78rem; font-weight:600; color:var(--ink); }
+    .gpu-fw-count { font-family:var(--font-mono); font-size:0.85rem; font-weight:700; }
+    .gpu-fw-bar { height:3px; background:var(--paper-shadow); border-radius:2px; margin-top:0.35rem; overflow:hidden; }
+    .gpu-fw-bar-fill { height:100%; transition:width 0.4s; }
+    .gpu-fw.fw-trigger    .gpu-fw-bar-fill { background:#7c3aed; }
+    .gpu-fw.fw-langchain  .gpu-fw-bar-fill { background:var(--fw-langgraph); }
+    .gpu-fw.fw-crewai     .gpu-fw-bar-fill { background:var(--fw-crewai); }
+    .gpu-fw.fw-researcher  .gpu-fw-bar-fill { background:#2563eb; }
+    .gpu-fw.fw-synthesizer .gpu-fw-bar-fill { background:#16a34a; }
+    .gpu-fw.fw-publisher   .gpu-fw-bar-fill { background:#db2777; }
+    .gpu-fw.fw-trigger    .gpu-fw-count { color:#7c3aed; }
+    .gpu-fw.fw-langchain  .gpu-fw-count { color:var(--fw-langgraph); }
+    .gpu-fw.fw-crewai     .gpu-fw-count { color:var(--fw-crewai); }
+    .gpu-fw.fw-researcher  .gpu-fw-count { color:#2563eb; }
+    .gpu-fw.fw-synthesizer .gpu-fw-count { color:#16a34a; }
+    .gpu-fw.fw-publisher   .gpu-fw-count { color:#db2777; }
+    .gpu-fw.zero { opacity:0.5; }
+    .gpu-fw.zero .gpu-fw-count { color:var(--ink-quiet); }
+    .gpu-empty { padding:1rem; color:var(--ink-fade); font-size:0.82rem; text-align:center; background:var(--paper-warm); border-radius:var(--radius); }
+    .gpu-source-strip { display:flex; flex-wrap:wrap; gap:0.3rem; font-size:0.7rem; color:var(--ink-fade); }
+    .gpu-source-tag { font-family:var(--font-mono); padding:0.1rem 0.45rem; border-radius:3px; background:var(--paper-warm); }
+    .gpu-source-tag b { color:var(--ink); font-weight:700; }
+
     /* EVENTS TIMELINE */
     .event-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.65rem 0.85rem; box-shadow:var(--shadow); margin-bottom:0.35rem; transition:border-color 0.12s; }
     .event-card:hover { border-color:var(--accent-soft); }
@@ -316,6 +348,15 @@
       <div class="work-grid" id="workGrid"><div class="loading">Loading…</div></div>
     </div>
 
+    <!-- GPU Agents (MI300X) — mirrors HF Space loop -->
+    <div>
+      <div class="sec-hdr">
+        <div class="sec-title">GPU Agents <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-quiet);font-weight:400;letter-spacing:0.05em;margin-left:0.4rem">MI300X · 192GB HBM3</span></div>
+        <div class="sec-sub" id="gpuSub"></div>
+      </div>
+      <div id="gpuPanel"><div class="loading">Loading…</div></div>
+    </div>
+
     <!-- Active Pipeline (Swim Lanes) -->
     <div>
       <div class="sec-hdr">
@@ -354,7 +395,7 @@
 const BASE = window.location.origin;
 const INTERVAL = 30000;
 let countdown = INTERVAL / 1000;
-let state = { fleet:null, events:null, comms:null, hitl:null, mcp:null, work:null, chains:null };
+let state = { fleet:null, events:null, comms:null, hitl:null, mcp:null, work:null, chains:null, gpu:null };
 let selectedAgentId = null;
 let agentDetailCache = {};
 
@@ -506,16 +547,33 @@ function renderEvents() {
   const sub = document.getElementById('eventSub');
   const ev = state.events;
   if (!ev?.events) { el.innerHTML = '<div class="err-banner">Events API error</div>'; return; }
-  sub.textContent = ev.count + ' events';
+  // Dedupe by correlationId — /api/events polls 30 keys, so the same event posted
+  // to multiple timelines surfaces multiple times. Same-cid dedup collapses those
+  // into one card. Fall back to (summary+kind) for events without a cid.
+  const seenCid = new Set();
+  const seenFallback = new Set();
+  const deduped = [];
+  for (const e of ev.events || []) {
+    const cid = e.correlationId || e.cid || e.correlation_id;
+    if (cid) {
+      if (seenCid.has(cid)) continue;
+      seenCid.add(cid);
+    } else {
+      const fb = trunc(e.summary || e.text, 80) + ':' + (e.kind || '');
+      if (seenFallback.has(fb)) continue;
+      seenFallback.add(fb);
+    }
+    deduped.push(e);
+  }
+  sub.textContent = deduped.length + ' unique · ' + (ev.count || 0) + ' raw';
 
+  // Drift events: collapse repetitive ticks into one row.
   const seen = new Set();
   let html = '';
-  ev.events.slice(0, 35).forEach(e => {
+  deduped.slice(0, 35).forEach(e => {
     const key = trunc(e.summary || e.text, 50) + e.kind;
     if (key.includes('drift') && seen.has('drift')) return;
     if (key.includes('drift')) seen.add('drift');
-    if (seen.has(key)) return;
-    seen.add(key);
 
     let kindCls = 'event-kind-tag';
     const k = e.kind || '';
@@ -858,9 +916,60 @@ function renderAgentDetail(agentId, data, hint) {
   el.innerHTML = html;
 }
 
+// ─── Render: GPU Agents (mirrors HF Space loop) ───
+function renderGPU() {
+  const el = document.getElementById('gpuPanel');
+  const sub = document.getElementById('gpuSub');
+  const g = state.gpu;
+  if (!g || !g.ok) { el.innerHTML = '<div class="err-banner">GPU API error</div>'; return; }
+  const h = g.hero || {};
+  sub.textContent = `${h.total_events||0} events · ${h.events_per_hour||0}/hr · ${h.unique_chains||0} chains · ${h.active_frameworks||0}/6 active · last ${g.window_hours||24}h`;
+
+  if (!h.total_events) {
+    el.innerHTML = '<div class="gpu-empty">MI300X idle — no events on <span class="mono">acmi:thread:demo-amd-chain:timeline</span> in last ' + (g.window_hours||24) + 'h</div>';
+    return;
+  }
+
+  // Hero stats (4 cards)
+  let html = '<div class="gpu-hero">';
+  html += `<div class="gpu-stat"><div class="gpu-stat-label">Events</div><div class="gpu-stat-value">${h.total_events.toLocaleString()}</div><div class="gpu-stat-sub">last ${g.window_hours||24}h</div></div>`;
+  html += `<div class="gpu-stat"><div class="gpu-stat-label">Chains</div><div class="gpu-stat-value">${h.unique_chains.toLocaleString()}</div><div class="gpu-stat-sub">${h.completed_chains||0} completed</div></div>`;
+  html += `<div class="gpu-stat"><div class="gpu-stat-label">Throughput</div><div class="gpu-stat-value">${h.events_per_hour}<span style="font-size:0.7rem;color:var(--ink-fade);font-weight:400"> /hr</span></div><div class="gpu-stat-sub">on MI300X</div></div>`;
+  html += `<div class="gpu-stat"><div class="gpu-stat-label">Frameworks</div><div class="gpu-stat-value">${h.active_frameworks}<span style="font-size:0.7rem;color:var(--ink-fade);font-weight:400"> /6</span></div><div class="gpu-stat-sub">co-resident · 192GB HBM3</div></div>`;
+  html += '</div>';
+
+  // 6 framework lanes — bars like HF Space "per-framework comparison"
+  html += '<div class="gpu-frameworks">';
+  const maxCount = Math.max(...(g.framework_lanes || []).map(l => l.count), 1);
+  (g.framework_lanes || []).forEach(l => {
+    const widthPct = Math.max(2, Math.round((l.count / maxCount) * 100));
+    const cls = `gpu-fw fw-${l.key}` + (l.count === 0 ? ' zero' : '');
+    html += `<div class="${cls}">
+      <div class="gpu-fw-row">
+        <span class="gpu-fw-label">${escapeHtml(l.label)}</span>
+        <span class="gpu-fw-count">${l.count.toLocaleString()}</span>
+      </div>
+      <div class="gpu-fw-bar"><div class="gpu-fw-bar-fill" style="width:${widthPct}%"></div></div>
+      <div style="font-size:0.62rem;color:var(--ink-quiet);margin-top:0.25rem">${l.pct}%</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  // By-source strip (compact)
+  if (g.by_source && g.by_source.length) {
+    html += '<div class="gpu-source-strip"><span class="meta" style="font-size:0.62rem">Sources:</span>';
+    g.by_source.slice(0, 8).forEach(s => {
+      html += `<span class="gpu-source-tag"><b>${escapeHtml(s.source)}</b> ${s.count}</span>`;
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
 // ─── Fetch All ───
 async function fetchAll() {
-  const [fleet, hitl, events, comms, mcp, work, chains] = await Promise.all([
+  const [fleet, hitl, events, comms, mcp, work, chains, gpu] = await Promise.all([
     fetch(BASE + '/api/fleet').then(r => r.json()).catch(() => null),
     fetch(BASE + '/api/hitl').then(r => r.json()).catch(() => null),
     fetch(BASE + '/api/events?limit=100').then(r => r.json()).catch(() => null),
@@ -868,9 +977,10 @@ async function fetchAll() {
     fetch(BASE + '/api/mcp').then(r => r.json()).catch(() => null),
     fetch(BASE + '/api/work').then(r => r.json()).catch(() => null),
     fetch(BASE + '/api/chains').then(r => r.json()).catch(() => null),
+    fetch(BASE + '/api/gpu').then(r => r.json()).catch(() => null),
   ]);
 
-  state = { fleet, events, comms, hitl, mcp, work, chains };
+  state = { fleet, events, comms, hitl, mcp, work, chains, gpu };
 
   // Status indicator
   const dot = document.getElementById('dot');
@@ -884,6 +994,7 @@ async function fetchAll() {
   renderEvents();
   renderComms();
   renderWork();
+  renderGPU();
   renderChains();
   renderMCP();
 
