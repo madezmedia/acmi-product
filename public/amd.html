@@ -20,8 +20,13 @@
       <a href="architecture.html">Architecture</a>
       <a href="mcp.html">MCP Server</a>
       <a href="product.html">Product</a>
-      <a href="bugs.html">Bug Tracker</a>
+      <a href="ops-center.html">Live Ops Center</a>
+      <a href="deck.html">Pitch Deck</a>
       <a href="amd.html" class="active">AMD Hackathon</a>
+      <a href="competitive.html">Competitive</a>
+      <a href="roundtable.html">Roundtable</a>
+      <a href="kanban.html">Kanban</a>
+      <a href="bugs.html">Bugs</a>
     </div>
   </div>
 </nav>
@@ -48,44 +53,91 @@
   <a href="https://lablab.ai/ai-hackathons/amd-developer" target="_blank" class="btn-outline">View LabLab.ai Submission →</a>
 
   <h2 style="margin-top: 80px;">The Architecture</h2>
-  <p>A single AMD MI300X with 192GB HBM3 easily hosts multiple LLMs simultaneously via Ollama and ROCm 7.2 (e.g., Llama 3.3 70B + Qwen 2.5 32B + Mistral Small).</p>
-  <p>Three independent Node.js agents point to these local Ollama endpoints. They coordinate complex workflows in real-time using the <strong>ACMI MCP Server</strong> backed by Upstash Redis. Cloud round-trips kill agent loops; ACMI + AMD keeps it all local and fast.</p>
-  
-  <div style="background: var(--mzm-paper-warm); border: 1px solid var(--mzm-ink-rule); padding: 40px; margin: 32px 0; border-radius: 4px; text-align: center;">
-    <p style="font-family: var(--mzm-font-mono); font-size: 14px; color: var(--mzm-ink-soft);">[ Architecture Diagram: 3 Agents ↔ ACMI Bus ↔ AMD MI300X ]</p>
+  <p>One AMD MI300X with 192GB HBM3 hosts multiple LLMs simultaneously via vLLM + Ollama + ROCm 7.2. <strong>Today, 5 models resident concurrently</strong>: Llama 3.3 70B + Qwen 2.5 32B + Mistral-Small 24B + Mistral 7B + Qwen 7B vLLM.</p>
+  <p>A LangChain agent and a CrewAI agent both point at this MI300X. They have never imported each other's libraries, never shared a runtime — but they coordinate through three Redis keys via the <strong>ACMI Protocol</strong>. <em>One memory. Multiple frameworks.</em></p>
+
+  <div style="background: var(--mzm-paper-warm); border: 1px solid var(--mzm-ink-rule); padding: 40px; margin: 32px 0; border-radius: 4px; font-family: var(--mzm-font-mono); font-size: 13px; color: var(--mzm-ink-soft); line-height: 1.7; white-space: pre; overflow-x: auto;">
+              ┌─────────────────────────┐
+              │   ACMI Bus (Upstash)    │
+              │   Profile · Signals ·   │
+              │   Timeline (3 keys)     │
+              └────────┬────────────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+   ┌────▼─────┐   ┌───▼───────┐  ┌───▼──────┐
+   │ LangChain│   │  CrewAI   │  │  9-agent │
+   │  agent   │   │  agent    │  │  fleet   │
+   └────┬─────┘   └───┬───────┘  └───┬──────┘
+        │             │              │
+        └─────────────┼──────────────┘
+                      ▼
+              ┌─────────────┐
+              │ AMD MI300X  │  192 GB HBM3
+              │ vLLM+Ollama │  5 models resident
+              │  ROCm 7.2   │  $1.99/hr
+              └─────────────┘
   </div>
 
   <h2 id="demo">The Demo</h2>
-  <p>Watch three agents coordinate a research-synthesis-publish pipeline using a single Redis ZSET timeline.</p>
-  <div style="background: var(--mzm-ink); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; border-radius: 4px; margin-top: 24px;">
-    <p style="color: var(--mzm-paper); font-family: var(--mzm-font-mono); font-size: 14px;">[ Video Embed Placeholder ]</p>
+  <p>Two frameworks — LangChain and CrewAI — sharing state through three keys on a single MI300X. Watch the live coordination, or replay the 3-minute submission video.</p>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px; margin-top:24px;">
+    <a href="ops-center.html" style="text-decoration:none; display:block; background: var(--mzm-paper-warm); border: 1px solid var(--mzm-ink-rule); border-radius:4px; padding:24px; transition: border-color 0.15s;" onmouseover="this.style.borderColor='var(--mzm-accent)'" onmouseout="this.style.borderColor='var(--mzm-ink-rule)'">
+      <div style="font-family: var(--mzm-font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color: var(--mzm-accent); font-weight:700; margin-bottom:8px;">▶ Live · Real-Time</div>
+      <h3 style="font-family: var(--mzm-font-serif); font-size:1.4rem; margin-bottom:6px; color: var(--mzm-ink);">Watch in the Ops Center</h3>
+      <p style="font-size:0.9rem; color: var(--mzm-ink-soft); line-height:1.5;">Open the live ops center to see real-time fleet activity, in-flight agent chains, work tracker, and per-agent state. The cron fires LangChain + CrewAI demos every 5 minutes against the live MI300X.</p>
+      <div style="margin-top:12px; font-size:0.85rem; color: var(--mzm-accent); font-weight:600;">acmi-product.vercel.app/ops-center.html →</div>
+    </a>
+    <div style="background: var(--mzm-ink); aspect-ratio: 16/9; display:flex; align-items:center; justify-content:center; border-radius:4px; padding:24px; text-align:center;">
+      <div>
+        <div style="font-family: var(--mzm-font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color: rgba(245,241,232,0.5); font-weight:700; margin-bottom:12px;">3-min Submission Video</div>
+        <p style="color: var(--mzm-paper); font-family: var(--mzm-font-mono); font-size:13px; margin-bottom:8px;">Loom embed lands here once recorded.</p>
+        <p style="color: rgba(245,241,232,0.6); font-size:11px;">Or scan the QR on slide 10 of the <a href="deck.html" style="color: var(--mzm-paper); text-decoration:underline;">pitch deck</a>.</p>
+      </div>
+    </div>
   </div>
 
   <h2 style="margin-top: 80px;">Get Started</h2>
-  <p>Run the protocol on your own AMD hardware in 30 seconds.</p>
+  <p>Three install paths — pick one.</p>
   <div class="code-block">
-    <pre><span class="comment"># 1. Start your local Ollama on ROCm</span>
-ollama run llama3.3:70b
+    <pre><span class="comment"># Path 1: OAuth-protected hosted MCP (no install — works in claude.ai)</span>
+<span class="comment"># Settings → Connectors → Add custom → URL:</span>
+https://acmi-product.vercel.app/api/mcp
 
-<span class="comment"># 2. Boot the ACMI MCP server for your agent</span>
+<span class="comment"># Path 2: Smithery (zero-config CLI install)</span>
+npx -y smithery mcp add madezmediapartners/acmi-mcp
+
+<span class="comment"># Path 3: npm + your own Upstash instance</span>
 export UPSTASH_REDIS_REST_URL="https://your-endpoint.upstash.io"
 export UPSTASH_REDIS_REST_TOKEN="your-token"
-npx @madezmedia/acmi-mcp</pre>
+npx -y @madezmedia/acmi-mcp</pre>
   </div>
 
   <h2 style="margin-top: 80px;">Production Receipts</h2>
   <div class="feature-grid" style="margin-top: 32px;">
     <div class="feature">
-      <h3>v1.2.0 LIVE</h3>
-      <p>Published on npm, ready for production use today.</p>
+      <h3>5 models on 1 GPU</h3>
+      <p>Llama 70B + Qwen 32B + Mistral-Small 24B + Mistral 7B + Qwen 7B vLLM, all resident on a single MI300X right now.</p>
     </div>
     <div class="feature">
-      <h3>9 Agents</h3>
-      <p>Our internal fleet has been running ACMI in production for 30+ days.</p>
+      <h3>2 frameworks coordinating</h3>
+      <p>LangChain + CrewAI agents share state through three keys. Cron fires both demos every 5 min on the MI300X.</p>
     </div>
     <div class="feature">
-      <h3>8,000+ Events</h3>
-      <p>Processed and stored securely on real timelines.</p>
+      <h3>9 agents · 30+ days</h3>
+      <p>The Mad EZ Media fleet has run on ACMI in production continuously, with 8,000+ events on real timelines.</p>
+    </div>
+    <div class="feature">
+      <h3>OAuth 2.1 + PKCE LIVE</h3>
+      <p>Hosted MCP at <span class="mono">acmi-product.vercel.app/api/mcp</span> — full RFC 8414 + 9728 + 7591 discovery, claude.ai connector ready.</p>
+    </div>
+    <div class="feature">
+      <h3>npm + Smithery LIVE</h3>
+      <p><span class="mono">@madezmedia/acmi v1.2</span> + <span class="mono">acmi-mcp v1.3</span>. 16 MCP tools. Smithery listing scanned, badge-ready.</p>
+    </div>
+    <div class="feature">
+      <h3>MIT licensed · open source</h3>
+      <p>Spec, SDK, MCP server — all MIT. Three storage adapters (in-memory, ioredis, Upstash REST). 31-test conformance suite.</p>
     </div>
   </div>
 
