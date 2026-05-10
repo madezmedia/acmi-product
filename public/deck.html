@@ -535,8 +535,26 @@
   ""
 ]
 </script>
+<style>
+  /* discreet home affordance — does not show in fullscreen presentation mode */
+  .deck-home-link {
+    position: fixed; top: 12px; left: 12px; z-index: 9999;
+    font-family: 'Hanken Grotesk', system-ui, sans-serif;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.04em;
+    text-transform: uppercase; text-decoration: none;
+    color: var(--mute, #8A9A91); padding: 5px 10px;
+    background: rgba(255,255,255,0.7); backdrop-filter: blur(8px);
+    border: 1px solid rgba(0,0,0,0.06); border-radius: 4px;
+    transition: opacity 0.2s, color 0.2s; opacity: 0.55;
+  }
+  .deck-home-link:hover { opacity: 1; color: var(--ink, #2A4A3E); }
+  @media print { .deck-home-link { display: none; } }
+  :fullscreen .deck-home-link, :-webkit-full-screen .deck-home-link { display: none; }
+</style>
 </head>
 <body>
+
+<a href="index.html" class="deck-home-link" title="Back to acmi-product">← Home</a>
 
 <deck-stage width="1920" height="1080">
 
