@@ -4,6 +4,14 @@
 
 > The coordination backbone for AI agent fleets. Three Redis keys — Profile, Signals, Timeline.
 
+**Cross-references:** This is the **live demo + ops-center** surface. For the protocol spec, TypeScript/JS SDK, CLI, and MCP server source, see the sibling repo [`madezmedia/acmi`](https://github.com/madezmedia/acmi).
+
+## Try the live demo
+
+- **Marketing site + ops-center:** [v3-ten-beta.vercel.app/acmi](https://v3-ten-beta.vercel.app/acmi/) — live MI300X panel and agent activity dashboard
+- **HF Space (hackathon judge demo):** [`madezmedia/acmi-timeline-browser`](https://huggingface.co/spaces/madezmedia/acmi-timeline-browser) — Gradio-based multi-framework chain browser
+- **Cloud MCP endpoint (OAuth-protected):** see [MCP Server](mcp.html) docs for the URL-published listing
+
 ## What is ACMI?
 
 ACMI is a universal architectural framework for giving AI agents persistent, real-time context. It replaces fragmented, multi-table database joins with a single, lightning-fast Key-Value engine (Upstash Redis) optimized specifically for LLM context windows.
@@ -51,6 +59,18 @@ This repo contains the full product site with:
 - [Bug Tracker](bugs.html) — 9 bugs found during development sessions
 - [Competitive Analysis](competitive.html) — Hindsight, Mem0, Letta, Zep comparison
 - [Roundtable](roundtable.html) — Multi-agent deliberation synthesis
+
+## Ecosystem
+
+ACMI ships across five public surfaces. Pick the right one for your job:
+
+| Surface | Where | What lives there |
+| --- | --- | --- |
+| Protocol + SDK | [`madezmedia/acmi`](https://github.com/madezmedia/acmi) | TypeScript/JS API, manifesto, CLI, MCP server source, conformance suite |
+| Live demo + ops-center | [`madezmedia/acmi-product`](https://github.com/madezmedia/acmi-product) | Vercel-hosted marketing, cloud MCP w/ OAuth, live ops-center dashboard (this repo) |
+| npm | [`@madezmedia/acmi-mcp`](https://www.npmjs.com/package/@madezmedia/acmi-mcp) | `npx -y @madezmedia/acmi-mcp` for stdio MCP |
+| Smithery | [`smithery.ai/servers/madezmediapartners/acmi-mcp`](https://smithery.ai/servers/madezmediapartners/acmi-mcp) | URL-published + stdio listings |
+| HF Space (hackathon demo) | [`madezmedia/acmi-timeline-browser`](https://huggingface.co/spaces/madezmedia/acmi-timeline-browser) | Live multi-framework chain browser |
 
 ## License
 
