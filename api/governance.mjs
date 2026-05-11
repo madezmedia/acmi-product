@@ -51,8 +51,10 @@ export default async function handler(req) {
     let riskSum = 0;
     let riskN = 0;
 
-    // By-source aggregation
-    const sourceBuckets = ["langchain", "crewai", "gemini", "vapi-bridge", "other"];
+    // By-source aggregation. Derive from KNOWN_SOURCES (top of file) + "other"
+    // so the aggregation can never diverge from bucketSource(). Adding a source
+    // to KNOWN_SOURCES is now the only edit needed when a new agent type emits.
+    const sourceBuckets = [...KNOWN_SOURCES, "other"];
     const bySource = Object.fromEntries(sourceBuckets.map(s => [s, {
       source: s, total: 0, allow: 0, deny: 0, human_review: 0, log: 0,
       rate_limit: 0, quarantine: 0, mismatch: 0,
