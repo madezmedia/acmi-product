@@ -1,0 +1,5 @@
+# Gemini synthesizer agent dependencies — TechEx Track 2 (Gemini Award)
+# Install:
+#   pip install -r requirements-gemini.txt
+google-generativeai>=0.8.0
+requests>=2.31.0
