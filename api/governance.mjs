@@ -15,7 +15,7 @@ const THREAD_KEY = "acmi:thread:lobstertrap-decisions:timeline";
 const DECISION_TYPES = ["ALLOW", "DENY", "HUMAN_REVIEW", "LOG", "RATE_LIMIT", "QUARANTINE"];
 
 // Known frameworks we expect to appear as agent_source.
-const KNOWN_SOURCES = ["langchain", "crewai", "gemini", "vapi-bridge"];
+const KNOWN_SOURCES = ["langchain", "crewai", "gemini", "vapi-bridge", "researcher", "synthesizer", "publisher"];
 
 function bucketSource(s) {
   if (!s) return "other";
