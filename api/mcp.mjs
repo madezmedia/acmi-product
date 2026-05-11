@@ -298,7 +298,16 @@ export default async function handler(req, res) {
       return;
     }
 
-    if (wantsSSE) {
+    // SDK StreamableHTTPServerTransport opens a long-lived SSE stream waiting
+    // for server-push events. Vercel serverless functions have a hard 60s
+    // timeout — clients that open the stream via GET (Perplexity, some other
+    // MCP clients) hit the timeout and see a broken pipe.
+    // Restrict the SSE/SDK path to POST so GET requests fall through to the
+    // metadata-only handler below. POST-mode Streamable HTTP works because
+    // request/reply completes well under 60s.
+    // Root cause: claude-cowork incident-correction 2026-05-11T21:49Z
+    // (cid claudeCoworkPerplexityActualRootCause-1778536100000).
+    if (wantsSSE && req.method === "POST") {
       const server = new McpServer(SERVER_INFO);
       registerAcmiTools(server, redis);
       const transport = new StreamableHTTPServerTransport({
@@ -311,13 +320,20 @@ export default async function handler(req, res) {
 
     // JSON-only path
     if (req.method === "GET") {
-      // Smithery / health probe — return server card-style metadata
+      // Smithery / health probe + MCP discovery — return server card-style
+      // metadata. Clients SHOULD POST JSON-RPC; GET is metadata-only because
+      // long-lived SSE streams are unsupported on this hosting tier (Vercel
+      // serverless 60s timeout). Streamable HTTP POST mode works fine.
       res.status(200).json({
         ...SERVER_INFO,
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: { listChanged: false } },
         transport: "streamable-http",
         toolCount: TOOL_DEFS.length,
+        notes: {
+          method: "POST JSON-RPC for actual MCP traffic",
+          sse: "long-lived SSE streams not supported via GET on this endpoint; use POST request/reply only",
+        },
       });
       return;
     }
