@@ -1,0 +1,271 @@
+version: "1.0"
+policy_name: "acmi-default"
+
+# ACMI × Lobster Trap default policy
+# -----------------------------------
+# Sits between any ACMI-instrumented agent (LangChain, CrewAI, etc.)
+# and any OpenAI-compatible LLM backend (vLLM on MI300X, Ollama, llama.cpp, ...).
+#
+# Demonstrates each of the five action classes the Veea Award rubric expects:
+#   - ALLOW         · normal agent ops, no signal
+#   - DENY          · credential exfil, prompt injection, malware, harm, PII leak
+#   - HUMAN_REVIEW  · high-cost or external-write actions, role impersonation
+#   - LOG           · everything that doesn't trip a higher rule (audit-only)
+#   - RATE_LIMIT    · per-source quota (handled by the rate_limits block)
+#
+# Every decision LT emits is mirrored to ACMI as a Comms v1.1 event on
+# `acmi:thread:lobstertrap-decisions:timeline` via frameworks-demo/acmi_logger.py.
+
+default_action: LOG    # audit-everything posture — silent ALLOWs still surface to ACMI
+
+# ---- Ingress (prompt → model) -----------------------------------------------
+
+ingress_rules:
+
+  # ---- DENY tier (priority 90+) -------------------------------------------
+
+  - name: deny_prompt_injection
+    description: "Prompt injection / jailbreak attempt — system override, ignore-previous, role hijack"
+    priority: 100
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: prompt injection detected."
+    conditions:
+      - field: contains_injection_patterns
+        match_type: boolean
+        value: true
+
+  - name: deny_credential_exfiltration_request
+    description: "Prompt asks the model to read/echo credentials, .env, /etc/shadow, or .ssh material"
+    priority: 99
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: credential exfiltration request."
+    conditions:
+      - field: contains_credentials
+        match_type: boolean
+        value: true
+
+  - name: deny_sensitive_paths
+    description: "Prompt targets sensitive paths (/etc/**, **/.ssh/**, **/.env, **/*secret*)"
+    priority: 98
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: sensitive-path access denied."
+    conditions:
+      - field: contains_sensitive_paths
+        match_type: boolean
+        value: true
+
+  - name: deny_data_exfiltration
+    description: "Detected exfiltration pattern — encode-then-POST, dump-and-curl, pastebin upload"
+    priority: 97
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: data exfiltration pattern detected."
+    conditions:
+      - field: contains_exfiltration
+        match_type: boolean
+        value: true
+
+  - name: deny_malware_request
+    description: "Prompt requests offensive tooling, exploit code, reverse shells"
+    priority: 96
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: malware/exploit request."
+    conditions:
+      - field: contains_malware_request
+        match_type: boolean
+        value: true
+
+  - name: deny_harm_content
+    description: "Violence, weapons, harmful-substance instructions"
+    priority: 95
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: harmful content request."
+    conditions:
+      - field: contains_harm_patterns
+        match_type: boolean
+        value: true
+
+  - name: deny_phishing_content
+    description: "Phishing template / fraudulent-comms generation"
+    priority: 94
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: phishing content request."
+    conditions:
+      - field: contains_phishing_patterns
+        match_type: boolean
+        value: true
+
+  - name: deny_obfuscation_evasion
+    description: "Base64-shell, hex-payload, unicode-escape used to evade DPI"
+    priority: 92
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: obfuscation/evasion technique."
+    conditions:
+      - field: contains_obfuscation
+        match_type: boolean
+        value: true
+
+  - name: deny_pii_solicitation
+    description: "Prompt asks for SSN/CC/DOB/full-name lookups"
+    priority: 90
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Blocked: personal-information solicitation."
+    conditions:
+      - field: contains_pii_request
+        match_type: boolean
+        value: true
+
+  # ---- HUMAN_REVIEW tier (high-cost or external-write) --------------------
+
+  - name: review_role_impersonation
+    description: "Agent attempts to self-assign root/admin/system role"
+    priority: 86
+    action: HUMAN_REVIEW
+    conditions:
+      - field: contains_role_impersonation
+        match_type: boolean
+        value: true
+
+  - name: review_external_write_action
+    description: "External-write intent (network + system commands) — requires approver before forward"
+    priority: 84
+    action: HUMAN_REVIEW
+    conditions:
+      - field: intent_category
+        match_type: exact
+        value: "network"
+      - field: contains_system_commands
+        match_type: boolean
+        value: true
+
+  - name: review_high_cost_token_burst
+    description: "Token count above 4K + medium risk — human approves cost/intent before forwarding"
+    priority: 82
+    action: HUMAN_REVIEW
+    conditions:
+      - field: token_count
+        match_type: threshold
+        value: 4000
+      - field: risk_score
+        match_type: threshold
+        value: 0.4
+
+  - name: review_medium_risk
+    description: "Composite risk score >= 0.6 — human review fallback"
+    priority: 80
+    action: HUMAN_REVIEW
+    conditions:
+      - field: risk_score
+        match_type: threshold
+        value: 0.6
+
+  # ---- LOG tier (allow with audit) ----------------------------------------
+
+  - name: log_code_execution
+    description: "Code-exec intents are allowed but always logged"
+    priority: 40
+    action: LOG
+    conditions:
+      - field: intent_category
+        match_type: exact
+        value: "code_execution"
+
+  - name: log_file_io
+    description: "File-IO intents are allowed but always logged"
+    priority: 38
+    action: LOG
+    conditions:
+      - field: intent_category
+        match_type: exact
+        value: "file_io"
+
+  - name: log_network
+    description: "Network intents are allowed but always logged"
+    priority: 36
+    action: LOG
+    conditions:
+      - field: intent_category
+        match_type: exact
+        value: "network"
+
+# ---- Egress (model output → caller) -----------------------------------------
+
+egress_rules:
+
+  - name: deny_credential_leak_response
+    description: "Model output echoes API keys, tokens, password material"
+    priority: 100
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Output blocked: credentials in response."
+    conditions:
+      - field: contains_credentials
+        match_type: boolean
+        value: true
+
+  - name: deny_pii_leak_response
+    description: "Model output contains SSN / CC / phone / address"
+    priority: 90
+    action: DENY
+    deny_message: "[LOBSTER TRAP] Output blocked: PII in response."
+    conditions:
+      - field: contains_pii
+        match_type: boolean
+        value: true
+
+  - name: log_external_urls_in_response
+    description: "Output contains URLs — log for review (potential exfil endpoint suggestion)"
+    priority: 30
+    action: LOG
+    conditions:
+      - field: contains_urls
+        match_type: boolean
+        value: true
+
+# ---- Rate limits (per-source quota) -----------------------------------------
+
+rate_limits:
+  # Tuned for a typical multi-agent demo loop. RATE_LIMIT decisions also
+  # land on the ACMI audit thread so we can see who's hot.
+  requests_per_minute: 90
+  requests_per_hour: 1500
+  burst_threshold: 20
+
+# ---- Network policy (egress allowlist) --------------------------------------
+
+network:
+  egress_policy: allowlist
+  allowed_domains:
+    - "api.openai.com"
+    - "api.anthropic.com"
+    - "*.upstash.io"            # ACMI bus
+    - "acmi-product.vercel.app" # ACMI public surface
+    - "huggingface.co"
+    - "*.hf.space"
+  denied_domains:
+    - "*.onion"
+    - "pastebin.com"
+    - "transfer.sh"
+    - "discord.com/api/webhooks"
+    - "*.ngrok.io"
+
+# ---- Filesystem policy ------------------------------------------------------
+
+filesystem:
+  denied_paths:
+    - "/etc/**"
+    - "/root/**"
+    - "**/.ssh/**"
+    - "**/.env"
+    - "**/.env.*"
+    - "**/id_rsa*"
+    - "**/*secret*"
+    - "**/*password*"
+    - "**/credentials*"
+    - "**/.aws/**"
+    - "**/.config/gcloud/**"
+  allowed_read_paths:
+    - "/tmp/agent_workspace/**"
+    - "/home/*/documents/**"
+    - "/var/log/acmi/**"
+  allowed_write_paths:
+    - "/tmp/agent_workspace/**"
+    - "/home/*/documents/agent_output/**"
