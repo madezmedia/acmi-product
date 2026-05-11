@@ -98,8 +98,28 @@ The AMD hackathon Track 1 spec names "LangChain, CrewAI, or AutoGen" as the elig
 
 The full ACMI implementation lives in the parent repo (`../api/_lib/`). These demos use the public Upstash REST API directly to keep dependencies minimal — but the same events would land identically through the MCP server at `acmi-product.vercel.app/api/mcp` (with OAuth).
 
+## Veea Lobster Trap Integration (TechEx Track 1)
+
+Both demos now route their LLM traffic through [Veea's Lobster Trap](https://github.com/veeainc/lobstertrap) DPI proxy when `LOBSTERTRAP_URL` is set — and every policy decision (ALLOW / DENY / HUMAN_REVIEW / LOG / RATE_LIMIT) lands as a Comms v1.1 event on `acmi:thread:lobstertrap-decisions:timeline`.
+
+Full integration docs, architecture diagram, policy walkthrough, and 5-case acceptance suite: [`README-lobstertrap.md`](./README-lobstertrap.md).
+
+```bash
+# Start LT in front of vLLM
+./lobstertrap serve --policy lobstertrap-policy.yaml --listen :7777 --backend http://127.0.0.1:8000
+
+# Point demos at LT (single env var — that's the whole integration)
+export LOBSTERTRAP_URL=http://localhost:7777/v1
+python langchain_demo.py "Research the three-key ACMI protocol"
+python crewai_demo.py "Brief on three-key ACMI protocol"
+
+# Verify policy behavior end-to-end
+python lobstertrap_smoke.py
+```
+
 ## See also
 
+- **Lobster Trap integration spec**: [`README-lobstertrap.md`](./README-lobstertrap.md) — TechEx Track 1 deliverable
 - Architecture spec: [`../../agents/folana/MEMORY-ARCHITECTURE.md`](../../agents/folana/MEMORY-ARCHITECTURE.md) — the 5-layer memory model these chains are implementing
 - Ops Center (live activity): https://acmi-product.vercel.app/ops-center.html
 - Smithery listing: https://smithery.ai/servers/madezmediapartners/acmi-mcp
