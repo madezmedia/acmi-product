@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACMI Governance Dashboard — Lobster Trap DPI</title>
+  <meta name="description" content="Visible surface of the Lobster Trap DPI proxy + ACMI audit trail. Real-time agent governance, intent-mismatch detection, policy decisions.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ═══ madezmedia v3 design tokens — editorial-tech (matches ops-center.html) ═══ */
+    :root {
+      --paper:        #faf9f5;
+      --paper-warm:   #f4f2eb;
+      --paper-shadow: #ebe8de;
+      --ink:          #1a1a1a;
+      --ink-soft:     #2c2c2a;
+      --ink-mute:     #4a4a48;
+      --ink-fade:     #7a7a76;
+      --ink-quiet:    #9a9a96;
+      --ink-rule:     #d4d2cc;
+      --accent:       #2d4a3e;
+      --accent-soft:  #5a7d6f;
+      --accent-quiet: #1c3027;
+      --font-serif:   'Source Serif 4', Georgia, serif;
+      --font-sans:    'Inter', system-ui, sans-serif;
+      --font-mono:    'JetBrains Mono', 'SF Mono', Consolas, monospace;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 14px rgba(0,0,0,0.07);
+
+      /* Decision palette — semantic */
+      --dec-allow:        #16a34a;
+      --dec-allow-bg:     #dcfce7;
+      --dec-deny:         #dc2626;
+      --dec-deny-bg:      #fef2f2;
+      --dec-human:        #b45309;
+      --dec-human-bg:     #fef3c7;
+      --dec-quarantine:   #6d28d9;
+      --dec-quarantine-bg:#ede9fe;
+      --dec-rate-limit:   #2563eb;
+      --dec-rate-limit-bg:#dbeafe;
+      --dec-log:          #6b7280;
+      --dec-log-bg:       #f3f4f6;
+
+      /* Source pip palette */
+      --src-langchain:  #c4572a;
+      --src-crewai:     #c9a227;
+      --src-gemini:     #2563eb;
+      --src-vapi:       #db2777;
+      --src-other:      #6b7280;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { font-size:16px; }
+    body { font-family:var(--font-sans); background:var(--paper); color:var(--ink); line-height:1.45; -webkit-font-smoothing:antialiased; }
+
+    /* ═══ UTILITIES ═══ */
+    .mono { font-family:var(--font-mono); }
+    .serif { font-family:var(--font-serif); }
+    .meta { font-size:0.7rem; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-fade); }
+
+    /* ═══ TOP BAR ═══ */
+    .topbar {
+      position:sticky; top:0; z-index:100;
+      background:rgba(250,249,245,0.88); backdrop-filter:blur(14px);
+      border-bottom:1px solid var(--ink-rule);
+      padding:0 1.5rem; height:48px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .topbar-left { display:flex; align-items:center; gap:0.75rem; }
+    .topbar-logo { font-family:var(--font-serif); font-weight:600; font-size:1.1rem; color:var(--accent); text-decoration:none; }
+    .topbar-logo span { color:var(--ink); }
+    .topbar-badge { font-size:0.6rem; font-weight:700; padding:0.12rem 0.45rem; border-radius:3px; background:var(--accent); color:#fff; text-transform:uppercase; letter-spacing:0.5px; }
+    .topbar-nav-sep { border-left:1px solid var(--ink-rule); height:18px; margin:0 0.35rem; }
+    .topbar-navlink { font-size:0.75rem; color:var(--ink-fade); text-decoration:none; }
+    .topbar-navlink:hover { color:var(--ink-mute); }
+    .topbar-right { display:flex; align-items:center; gap:1rem; font-size:0.75rem; color:var(--ink-fade); }
+    .live-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; animation:pulse 2s infinite; }
+    .live-dot.err { background:#ef4444; animation:none; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    .refresh-info { font-family:var(--font-mono); font-size:0.7rem; color:var(--ink-quiet); }
+
+    /* ═══ MAIN LAYOUT ═══ */
+    .wrap { max-width:1320px; margin:0 auto; padding:1.5rem 1.5rem 4rem; }
+
+    /* PAGE INTRO */
+    .page-intro { margin-bottom:1.5rem; padding-bottom:1.25rem; border-bottom:1px solid var(--ink-rule); }
+    .page-eyebrow { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.55rem; }
+    .eyebrow-chip { font-size:0.62rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; padding:0.15rem 0.55rem; border-radius:3px; background:var(--accent); color:#fff; }
+    .eyebrow-chip.veea { background:#1c3027; }
+    .eyebrow-text { font-size:0.72rem; color:var(--ink-fade); }
+    .page-title { font-family:var(--font-serif); font-size:1.95rem; font-weight:600; color:var(--ink); line-height:1.15; margin-bottom:0.45rem; }
+    .page-title .em { color:var(--accent); }
+    .page-tagline { font-size:0.95rem; color:var(--ink-mute); max-width:780px; line-height:1.55; }
+    .page-tagline code { font-family:var(--font-mono); font-size:0.82rem; padding:0.1rem 0.35rem; background:var(--paper-warm); border-radius:3px; color:var(--ink); }
+
+    /* SECTION HEADERS */
+    .section { margin-bottom:1.75rem; }
+    .sec-hdr { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:0.7rem; gap:0.5rem; }
+    .sec-title { font-family:var(--font-serif); font-size:1.18rem; font-weight:600; color:var(--ink); }
+    .sec-sub { font-size:0.72rem; color:var(--ink-quiet); }
+
+    /* ═══ HERO STATS STRIP ═══ */
+    .hero-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:0.75rem; }
+    @media(max-width:880px) { .hero-strip { grid-template-columns:repeat(2, 1fr); } }
+    .stat-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.9rem 1rem; box-shadow:var(--shadow); position:relative; overflow:hidden; }
+    .stat-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--ink-rule); }
+    .stat-card.safe::before    { background:var(--dec-allow); }
+    .stat-card.warn::before    { background:var(--dec-human); }
+    .stat-card.danger::before  { background:var(--dec-deny); }
+    .stat-card.info::before    { background:var(--dec-rate-limit); }
+    .stat-card.neutral::before { background:var(--ink-fade); }
+    .stat-label { font-size:0.62rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-fade); margin-bottom:0.3rem; }
+    .stat-value { font-family:var(--font-serif); font-size:1.85rem; font-weight:600; color:var(--ink); line-height:1; }
+    .stat-value.safe   { color:var(--dec-allow); }
+    .stat-value.warn   { color:var(--dec-human); }
+    .stat-value.danger { color:var(--dec-deny); }
+    .stat-value.info   { color:var(--dec-rate-limit); }
+    .stat-sub { font-family:var(--font-mono); font-size:0.65rem; color:var(--ink-quiet); margin-top:0.3rem; }
+
+    /* ═══ DECISION DISTRIBUTION (SVG bar chart) ═══ */
+    .chart-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:1rem 1.1rem; box-shadow:var(--shadow); }
+    .chart-wrap { width:100%; }
+    .chart-legend { display:flex; flex-wrap:wrap; gap:0.65rem; margin-top:0.75rem; font-size:0.7rem; color:var(--ink-fade); }
+    .chart-legend-item { display:inline-flex; align-items:center; gap:0.3rem; }
+    .chart-legend-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+    /* ═══ BY AGENT SOURCE TABLE ═══ */
+    .table-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+    table.gov { width:100%; border-collapse:collapse; font-size:0.82rem; }
+    table.gov th { text-align:left; font-size:0.62rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-fade); padding:0.65rem 0.9rem; border-bottom:1px solid var(--ink-rule); background:var(--paper); }
+    table.gov td { padding:0.6rem 0.9rem; border-bottom:1px solid var(--paper-shadow); }
+    table.gov tr:last-child td { border-bottom:none; }
+    table.gov tr.hot td { background:#fffaf4; }
+    table.gov tr.empty-row td { color:var(--ink-quiet); font-style:italic; padding:0.85rem 0.9rem; }
+    .src-pip { display:inline-flex; align-items:center; gap:0.4rem; font-weight:600; }
+    .src-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .src-langchain  .src-dot { background:var(--src-langchain); }
+    .src-crewai     .src-dot { background:var(--src-crewai); }
+    .src-gemini     .src-dot { background:var(--src-gemini); }
+    .src-vapi-bridge .src-dot { background:var(--src-vapi); }
+    .src-other      .src-dot { background:var(--src-other); }
+    .num { font-family:var(--font-mono); font-weight:500; text-align:right; }
+    .num.deny { color:var(--dec-deny); }
+    .num.mis  { color:var(--dec-human); }
+    .br-cell { font-family:var(--font-mono); text-align:right; font-weight:600; }
+    .br-cell.hot { color:var(--dec-deny); }
+    .br-cell.warm { color:var(--dec-human); }
+    .br-cell.cool { color:var(--ink-mute); }
+
+    /* ═══ BY BLOCKED PATTERN ═══ */
+    .pattern-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.5rem; }
+    .pattern-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.65rem 0.85rem; box-shadow:var(--shadow); display:flex; align-items:center; justify-content:space-between; gap:0.6rem; }
+    .pattern-name { font-family:var(--font-mono); font-size:0.78rem; color:var(--ink); word-break:break-word; }
+    .pattern-count { font-family:var(--font-serif); font-size:1.25rem; font-weight:600; color:var(--dec-deny); flex-shrink:0; }
+    .pattern-empty { color:var(--ink-quiet); font-size:0.85rem; padding:0.75rem 0; font-style:italic; }
+
+    /* ═══ RECENT DECISIONS TIMELINE ═══ */
+    .timeline { display:flex; flex-direction:column; gap:0.4rem; }
+    .decision-card { background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius); padding:0.65rem 0.85rem; box-shadow:var(--shadow); transition:border-color 0.12s; }
+    .decision-card:hover { border-color:var(--accent-soft); }
+    .decision-card.mismatch { border-left:3px solid var(--dec-human); }
+    .decision-row1 { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.35rem; }
+    .dc-time { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-quiet); }
+    .dc-source { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.74rem; font-weight:600; }
+    .dc-source .src-dot { width:7px; height:7px; }
+    .dc-tag { font-size:0.6rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:3px; letter-spacing:0.04em; }
+    .dc-tag.ALLOW        { background:var(--dec-allow-bg);     color:var(--dec-allow); }
+    .dc-tag.DENY         { background:var(--dec-deny-bg);      color:var(--dec-deny); }
+    .dc-tag.HUMAN_REVIEW { background:var(--dec-human-bg);     color:var(--dec-human); }
+    .dc-tag.QUARANTINE   { background:var(--dec-quarantine-bg);color:var(--dec-quarantine); }
+    .dc-tag.RATE_LIMIT   { background:var(--dec-rate-limit-bg);color:var(--dec-rate-limit); }
+    .dc-tag.LOG          { background:var(--dec-log-bg);       color:var(--dec-log); }
+    .dc-risk { font-family:var(--font-mono); font-size:0.66rem; padding:0.1rem 0.4rem; border-radius:3px; background:var(--paper-warm); color:var(--ink-mute); font-weight:600; }
+    .dc-risk.hi  { background:var(--dec-deny-bg);  color:var(--dec-deny); }
+    .dc-risk.med { background:var(--dec-human-bg); color:var(--dec-human); }
+    .dc-pattern-tag { font-family:var(--font-mono); font-size:0.6rem; padding:0.08rem 0.4rem; border-radius:3px; background:var(--dec-deny-bg); color:var(--dec-deny); font-weight:600; }
+    .dc-rule { font-family:var(--font-mono); font-size:0.6rem; color:var(--ink-fade); }
+    .dc-intent { font-size:0.78rem; color:var(--ink-soft); line-height:1.45; }
+    .dc-intent .arrow { color:var(--ink-quiet); padding:0 0.25rem; }
+    .dc-intent .declared { color:var(--ink-mute); }
+    .dc-intent .detected { color:var(--ink); font-weight:600; }
+    .dc-intent.mismatch .detected { color:var(--dec-human); background:#fff7ed; padding:0 0.25rem; border-radius:2px; }
+    .dc-summary { font-size:0.74rem; color:var(--ink-fade); margin-top:0.25rem; line-height:1.4; }
+    details.dc-details { margin-top:0.4rem; }
+    details.dc-details summary { font-size:0.68rem; color:var(--ink-fade); cursor:pointer; padding:0.15rem 0; user-select:none; }
+    details.dc-details summary:hover { color:var(--ink-mute); }
+    details.dc-details pre { font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-soft); background:var(--paper-warm); padding:0.55rem 0.65rem; border-radius:4px; margin-top:0.3rem; white-space:pre-wrap; word-break:break-word; max-height:280px; overflow-y:auto; }
+
+    /* ═══ EMPTY STATE ═══ */
+    .empty-state { background:#fff; border:1px dashed var(--ink-rule); border-radius:var(--radius); padding:2.5rem 1.5rem; text-align:center; }
+    .empty-state h3 { font-family:var(--font-serif); font-size:1.3rem; font-weight:600; color:var(--ink); margin-bottom:0.5rem; }
+    .empty-state p { font-size:0.95rem; color:var(--ink-mute); max-width:560px; margin:0 auto 1rem; line-height:1.55; }
+    .empty-state .empty-links { display:inline-flex; gap:0.75rem; flex-wrap:wrap; justify-content:center; margin-top:0.5rem; }
+    .empty-link { font-size:0.82rem; color:var(--accent); text-decoration:none; padding:0.45rem 0.9rem; border:1px solid var(--accent); border-radius:6px; font-weight:500; }
+    .empty-link:hover { background:var(--accent); color:#fff; }
+
+    /* ═══ LOADING / ERROR ═══ */
+    .loading { text-align:center; padding:1.5rem; color:var(--ink-fade); font-size:0.85rem; }
+    .loading::after { content:''; display:inline-block; width:14px; height:14px; border:2px solid var(--ink-rule); border-top-color:var(--accent); border-radius:50%; animation:spin 0.6s linear infinite; margin-left:0.4rem; vertical-align:middle; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .err-banner { background:#fef2f2; color:#dc2626; padding:0.7rem 0.9rem; border-radius:var(--radius); font-size:0.85rem; border:1px solid #fecaca; }
+
+    /* ═══ FOOTER NOTE ═══ */
+    .footer-note { margin-top:2rem; padding:1rem 1.1rem; border:1px solid var(--ink-rule); border-radius:var(--radius); background:#fff; font-size:0.78rem; color:var(--ink-mute); line-height:1.55; }
+    .footer-note code { font-family:var(--font-mono); font-size:0.72rem; padding:0.08rem 0.35rem; background:var(--paper-warm); border-radius:3px; color:var(--ink); }
+    .footer-note a { color:var(--accent); text-decoration:none; font-weight:500; }
+    .footer-note a:hover { text-decoration:underline; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--ink-rule); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--ink-fade); }
+  </style>
+</head>
+<body>
+
+<!-- ═══ TOP BAR ═══ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="index.html" class="topbar-logo">ACMI <span>Governance</span></a>
+    <span class="topbar-badge">Veea</span>
+    <span class="topbar-nav-sep"></span>
+    <a href="index.html" class="topbar-navlink">Home</a>
+    <a href="deck.html" class="topbar-navlink">Pitch Deck</a>
+    <a href="amd.html" class="topbar-navlink">AMD</a>
+    <a href="ops-center.html" class="topbar-navlink">Ops Center</a>
+    <a href="mcp.html" class="topbar-navlink">MCP</a>
+    <a href="https://github.com/madezmedia/acmi-product" class="topbar-navlink">GitHub</a>
+  </div>
+  <div class="topbar-right">
+    <span class="live-dot" id="dot"></span>
+    <span id="statusLabel">connecting</span>
+    <span class="refresh-info" id="refreshInfo"></span>
+  </div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div class="wrap">
+
+  <!-- INTRO -->
+  <header class="page-intro">
+    <div class="page-eyebrow">
+      <span class="eyebrow-chip veea">TechEx Track 1</span>
+      <span class="eyebrow-chip">Lobster Trap</span>
+      <span class="eyebrow-text">DPI proxy → ACMI audit trail</span>
+    </div>
+    <h1 class="page-title">Every agent decision, <span class="em">visible</span>.</h1>
+    <p class="page-tagline">
+      Live view of the Lobster Trap deep-packet inspection proxy. Each agent ingress/egress hits a YAML policy ruleset, every decision lands as a Comms v1.1 event on <code>acmi:thread:lobstertrap-decisions:timeline</code>, and this surface aggregates them. Intent-mismatch detection, risk scoring, framework-by-framework block rate, and a full audit timeline — pulled fresh every 15 seconds.
+    </p>
+  </header>
+
+  <!-- ERROR -->
+  <div id="errBanner" class="err-banner" style="display:none;margin-bottom:1rem"></div>
+
+  <!-- EMPTY STATE -->
+  <div id="emptyState" class="empty-state" style="display:none">
+    <h3>Lobster Trap is not yet ingesting traffic.</h3>
+    <p>Once agents start hitting the DPI proxy, this dashboard will populate with policy decisions, intent-mismatch detection, and per-framework block rates.</p>
+    <div class="empty-links">
+      <a href="mcp.html" class="empty-link">MCP Server →</a>
+      <a href="architecture.html" class="empty-link">Architecture →</a>
+      <a href="ops-center.html" class="empty-link">Live Ops Center →</a>
+    </div>
+  </div>
+
+  <!-- CONTENT (hidden until data) -->
+  <div id="content" style="display:none">
+
+    <!-- 1. HERO STATS STRIP -->
+    <section class="section">
+      <div class="hero-strip" id="heroStrip"></div>
+    </section>
+
+    <!-- 2. DECISION DISTRIBUTION -->
+    <section class="section">
+      <div class="sec-hdr">
+        <div class="sec-title">Decision Distribution</div>
+        <div class="sec-sub" id="distSub"></div>
+      </div>
+      <div class="chart-card" id="distCard"></div>
+    </section>
+
+    <!-- 3. BY AGENT SOURCE -->
+    <section class="section">
+      <div class="sec-hdr">
+        <div class="sec-title">By Agent Source</div>
+        <div class="sec-sub">Block rate per framework. Hot rows have ≥20% deny rate.</div>
+      </div>
+      <div class="table-card">
+        <table class="gov" id="srcTable"></table>
+      </div>
+    </section>
+
+    <!-- 4. BY BLOCKED PATTERN -->
+    <section class="section">
+      <div class="sec-hdr">
+        <div class="sec-title">Top Blocked Patterns</div>
+        <div class="sec-sub">From <code class="mono" style="font-size:0.7rem">payload.mismatches[].pattern</code></div>
+      </div>
+      <div id="patternGrid"><div class="loading">Loading…</div></div>
+    </section>
+
+    <!-- 5. RECENT DECISIONS -->
+    <section class="section">
+      <div class="sec-hdr">
+        <div class="sec-title">Recent Decisions</div>
+        <div class="sec-sub" id="recentSub">Last 20 · click to expand payload</div>
+      </div>
+      <div class="timeline" id="timeline"></div>
+    </section>
+
+    <!-- FOOTER -->
+    <div class="footer-note" id="footerNote"></div>
+  </div>
+
+  <!-- LOADING SKELETON -->
+  <div id="loadingState" class="loading">Pulling governance feed…</div>
+
+</div>
+
+<script>
+const API = "/api/governance?hours=24";
+const INTERVAL = 15000;
+let lastTs = 0;
+let pollHandle = null;
+
+// ─── helpers ───
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function ts(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+}
+function timeAgo(ms) {
+  if (!ms) return '';
+  const s = Math.floor((Date.now() - ms) / 1000);
+  if (s < 5) return 'now';
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+function bucketSource(s) {
+  if (!s) return "other";
+  const k = String(s).toLowerCase();
+  if (["langchain","crewai","gemini","vapi-bridge"].includes(k)) return k;
+  if (k.includes("langchain")) return "langchain";
+  if (k.includes("crewai") || k.includes("crew-ai")) return "crewai";
+  if (k.includes("gemini")) return "gemini";
+  if (k.includes("vapi")) return "vapi-bridge";
+  return "other";
+}
+function srcLabel(s) {
+  return { langchain:"LangChain", crewai:"CrewAI", gemini:"Gemini", "vapi-bridge":"VAPI Bridge", other:"Other" }[s] || s;
+}
+function srcClass(s) { return "src-" + s; }
+function riskTier(r) {
+  if (typeof r !== "number") return "";
+  if (r >= 0.7) return "hi";
+  if (r >= 0.4) return "med";
+  return "";
+}
+
+// ─── render: hero strip ───
+function renderHero(h) {
+  const total = h.total_decisions || 0;
+  const block = h.block_rate_pct || 0;
+  const mis = h.intent_mismatch_count || 0;
+  const risk = h.avg_risk_score || 0;
+
+  // Color tone logic
+  const blockTone = block >= 20 ? 'danger' : block >= 5 ? 'warn' : 'safe';
+  const misTone = mis > 0 ? 'warn' : 'safe';
+  const riskTone = risk >= 0.7 ? 'danger' : risk >= 0.4 ? 'warn' : 'safe';
+
+  document.getElementById('heroStrip').innerHTML = `
+    <div class="stat-card neutral">
+      <div class="stat-label">Total Decisions</div>
+      <div class="stat-value">${total.toLocaleString()}</div>
+      <div class="stat-sub">last 24h · live ${h.allow_count || 0} allow / ${h.deny_count || 0} deny</div>
+    </div>
+    <div class="stat-card ${blockTone}">
+      <div class="stat-label">Block Rate</div>
+      <div class="stat-value ${blockTone}">${block.toFixed(1)}<span style="font-size:1.1rem;color:var(--ink-fade);font-weight:400">%</span></div>
+      <div class="stat-sub">deny ÷ (allow + deny)</div>
+    </div>
+    <div class="stat-card ${misTone}">
+      <div class="stat-label">Intent Mismatches</div>
+      <div class="stat-value ${misTone}">${mis.toLocaleString()}</div>
+      <div class="stat-sub">declared ≠ detected · or DPI flag</div>
+    </div>
+    <div class="stat-card ${riskTone}">
+      <div class="stat-label">Avg Risk Score</div>
+      <div class="stat-value ${riskTone}">${risk.toFixed(2)}</div>
+      <div class="stat-sub">0.0 = safe · 1.0 = critical</div>
+    </div>
+  `;
+}
+
+// ─── render: decision distribution chart (SVG) ───
+function renderDistribution(h) {
+  const decisions = [
+    { key: "ALLOW",        label: "Allow",         count: h.allow_count        || 0, color: "var(--dec-allow)"      },
+    { key: "DENY",         label: "Deny",          count: h.deny_count         || 0, color: "var(--dec-deny)"       },
+    { key: "HUMAN_REVIEW", label: "Human Review",  count: h.human_review_count || 0, color: "var(--dec-human)"      },
+    { key: "QUARANTINE",   label: "Quarantine",    count: h.quarantine_count   || 0, color: "var(--dec-quarantine)" },
+    { key: "RATE_LIMIT",   label: "Rate Limit",    count: h.rate_limit_count   || 0, color: "var(--dec-rate-limit)" },
+    { key: "LOG",          label: "Log Only",      count: h.log_count          || 0, color: "var(--dec-log)"        },
+  ];
+  const max = Math.max(1, ...decisions.map(d => d.count));
+  const W = 1000;
+  const Hh = 220;
+  const padL = 100;
+  const padR = 24;
+  const padT = 18;
+  const padB = 28;
+  const barW = (W - padL - padR) / decisions.length * 0.6;
+  const gap = (W - padL - padR) / decisions.length * 0.4;
+  const innerW = W - padL - padR;
+  const stepW = innerW / decisions.length;
+
+  let bars = '';
+  let labels = '';
+  let yGrid = '';
+  // y-axis gridlines (4)
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + (Hh - padT - padB) * (i / 4);
+    const val = Math.round(max * (1 - i / 4));
+    yGrid += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="var(--paper-shadow)" stroke-width="1"/>`;
+    yGrid += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--ink-quiet)">${val}</text>`;
+  }
+
+  decisions.forEach((d, i) => {
+    const xCenter = padL + stepW * i + stepW / 2;
+    const x = xCenter - barW / 2;
+    const usable = Hh - padT - padB;
+    const bh = (d.count / max) * usable;
+    const y = Hh - padB - bh;
+    bars += `<rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="${d.color}" rx="2"/>`;
+    if (d.count > 0) {
+      bars += `<text x="${xCenter}" y="${y - 4}" text-anchor="middle" font-family="Source Serif 4, serif" font-size="13" font-weight="600" fill="var(--ink)">${d.count}</text>`;
+    }
+    labels += `<text x="${xCenter}" y="${Hh - 10}" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="500" fill="var(--ink-mute)">${d.label}</text>`;
+  });
+
+  const svg = `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${Hh}" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Decision distribution bar chart">
+    ${yGrid}
+    ${bars}
+    ${labels}
+  </svg></div>`;
+
+  const legend = `<div class="chart-legend">${decisions.map(d => `<span class="chart-legend-item"><span class="chart-legend-swatch" style="background:${d.color}"></span>${d.label}</span>`).join('')}</div>`;
+
+  document.getElementById('distCard').innerHTML = svg + legend;
+
+  const total = decisions.reduce((s, d) => s + d.count, 0);
+  document.getElementById('distSub').textContent = `${total.toLocaleString()} decisions · 6 buckets`;
+}
+
+// ─── render: by-source table ───
+function renderSourceTable(rows) {
+  const table = document.getElementById('srcTable');
+  if (!rows || !rows.length) {
+    table.innerHTML = `<tr class="empty-row"><td>No source data yet.</td></tr>`;
+    return;
+  }
+  const nonZero = rows.filter(r => r.total > 0);
+  const display = nonZero.length ? nonZero : rows;
+
+  table.innerHTML = `
+    <thead><tr>
+      <th>Source</th>
+      <th class="num">Total</th>
+      <th class="num">Allow</th>
+      <th class="num">Deny</th>
+      <th class="num">Mismatch</th>
+      <th class="num">Block Rate</th>
+    </tr></thead>
+    <tbody>
+      ${display.map(r => {
+        const cls = srcClass(r.source);
+        const br = r.block_rate_pct || 0;
+        const brCls = br >= 20 ? 'hot' : br >= 5 ? 'warm' : 'cool';
+        const hot = br >= 20 ? 'hot' : '';
+        return `<tr class="${hot}">
+          <td><span class="src-pip ${cls}"><span class="src-dot"></span>${escapeHtml(srcLabel(r.source))}</span></td>
+          <td class="num">${r.total}</td>
+          <td class="num">${r.allow}</td>
+          <td class="num deny">${r.deny}</td>
+          <td class="num mis">${r.mismatch}</td>
+          <td class="br-cell ${brCls}">${br.toFixed(1)}%</td>
+        </tr>`;
+      }).join('')}
+    </tbody>`;
+}
+
+// ─── render: blocked patterns ───
+function renderPatterns(rows) {
+  const el = document.getElementById('patternGrid');
+  if (!rows || !rows.length) {
+    el.innerHTML = `<div class="pattern-empty">No mismatch patterns recorded in this window.</div>`;
+    return;
+  }
+  el.className = 'pattern-grid';
+  el.innerHTML = rows.map(r => `
+    <div class="pattern-card">
+      <div class="pattern-name">${escapeHtml(r.pattern)}</div>
+      <div class="pattern-count">${r.count}</div>
+    </div>
+  `).join('');
+}
+
+// ─── render: recent decisions timeline ───
+function renderTimeline(decisions) {
+  const el = document.getElementById('timeline');
+  if (!decisions || !decisions.length) {
+    el.innerHTML = `<div class="pattern-empty">No decisions yet.</div>`;
+    return;
+  }
+  const top = decisions.slice(0, 20);
+  el.innerHTML = top.map(d => {
+    const p = d.payload || {};
+    const decision = String(p.decision || '').toUpperCase();
+    const decTag = ['ALLOW','DENY','HUMAN_REVIEW','QUARANTINE','RATE_LIMIT','LOG'].includes(decision) ? decision : 'LOG';
+    const declared = p.declared_intent || '';
+    const detected = p.detected_intent || '';
+    const mismatchArr = Array.isArray(p.mismatches) ? p.mismatches : [];
+    const isMismatch = (mismatchArr.length > 0) || (declared && detected && declared !== detected);
+    const risk = typeof p.risk_score === 'number' ? p.risk_score : null;
+    const sourceB = bucketSource(p.agent_source || d.source);
+    const patterns = mismatchArr.map(m => (typeof m === 'string' ? m : (m?.pattern || m?.type || m?.name))).filter(Boolean);
+
+    const patternTags = patterns.slice(0, 3).map(pat => `<span class="dc-pattern-tag">${escapeHtml(pat)}</span>`).join(' ');
+
+    let intentHtml = '';
+    if (declared || detected) {
+      const decClass = isMismatch ? 'mismatch' : '';
+      intentHtml = `<div class="dc-intent ${decClass}">
+        ${declared ? `<span class="declared">${escapeHtml(declared)}</span>` : '<span class="declared">—</span>'}
+        <span class="arrow">→</span>
+        ${detected ? `<span class="detected">${escapeHtml(detected)}</span>` : '<span class="detected">—</span>'}
+      </div>`;
+    }
+
+    const summaryHtml = d.summary ? `<div class="dc-summary">${escapeHtml(d.summary)}</div>` : '';
+
+    return `<div class="decision-card ${isMismatch ? 'mismatch' : ''}">
+      <div class="decision-row1">
+        <span class="dc-time">${ts(d.ts)}</span>
+        <span class="dc-source ${srcClass(sourceB)}"><span class="src-dot"></span>${escapeHtml(srcLabel(sourceB))}</span>
+        <span class="dc-tag ${decTag}">${decTag.replace('_',' ')}</span>
+        ${risk != null ? `<span class="dc-risk ${riskTier(risk)}">risk ${risk.toFixed(2)}</span>` : ''}
+        ${patternTags}
+        ${p.rule_name ? `<span class="dc-rule">${escapeHtml(p.rule_name)}</span>` : ''}
+      </div>
+      ${intentHtml}
+      ${summaryHtml}
+      <details class="dc-details">
+        <summary>Full payload</summary>
+        <pre>${escapeHtml(JSON.stringify(d, null, 2))}</pre>
+      </details>
+    </div>`;
+  }).join('');
+  document.getElementById('recentSub').textContent = `Showing ${top.length} of ${decisions.length} · click to expand payload`;
+}
+
+// ─── render: footer note ───
+function renderFooter(d) {
+  document.getElementById('footerNote').innerHTML = `
+    <strong style="color:var(--ink)">Data source:</strong> <code>${escapeHtml(d.thread_key)}</code> · window ${d.window_hours}h · Edge API <code>/api/governance</code> · poll 15s · <a href="https://github.com/madezmedia/acmi-product/blob/main/api/governance.mjs">view endpoint source</a>
+  `;
+}
+
+// ─── main poll ───
+async function tick() {
+  try {
+    const res = await fetch(API, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'API returned ok:false');
+
+    lastTs = Date.now();
+    document.getElementById('errBanner').style.display = 'none';
+    document.getElementById('dot').classList.remove('err');
+    document.getElementById('statusLabel').textContent = 'live';
+    document.getElementById('loadingState').style.display = 'none';
+
+    if ((data.hero?.total_decisions || 0) === 0) {
+      document.getElementById('emptyState').style.display = 'block';
+      document.getElementById('content').style.display = 'none';
+      renderFooter(data);
+      // still show footer note inside empty state? Skip — leave empty.
+    } else {
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      renderHero(data.hero);
+      renderDistribution(data.hero);
+      renderSourceTable(data.by_agent_source);
+      renderPatterns(data.by_blocked_pattern);
+      renderTimeline(data.recent_decisions);
+      renderFooter(data);
+    }
+  } catch (e) {
+    document.getElementById('errBanner').textContent = 'Governance feed error: ' + e.message;
+    document.getElementById('errBanner').style.display = 'block';
+    document.getElementById('dot').classList.add('err');
+    document.getElementById('statusLabel').textContent = 'error';
+  }
+}
+
+// Live countdown
+function updateRefreshLabel() {
+  const el = document.getElementById('refreshInfo');
+  if (!lastTs) { el.textContent = ''; return; }
+  el.textContent = 'Last updated ' + timeAgo(lastTs);
+}
+
+tick();
+pollHandle = setInterval(tick, INTERVAL);
+setInterval(updateRefreshLabel, 1000);
+</script>
+
+</body>
+</html>
