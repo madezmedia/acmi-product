@@ -303,7 +303,7 @@ export default async function handler(req, res) {
     // timeout — clients that open the stream via GET (Perplexity, some other
     // MCP clients) hit the timeout and see a broken pipe.
     // Restrict the SSE/SDK path to POST so GET requests fall through to the
-    // metadata-only handler below. POST-mode Streamable HTTP works because
+    // 405/metadata handlers below. POST-mode Streamable HTTP works because
     // request/reply completes well under 60s.
     // Root cause: claude-cowork incident-correction 2026-05-11T21:49Z
     // (cid claudeCoworkPerplexityActualRootCause-1778536100000).
@@ -320,6 +320,13 @@ export default async function handler(req, res) {
 
     // JSON-only path
     if (req.method === "GET") {
+      if (wantsSSE) {
+        res.status(405).json({
+          error: "GET not supported for SSE — use POST for Streamable HTTP requests",
+          hint: "Server-push via SSE not available on Vercel serverless (60s function timeout).",
+        });
+        return;
+      }
       // Smithery / health probe + MCP discovery — return server card-style
       // metadata. Clients SHOULD POST JSON-RPC; GET is metadata-only because
       // long-lived SSE streams are unsupported on this hosting tier (Vercel
