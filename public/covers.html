@@ -404,6 +404,7 @@
   <button data-variant="A" id="btnA">A</button>
   <button data-variant="B" id="btnB">B</button>
   <button data-variant="C" id="btnC">C</button>
+  <button data-variant="V" id="btnV" title="Sizzle reel (75s, audio)">V</button>
   <span class="sep">·</span>
   <span id="dims">1920×1080</span>
 </div>
@@ -683,8 +684,25 @@ function CoverC() {
   );
 }
 
+// ─── Variant V: Sizzle reel video player (75s, VO + ambient bed) ──────────
+function CoverV() {
+  return (
+    <div className="cover" style={{ background: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <video
+        src="/brand/sizzle-techex-audio.mp4"
+        poster="/brand/cover-techex-A.png"
+        controls
+        autoPlay
+        loop
+        playsInline
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      />
+    </div>
+  );
+}
+
 // ─── Variant router + viewport scaler ──────────────────────────────────────
-const COVERS = { A: CoverA, B: CoverB, C: CoverC };
+const COVERS = { A: CoverA, B: CoverB, C: CoverC, V: CoverV };
 
 function App() {
   const initial = (new URLSearchParams(window.location.search).get('v') || 'A').toUpperCase();
