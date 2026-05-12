@@ -240,12 +240,16 @@ function RoundtableView({ events, hitl, layout, onAct, completedCids }) {
     .filter(ev => (ev.kind === "decision-pending" || ev.kind === "hitl-required" || ev.kind === "roundtable-open") && !completedCids.has(ev.cid))
     .map(rootEv => buildRoundtable(rootEv, events));
   // also add hitl entries whose cid doesn't match an event source
+  // NOTE: must add cid to seenCids after push, else 6 hitl items with the
+  // same cid (e.g. Anti-Dead-Project-Detector batch with shared ts) all pass
+  // the !seenCids.has check and produce duplicate React keys → invariant warns.
   const seenCids = new Set(items.map(i => i.rootCid));
   hitl.forEach(h => {
     if (seenCids.has(h.cid)) return;
     if (completedCids.has(h.cid)) return;
     const ev = events.find(e => e.cid === h.cid);
     if (ev) return;
+    seenCids.add(h.cid);  // ← guard against in-loop duplicate cids
     // synthesize a one-seat roundtable
     items.push({
       rootCid: h.cid,
@@ -279,7 +283,8 @@ function RoundtableView({ events, hitl, layout, onAct, completedCids }) {
             </div>
           )}
           {items.map((rt, idx) => (
-            <RoundtableCard key={rt.rootCid} rt={rt} idx={idx} layout={layout} onAct={onAct} />
+            // composite key: rootCid + idx — defensive guard if upstream dedup is bypassed
+            <RoundtableCard key={`${rt.rootCid}__${idx}`} rt={rt} idx={idx} layout={layout} onAct={onAct} />
           ))}
         </div>
       </div>
