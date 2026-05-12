@@ -274,16 +274,56 @@ function App() {
       case "calendar":  return <CalendarView events={events} work={work} crons={crons} />;
       case "docs":      return <DocsView docs={DOCS} />;
       case "todos":     return <TodosView hitl={hitlList.filter(h=>!completedHitlCids.has(h.cid))} work={work} onSelect={setSelected} onComplete={(id)=>setCompletedTodoIds(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;})} completedIds={completedTodoIds} />;
-      case "events":    return <EventsView events={events} onSelect={setSelected} selectedCid={selected?.data?.cid} />;
+      case "events":    return <EventsView events={events} onSelect={setSelected} selectedCid={selected?.data?.cid} filters={filters} />;
       case "cron":      return <CronManagerView crons={crons} onSelect={setSelected} selectedId={selected?.data?.id} onToggle={doCronToggle} onRunNow={(c)=>doCronAction(c,"run-now")} showStrip={tweak.showCronStrip} runningIds={runningIds} recentRuns={recentRuns} />;
       case "roundtable":return <RoundtableView events={events} hitl={hitlList} layout={tweak.roundtableLayout} onAct={doAct} completedCids={completedHitlCids} />;
       default: return null;
     }
   }
 
+  // staleness check: if live-bootstrap reported success but no poll has succeeded
+  // in > 15s, treat as silent failure and surface the banner
+  const [pollStale, setPollStale] = useStateA(false);
+  useEffectA(() => {
+    if (liveDataSource !== "live") { setPollStale(false); return; }
+    const tick = setInterval(() => {
+      const last = (typeof window.ACMI_LIVE_LAST_SUCCESS_TS === "function") ? window.ACMI_LIVE_LAST_SUCCESS_TS() : 0;
+      setPollStale(last > 0 && (Date.now() - last) > 15000);
+    }, 5000);
+    return () => clearInterval(tick);
+  }, [liveDataSource]);
+
+  const showBanner = liveDataSource === "mock-fallback" || liveDataSource === "mock" || pollStale;
+
   return (
     <div className={`app ${rootClass}`} data-source={liveDataSource}>
       <TopBar hitlCount={hitlPending} view={view} onSearch={onSearch} liveDataSource={liveDataSource} />
+      {showBanner && (
+        <div className="data-banner" role="status" aria-live="polite" style={{
+          padding: "8px 16px",
+          background: "var(--accent-soft, #fff4e0)",
+          borderTop: "1px solid var(--warn, #b5751f)",
+          borderBottom: "1px solid var(--warn, #b5751f)",
+          color: "var(--ink-0, #14120c)",
+          fontFamily: "JetBrains Mono, monospace",
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}>
+          <span style={{color:"var(--warn)",fontWeight:600}}>⚠ LIVE DATA UNAVAILABLE</span>
+          <span style={{color:"var(--ink-2)"}}>
+            {liveDataSource === "mock-fallback" && "API bootstrap failed after 3 retries · showing calibrated mock"}
+            {liveDataSource === "mock" && "live-bootstrap script not loaded · showing calibrated mock"}
+            {pollStale && "3s poll has not succeeded in > 15s · data may be stale"}
+          </span>
+          <span style={{marginLeft:"auto"}}>
+            <button className="btn sm" onClick={() => window.location.reload()} style={{fontFamily:"inherit",fontSize:11}}>
+              ↻ Retry
+            </button>
+          </span>
+        </div>
+      )}
       <div className={`app-main ${selected ? "" : "drawer-closed"}`}>
         <LeftRail
           selectedAgent={selectedAgent}

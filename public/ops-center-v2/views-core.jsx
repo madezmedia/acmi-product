@@ -99,18 +99,28 @@ function TLRow({ ev, onSelect, selected, isNew }) {
 }
 
 // ─── EVENTS TABLE ──────────────────────────────────────────────
-function EventsView({ events, onSelect, selectedCid }) {
+function EventsView({ events, onSelect, selectedCid, filters }) {
   const [sortKey, setSortKey] = useStateV("ts");
   const [asc, setAsc] = useStateV(false);
   const sorted = useMemoV(() => {
-    const arr = [...events].sort((a,b) => {
-      const av = a[sortKey], bv = b[sortKey];
-      if (av < bv) return asc ? -1 : 1;
-      if (av > bv) return asc ? 1 : -1;
-      return 0;
-    });
+    const q = (filters && filters.query) ? filters.query.toLowerCase() : "";
+    const arr = [...events]
+      .filter(ev => {
+        if (!q) return true;
+        const inSummary = (ev.summary || "").toLowerCase().includes(q);
+        const inCid = (ev.cid || "").toLowerCase().includes(q);
+        const inSource = (ev.source || "").toLowerCase().includes(q);
+        const inKind = (ev.kind || "").toLowerCase().includes(q);
+        return inSummary || inCid || inSource || inKind;
+      })
+      .sort((a,b) => {
+        const av = a[sortKey], bv = b[sortKey];
+        if (av < bv) return asc ? -1 : 1;
+        if (av > bv) return asc ? 1 : -1;
+        return 0;
+      });
     return arr;
-  }, [events, sortKey, asc]);
+  }, [events, sortKey, asc, filters]);
   const cols = [["ts","ts"],["source","src"],["kind","kind"],["summary","summary"],["cid","cid"]];
   function clickSort(k) { if (sortKey===k) setAsc(!asc); else { setSortKey(k); setAsc(false); } }
   return (
