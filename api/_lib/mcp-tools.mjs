@@ -425,40 +425,57 @@ export function registerAcmiTools(server, redis) {
       limit: z.number().optional().describe("Number of results to return. Default: 5."),
     },
     safeTool("acmi_search_semantic", async ({ query, limit }) => {
-      // NOTE: This tool requires a running semantic indexer (e.g. acmi-chroma-bridge.py).
-      // In a multi-tenant cloud environment, this would call the Hindsight or Upstash Vector API.
-      // For this local-first prototype, we query the local ChromaDB via a child process call
-      // or directly if the environment permits.
-      
+      // Local-first prototype. Queries ChromaDB via child_process to query_v2.py.
+      // Designed for MCP hosts running on the same machine as the Chroma index
+      // (Claude Code / Cursor / Cline running on Mikey's laptop). On Vercel, the
+      // venv path won't exist — we early-return a clear cloud-fallback error.
       const maxResults = limit || 5;
       console.log(`🔍 [Semantic Search] Query: "${query}" (limit: ${maxResults})`);
-      
+
       try {
-        const { execSync } = await import("child_process");
+        const fs = await import("node:fs");
         const venvPython = "/Users/michaelshaw/clawd/tools/memory-rag/.venv/bin/python3";
         const searchScript = "/Users/michaelshaw/clawd/tools/memory-rag/query_v2.py";
 
-        # Execute the search script and capture JSON output
-        const cmd = `${venvPython} ${searchScript} "${query.replace(/"/g, '\\"')}" --k ${maxResults} --json`;
-        const output = execSync(cmd, { encoding: "utf8" });
+        if (!fs.existsSync(venvPython) || !fs.existsSync(searchScript)) {
+          return jsonResult({
+            ok: false,
+            error: "Semantic search requires local-runtime context",
+            detail: "This tool queries a local ChromaDB via Python child-process. It works when the MCP server is hosted on the same machine as ~/clawd/tools/memory-rag/ (Mikey's laptop). The Vercel container does not have access to the index.",
+            hint: "Run the MCP server locally OR migrate impl to a hosted vector API (Upstash Vector, Pinecone) for cloud parity.",
+            cloud_fallback: true,
+          });
+        }
+
+        const { execSync } = await import("node:child_process");
+        // query_v2.py argparse uses `-k/--k`, not `--limit`. Fixed 2026-05-12.
+        const safeQ = query.replace(/"/g, '\\"');
+        const cmd = `${venvPython} ${searchScript} "${safeQ}" --k ${maxResults} --json`;
+        const output = execSync(cmd, { encoding: "utf8", timeout: 25000 });
         const results = JSON.parse(output);
-        
+
         return jsonResult({
           ok: true,
           query,
-          results: results.map(r => ({
-            relevance: r.relevance || r.score,
-            summary: r.document || r.text,
-            metadata: r.metadata,
-            link: r.metadata?.correlationId ? `cid:${r.metadata.correlationId}` : null
-          }))
+          results: (Array.isArray(results) ? results : []).map(r => ({
+            relevance: typeof r.score === "number" ? r.score : (r.similarity || 0),
+            summary: r.doc || r.document || r.text || "",
+            metadata: {
+              date_iso: r.date_iso || "",
+              source: r.source || "",
+              title: r.title || "",
+              project: r.project || "",
+              agent_source: r.agent_source || "",
+            },
+            link: r.metadata?.correlationId ? `cid:${r.metadata.correlationId}` : null,
+          })),
         });
       } catch (err) {
-        return jsonResult({ 
-          ok: false, 
+        return jsonResult({
+          ok: false,
           error: "Semantic index unavailable or search failed",
-          detail: err.message,
-          hint: "Ensure acmi-chroma-bridge.py has run and .venv is populated."
+          detail: String(err.message || err).slice(0, 300),
+          hint: "Ensure acmi-chroma-bridge.py has run and the local venv is populated, OR run the MCP server locally.",
         });
       }
     })
