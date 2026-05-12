@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ACMI — Cover Variants (TechEx 2026)</title>
+<meta name="description" content="Three 1920×1080 cover variants for the ACMI TechEx 2026 hackathon submission — timeline, three-keys, and dashboard compositions." />
+<link rel="icon" href="/brand/glyph.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --canvas: #0a0e27;
+    --panel: #1a1a2e;
+    --recessed: #0f1729;
+    --border: #1f2937;
+    --accent: #ffd166;
+    --data: #3b82f6;
+    --allow: #10b981;
+    --deny: #ef4444;
+    --text: #e5e7eb;
+    --strong: #ffffff;
+    --muted: #94a3b8;
+    --font-display: 'Inter Tight', 'Inter', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  html, body { margin: 0; padding: 0; min-height: 100%; background: #05070f; font-family: var(--font-body); color: var(--text); }
+
+  /* Viewport scaler: covers render at native 1920×1080 and scale to fit window */
+  .stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .stage-scaler {
+    width: 1920px; height: 1080px;
+    transform-origin: center center;
+    flex-shrink: 0;
+  }
+
+  /* Variant switcher (top-right HUD; hidden via ?clean=1 for screenshot) */
+  .hud {
+    position: fixed; top: 16px; right: 16px;
+    z-index: 100;
+    display: flex; gap: 8px; align-items: center;
+    padding: 8px 12px;
+    background: rgba(10,14,39,0.85); border: 1px solid var(--border); border-radius: 999px;
+    backdrop-filter: blur(8px);
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
+  }
+  .hud button {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    transition: all 0.15s;
+  }
+  .hud button:hover { color: var(--text); border-color: var(--accent); }
+  .hud button.active { background: var(--accent); color: var(--canvas); border-color: var(--accent); }
+  .hud .sep { color: var(--muted); opacity: 0.4; }
+  body.clean .hud { display: none; }
+
+  /* ── Cover shared chrome ── */
+  .cover {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    background: var(--canvas);
+    color: var(--text);
+    overflow: hidden;
+    font-family: var(--font-body);
+  }
+  .cover .hex-bg { position: absolute; inset: 0; opacity: 0.07; pointer-events: none; }
+  .cover .vignette {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(59,130,246,0.10), transparent 55%),
+      radial-gradient(ellipse at 70% 80%, rgba(255,209,102,0.06), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ── Variant A: Abstract timeline ── */
+  .va-title { position: absolute; top: 96px; left: 96px; max-width: 1300px; }
+  .va-eyebrow {
+    font-family: var(--font-mono); font-size: 18px; font-weight: 500;
+    color: var(--accent); letter-spacing: 0.28em; text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .va-headline {
+    font-family: var(--font-display); font-size: 88px; font-weight: 700;
+    color: var(--strong); letter-spacing: -0.03em; line-height: 1.04;
+    margin: 0;
+  }
+  .va-tagline {
+    margin-top: 36px;
+    font-family: var(--font-body); font-size: 26px; font-weight: 400;
+    color: var(--text); letter-spacing: -0.01em; line-height: 1.4;
+    max-width: 900px;
+  }
+  .va-track { position: absolute; left: 96px; right: 96px; top: 660px; height: 240px; }
+  .va-line {
+    position: absolute; left: 0; right: 0; top: 50%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--accent) 8%, var(--accent) 92%, transparent 100%);
+    box-shadow: 0 0 24px rgba(255,209,102,0.4);
+  }
+  .va-node { position: absolute; top: 50%; transform: translate(-50%, -50%); background: var(--panel); border: 1px solid var(--border); }
+  .va-node.sq { width: 16px; height: 16px; }
+  .va-node.hex {
+    width: 22px; height: 22px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: var(--accent);
+    border: none;
+  }
+  .va-node.circ { width: 14px; height: 14px; border-radius: 50%; }
+  .va-node.big {
+    width: 56px; height: 56px;
+    background: var(--canvas);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    box-shadow: 0 0 0 4px rgba(16,185,129,0.18), 0 0 40px rgba(255,209,102,0.4);
+  }
+  .va-node.big::after {
+    content: ''; position: absolute; inset: 12px;
+    background: var(--accent); border-radius: 4px;
+  }
+  .va-label {
+    position: absolute; top: 50%;
+    transform: translate(-50%, calc(-50% + 60px));
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--text); letter-spacing: 0.2em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .va-tick {
+    position: absolute; top: 50%;
+    transform: translate(-50%, calc(-50% - 36px));
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+  .va-arc {
+    position: absolute; left: 0; top: 50%;
+    width: 100%; height: 80px;
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
+  .va-sponsor, .vb-sponsor, .vc-sponsor {
+    display: flex; align-items: center; gap: 20px;
+    font-family: var(--font-mono); font-size: 14px;
+    color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .va-sponsor { position: absolute; right: 96px; bottom: 64px; }
+  .va-sponsor .dot, .vb-sponsor .dot, .vc-sponsor .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); }
+
+  /* ── Variant B: Three keys hero ── */
+  .vb-title { position: absolute; top: 96px; right: 96px; text-align: right; max-width: 800px; }
+  .vb-eyebrow {
+    font-family: var(--font-mono); font-size: 18px; font-weight: 500;
+    color: var(--accent); letter-spacing: 0.28em; text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .vb-headline {
+    font-family: var(--font-display); font-size: 82px; font-weight: 700;
+    color: var(--strong); letter-spacing: -0.03em; line-height: 1.04; margin: 0;
+  }
+  .vb-tagline {
+    margin-top: 32px;
+    font-family: var(--font-body); font-size: 24px; font-weight: 400;
+    color: var(--text); letter-spacing: -0.01em; line-height: 1.4;
+  }
+  .vb-panels {
+    position: absolute; left: 96px; top: 280px;
+    display: flex; gap: 32px; height: 580px;
+  }
+  .vb-panel {
+    position: relative;
+    width: 240px;
+    background: linear-gradient(180deg, rgba(26,26,46,0.85) 0%, rgba(15,23,41,0.85) 100%);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    backdrop-filter: blur(8px);
+    overflow: hidden;
+    box-shadow: 0 0 80px rgba(255,209,102,0.08), inset 0 0 40px rgba(0,0,0,0.3);
+  }
+  .vb-panel::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  }
+  .vb-panel-idx {
+    position: absolute; top: 24px; left: 24px;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--muted); letter-spacing: 0.25em;
+  }
+  .vb-panel-glyph {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 60px;
+  }
+  .vb-panel-label {
+    position: absolute; bottom: 36px; left: 0; right: 0;
+    text-align: center;
+    font-family: var(--font-display); font-size: 22px; font-weight: 600;
+    color: var(--strong); letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .vb-panel-sub {
+    position: absolute; bottom: 18px; left: 0; right: 0;
+    text-align: center;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase;
+  }
+  .vb-bus {
+    position: absolute; left: 96px; top: 880px;
+    width: 784px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent) 6%, var(--accent) 94%, transparent);
+    box-shadow: 0 0 16px rgba(255,209,102,0.5);
+  }
+  .vb-bus-label {
+    position: absolute; left: 96px; top: 900px;
+    width: 784px; text-align: center;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--accent); letter-spacing: 0.28em; text-transform: uppercase;
+  }
+  .vb-sponsor { position: absolute; right: 96px; bottom: 64px; }
+
+  /* ── Variant C: Stylized dashboard ── */
+  .vc-dash {
+    position: absolute; left: 80px; top: 80px; right: 80px;
+    height: 720px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transform: perspective(2400px) rotateX(2deg) rotateY(-2deg);
+    transform-origin: center center;
+    box-shadow: 0 60px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 120px rgba(255,209,102,0.06);
+  }
+  .vc-header {
+    height: 56px;
+    display: flex; align-items: center;
+    padding: 0 24px; gap: 20px;
+    background: var(--recessed);
+    border-bottom: 1px solid var(--border);
+  }
+  .vc-brand {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    color: var(--strong); letter-spacing: 0.18em;
+  }
+  .vc-divider { color: var(--muted); }
+  .vc-section {
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--muted); letter-spacing: 0.12em;
+  }
+  .vc-live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--allow);
+    box-shadow: 0 0 12px var(--allow);
+  }
+  .vc-live {
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--allow); letter-spacing: 0.22em; font-weight: 600;
+  }
+  .vc-spacer { flex: 1; }
+  .vc-user {
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--muted); letter-spacing: 0.12em;
+  }
+  .vc-body {
+    display: grid;
+    grid-template-columns: 240px 1fr 360px;
+    height: calc(100% - 56px);
+  }
+  .vc-nav {
+    background: var(--recessed);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+  }
+  .vc-nav-item {
+    padding: 14px 24px;
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 12px;
+    border-left: 2px solid transparent;
+  }
+  .vc-nav-item .glyph { width: 12px; height: 12px; flex-shrink: 0; background: var(--muted); }
+  .vc-nav-item.active {
+    color: var(--strong);
+    border-left-color: var(--accent);
+    background: rgba(255,209,102,0.04);
+  }
+  .vc-nav-item.active .glyph { background: var(--accent); }
+  .vc-nav-section {
+    padding: 24px 24px 8px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .vc-log { padding: 16px 24px; overflow: hidden; }
+  .vc-log-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .vc-log-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 13px;
+  }
+  .vc-log-row.deny { background: rgba(239,68,68,0.06); }
+  .vc-ts { color: var(--muted); width: 76px; font-size: 12px; }
+  .vc-pill {
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-weight: 600; font-size: 11px;
+    letter-spacing: 0.1em; min-width: 52px; text-align: center;
+  }
+  .vc-pill.allow { color: var(--allow); border: 1px solid var(--allow); background: rgba(16,185,129,0.1); }
+  .vc-pill.deny { color: var(--deny); border: 1px solid var(--deny); background: rgba(239,68,68,0.1); }
+  .vc-pill.log { color: var(--accent); border: 1px solid var(--accent); background: rgba(255,209,102,0.08); }
+  .vc-fw { color: var(--accent); font-size: 12px; width: 80px; }
+  .vc-msg { color: var(--text); flex: 1; }
+  .vc-risk { color: var(--muted); font-size: 11px; }
+  .vc-cid { color: var(--muted); font-size: 11px; opacity: 0.6; }
+  .vc-side {
+    background: var(--recessed);
+    border-left: 1px solid var(--border);
+    padding: 24px;
+  }
+  .vc-stat-label {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 0.22em; text-transform: uppercase;
+  }
+  .vc-stat-value {
+    font-family: var(--font-display); font-size: 44px; font-weight: 700;
+    color: var(--strong); letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    margin-top: 8px;
+  }
+  .vc-stat-delta {
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--allow); letter-spacing: 0.1em;
+    margin-top: 4px;
+  }
+  .vc-spark { margin-top: 24px; height: 64px; position: relative; }
+  .vc-spark svg { width: 100%; height: 100%; display: block; }
+  .vc-breakdown { margin-top: 28px; display: grid; gap: 12px; }
+  .vc-bdrow {
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--text);
+  }
+  .vc-bdbar {
+    flex: 1; height: 6px;
+    background: var(--canvas);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+  .vc-bdbar::after {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--data);
+  }
+  .vc-bdrow.l1 .vc-bdbar::after { width: 64%; }
+  .vc-bdrow.l2 .vc-bdbar::after { width: 28%; }
+  .vc-bdrow.l3 .vc-bdbar::after { width: 8%; }
+  .vc-bdrow .name { width: 72px; color: var(--muted); }
+  .vc-bdrow .val { width: 36px; color: var(--strong); text-align: right; }
+
+  .vc-title-scrim {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 360px;
+    background: linear-gradient(180deg, transparent 0%, rgba(10,14,39,0.85) 55%, rgba(10,14,39,0.98) 100%);
+    pointer-events: none;
+  }
+  .vc-title-block {
+    position: absolute; left: 96px; bottom: 80px; right: 96px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 48px;
+  }
+  .vc-title-text { max-width: 1300px; }
+  .vc-eyebrow {
+    font-family: var(--font-mono); font-size: 16px; font-weight: 500;
+    color: var(--accent); letter-spacing: 0.28em; text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .vc-headline {
+    font-family: var(--font-display); font-size: 64px; font-weight: 700;
+    color: var(--strong); letter-spacing: -0.03em; line-height: 1.04;
+    margin: 0 0 16px 0;
+  }
+  .vc-tagline {
+    font-family: var(--font-body); font-size: 22px; font-weight: 400;
+    color: var(--text); letter-spacing: -0.01em; line-height: 1.4;
+    max-width: 1100px;
+  }
+  .vc-sponsor { white-space: nowrap; padding-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="hud" id="hud">
+  <span>Variant</span>
+  <button data-variant="A" id="btnA">A</button>
+  <button data-variant="B" id="btnB">B</button>
+  <button data-variant="C" id="btnC">C</button>
+  <span class="sep">·</span>
+  <span id="dims">1920×1080</span>
+</div>
+
+<div class="stage">
+  <div class="stage-scaler" id="scaler">
+    <div id="root"></div>
+  </div>
+</div>
+
+<!-- Hex-grid pattern (reusable) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="hex-pattern" width="56" height="48.5" patternUnits="userSpaceOnUse">
+      <path d="M14 0 L42 0 L56 24.25 L42 48.5 L14 48.5 L0 24.25 Z"
+        fill="none" stroke="#3b82f6" stroke-width="0.6" />
+    </pattern>
+  </defs>
+</svg>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js"
+  integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
+  integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
+  integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel">
+// ── ACMI Cover Variants ─────────────────────────────────────────────────────
+// Ported from techex/project/ACMI Covers.html + covers.jsx (design bundle)
+// Stripped DesignCanvas wrapper · added variant switcher + viewport scaler.
+// Locked palette: dark navy canvas, amber accent, blue data, green allow,
+// red deny. Inter Tight + Inter + JetBrains Mono.
+
+const NODES = [
+  { x: 0.04, type: 'circ' },
+  { x: 0.09, type: 'sq' },
+  { x: 0.14, type: 'circ' },
+  { x: 0.20, type: 'hex', big: true, label: 'LangChain', tick: 't=0s · prompt' },
+  { x: 0.26, type: 'sq' },
+  { x: 0.31, type: 'circ' },
+  { x: 0.36, type: 'sq' },
+  { x: 0.42, type: 'hex', big: true, label: 'CrewAI', tick: 't=1.4s · research-output' },
+  { x: 0.48, type: 'circ' },
+  { x: 0.53, type: 'sq' },
+  { x: 0.58, type: 'circ' },
+  { x: 0.64, type: 'sq' },
+  { x: 0.70, type: 'hex', big: true, label: 'Gemini', tick: 't=2.1s · cross-check' },
+  { x: 0.76, type: 'circ' },
+  { x: 0.81, type: 'sq' },
+  { x: 0.86, type: 'hex' },
+  { x: 0.91, type: 'circ' },
+  { x: 0.96, type: 'sq' },
+];
+
+function HexBg() {
+  return (
+    <svg className="hex-bg" width="100%" height="100%" aria-hidden="true">
+      <rect width="100%" height="100%" fill="url(#hex-pattern)" />
+    </svg>
+  );
+}
+
+function Sponsor({ className }) {
+  return (
+    <div className={className}>
+      <span>Veea</span><span className="dot"></span>
+      <span>Gemini</span><span className="dot"></span>
+      <span>lablab.ai</span>
+    </div>
+  );
+}
+
+// ─── VARIANT A: Abstract data-flow timeline ────────────────────────────────
+function CoverA() {
+  return (
+    <div className="cover">
+      <div className="vignette"></div>
+      <HexBg />
+
+      <div className="va-title">
+        <div className="va-eyebrow">ACMI · TechEx 2026</div>
+        <h1 className="va-headline">
+          The Universal Memory Layer<br />for AI Agents.
+        </h1>
+        <div className="va-tagline">
+          Three keys per entity. One memory protocol. Every framework. Every model.<br />
+          One audit trail via Veea Lobster Trap.
+        </div>
+      </div>
+
+      <div className="va-track">
+        <svg className="va-arc" viewBox="0 0 1728 80" preserveAspectRatio="none">
+          <path d={`M ${0.20 * 1728} 60 Q ${0.31 * 1728} 8, ${0.42 * 1728} 60`}
+                fill="none" stroke="#3b82f6" strokeWidth="1" strokeOpacity="0.5" />
+          <path d={`M ${0.42 * 1728} 60 Q ${0.56 * 1728} 4, ${0.70 * 1728} 60`}
+                fill="none" stroke="#3b82f6" strokeWidth="1" strokeOpacity="0.5" />
+        </svg>
+        <div className="va-line"></div>
+        {NODES.map((n, i) => (
+          <React.Fragment key={i}>
+            <div className={`va-node ${n.big ? 'big' : ''} ${n.type}`} style={{ left: `${n.x * 100}%` }} />
+            {n.label && <div className="va-label" style={{ left: `${n.x * 100}%` }}>{n.label}</div>}
+            {n.tick && <div className="va-tick" style={{ left: `${n.x * 100}%` }}>{n.tick}</div>}
+          </React.Fragment>
+        ))}
+      </div>
+
+      <Sponsor className="va-sponsor" />
+    </div>
+  );
+}
+
+// ─── VARIANT B: Three Keys hero ────────────────────────────────────────────
+function CoverB() {
+  return (
+    <div className="cover">
+      <div className="vignette"></div>
+      <HexBg />
+
+      <div className="vb-title">
+        <div className="vb-eyebrow">ACMI · TechEx 2026</div>
+        <h1 className="vb-headline">
+          The Universal<br />Memory Layer<br />for AI Agents.
+        </h1>
+        <div className="vb-tagline">
+          Three keys per entity.<br />One memory protocol.
+        </div>
+      </div>
+
+      <div className="vb-panels">
+        <div className="vb-panel">
+          <div className="vb-panel-idx">01</div>
+          <div className="vb-panel-glyph">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <rect x="6" y="6" width="48" height="48" fill="#ffd166" opacity="0.95" />
+            </svg>
+          </div>
+          <div className="vb-panel-label">Profile</div>
+          <div className="vb-panel-sub">Identity</div>
+        </div>
+        <div className="vb-panel">
+          <div className="vb-panel-idx">02</div>
+          <div className="vb-panel-glyph">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <polygon points="30,4 56,18 56,42 30,56 4,42 4,18" fill="#ffd166" opacity="0.95" />
+            </svg>
+          </div>
+          <div className="vb-panel-label">Signals</div>
+          <div className="vb-panel-sub">Observations</div>
+        </div>
+        <div className="vb-panel">
+          <div className="vb-panel-idx">03</div>
+          <div className="vb-panel-glyph">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <circle cx="30" cy="30" r="26" fill="#ffd166" opacity="0.95" />
+            </svg>
+          </div>
+          <div className="vb-panel-label">Timeline</div>
+          <div className="vb-panel-sub">Audit Trail</div>
+        </div>
+      </div>
+
+      <div className="vb-bus"></div>
+      <div className="vb-bus-label">Shared protocol · Any framework can POST JSON</div>
+
+      <Sponsor className="vb-sponsor" />
+    </div>
+  );
+}
+
+// ─── VARIANT C: Stylized dashboard ─────────────────────────────────────────
+const LOG = [
+  { ts: '00:11:04', verdict: 'allow', fw: 'langchain', msg: 'tool.search · web.read',         risk: '0.12', cid: 'a3f9c2…' },
+  { ts: '00:11:07', verdict: 'allow', fw: 'crewai',    msg: 'research.synthesize',            risk: '0.18', cid: '7b218e…' },
+  { ts: '00:11:09', verdict: 'allow', fw: 'gemini',    msg: 'cross_check · facts.verify',     risk: '0.09', cid: 'd1c44b…' },
+  { ts: '00:11:12', verdict: 'log',   fw: 'crewai',    msg: 'agent.delegate research-output', risk: '0.31', cid: '2e9aa1…' },
+  { ts: '00:11:14', verdict: 'allow', fw: 'langchain', msg: 'memory.append profile/u_341',    risk: '0.04', cid: 'f8b06c…' },
+  { ts: '00:11:18', verdict: 'deny',  fw: 'crewai',    msg: 'fs.write /etc/passwd',           risk: '0.94', cid: '6c1f0a…' },
+];
+
+function CoverC() {
+  return (
+    <div className="cover">
+      <div className="vignette"></div>
+      <HexBg />
+
+      <div className="vc-dash">
+        <div className="vc-header">
+          <span className="vc-brand">ACMI</span>
+          <span className="vc-divider">/</span>
+          <span className="vc-section">Governance Dashboard</span>
+          <span className="vc-live-dot"></span>
+          <span className="vc-live">LIVE</span>
+          <span className="vc-spacer"></span>
+          <span className="vc-user">madezmedia · prod</span>
+        </div>
+        <div className="vc-body">
+          <div className="vc-nav">
+            <div className="vc-nav-section">Memory</div>
+            <div className="vc-nav-item"><span className="glyph" style={{borderRadius: 0}}></span>Profile</div>
+            <div className="vc-nav-item"><span className="glyph" style={{clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'}}></span>Signals</div>
+            <div className="vc-nav-item active"><span className="glyph" style={{borderRadius: '50%'}}></span>Timeline</div>
+            <div className="vc-nav-section">Policy</div>
+            <div className="vc-nav-item"><span className="glyph"></span>Rules</div>
+            <div className="vc-nav-item"><span className="glyph"></span>Decisions</div>
+            <div className="vc-nav-section">Frameworks</div>
+            <div className="vc-nav-item"><span className="glyph"></span>LangChain</div>
+            <div className="vc-nav-item"><span className="glyph"></span>CrewAI</div>
+            <div className="vc-nav-item"><span className="glyph"></span>Gemini</div>
+          </div>
+          <div className="vc-log">
+            <div className="vc-log-header">
+              <span>Live Event Stream · last 6 of 1,603 in 24h</span>
+            </div>
+            {LOG.map((row, i) => (
+              <div key={i} className={`vc-log-row ${row.verdict === 'deny' ? 'deny' : ''}`}>
+                <span className="vc-ts">{row.ts}</span>
+                <span className={`vc-pill ${row.verdict}`}>{row.verdict.toUpperCase()}</span>
+                <span className="vc-fw">[{row.fw}]</span>
+                <span className="vc-msg">{row.msg}</span>
+                <span className="vc-risk">risk {row.risk}</span>
+                <span className="vc-cid">cid:{row.cid}</span>
+              </div>
+            ))}
+          </div>
+          <div className="vc-side">
+            <div className="vc-stat-label">Events / 24h</div>
+            <div className="vc-stat-value">1,603</div>
+            <div className="vc-stat-delta">▲ 12.4% wow</div>
+
+            <div className="vc-spark">
+              <svg viewBox="0 0 320 64" preserveAspectRatio="none">
+                <polyline
+                  points="0,52 32,46 60,48 92,38 124,42 156,28 188,32 220,20 252,24 284,12 320,8"
+                  fill="none" stroke="#3b82f6" strokeWidth="2" />
+                <polyline
+                  points="0,52 32,46 60,48 92,38 124,42 156,28 188,32 220,20 252,24 284,12 320,8 320,64 0,64"
+                  fill="rgba(59,130,246,0.15)" stroke="none" />
+                <circle cx="320" cy="8" r="3" fill="#3b82f6" />
+              </svg>
+            </div>
+
+            <div className="vc-breakdown">
+              <div className="vc-bdrow l1">
+                <span className="name">langchain</span>
+                <span className="vc-bdbar"></span>
+                <span className="val">1,026</span>
+              </div>
+              <div className="vc-bdrow l2">
+                <span className="name">crewai</span>
+                <span className="vc-bdbar"></span>
+                <span className="val">449</span>
+              </div>
+              <div className="vc-bdrow l3">
+                <span className="name">gemini</span>
+                <span className="vc-bdbar"></span>
+                <span className="val">128</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="vc-title-scrim"></div>
+      <div className="vc-title-block">
+        <div className="vc-title-text">
+          <div className="vc-eyebrow">ACMI · TechEx 2026</div>
+          <h1 className="vc-headline">The Universal Memory Layer for AI Agents.</h1>
+          <div className="vc-tagline">
+            Three keys per entity. One memory protocol. Every framework. Every model.
+          </div>
+        </div>
+        <Sponsor className="vc-sponsor" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Variant router + viewport scaler ──────────────────────────────────────
+const COVERS = { A: CoverA, B: CoverB, C: CoverC };
+
+function App() {
+  const initial = (new URLSearchParams(window.location.search).get('v') || 'A').toUpperCase();
+  const [variant, setVariant] = React.useState(COVERS[initial] ? initial : 'A');
+  React.useEffect(() => {
+    document.querySelectorAll('.hud button').forEach(b => {
+      b.classList.toggle('active', b.dataset.variant === variant);
+      b.onclick = () => {
+        setVariant(b.dataset.variant);
+        const u = new URL(window.location); u.searchParams.set('v', b.dataset.variant);
+        history.replaceState(null, '', u.toString());
+      };
+    });
+    if (new URLSearchParams(window.location.search).get('clean') === '1') {
+      document.body.classList.add('clean');
+    }
+  }, [variant]);
+  const Cover = COVERS[variant];
+  return <Cover />;
+}
+
+// Fit-to-viewport scaler: covers always render at native 1920×1080 and the
+// stage scales to fit any window size while preserving aspect ratio.
+function fitStage() {
+  const scaler = document.getElementById('scaler');
+  if (!scaler) return;
+  const sx = window.innerWidth / 1920;
+  const sy = window.innerHeight / 1080;
+  const s = Math.min(sx, sy);
+  scaler.style.transform = `scale(${s})`;
+}
+window.addEventListener('resize', fitStage);
+fitStage();
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
