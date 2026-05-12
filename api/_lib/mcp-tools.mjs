@@ -415,4 +415,52 @@ export function registerAcmiTools(server, redis) {
       return jsonResult({ ok: true, dry_run: false, key, deleted: deleted === 1, type });
     })
   );
+
+  // 17. acmi_search_semantic
+  server.tool(
+    "acmi_search_semantic",
+    "Perform semantic search across fleet coordination history. Finds relevant past events, decisions, and work items based on natural language queries. Returns original ACMI correlationIds for linking.",
+    {
+      query: z.string().describe("Natural language search query (e.g. 'previous decisions about SSE timeouts')"),
+      limit: z.number().optional().describe("Number of results to return. Default: 5."),
+    },
+    safeTool("acmi_search_semantic", async ({ query, limit }) => {
+      // NOTE: This tool requires a running semantic indexer (e.g. acmi-chroma-bridge.py).
+      // In a multi-tenant cloud environment, this would call the Hindsight or Upstash Vector API.
+      // For this local-first prototype, we query the local ChromaDB via a child process call
+      // or directly if the environment permits.
+      
+      const maxResults = limit || 5;
+      console.log(`🔍 [Semantic Search] Query: "${query}" (limit: ${maxResults})`);
+      
+      try {
+        const { execSync } = await import("child_process");
+        const venvPython = "/Users/michaelshaw/clawd/tools/memory-rag/.venv/bin/python3";
+        const searchScript = "/Users/michaelshaw/clawd/tools/memory-rag/query_v2.py";
+
+        # Execute the search script and capture JSON output
+        const cmd = `${venvPython} ${searchScript} "${query.replace(/"/g, '\\"')}" --k ${maxResults} --json`;
+        const output = execSync(cmd, { encoding: "utf8" });
+        const results = JSON.parse(output);
+        
+        return jsonResult({
+          ok: true,
+          query,
+          results: results.map(r => ({
+            relevance: r.relevance || r.score,
+            summary: r.document || r.text,
+            metadata: r.metadata,
+            link: r.metadata?.correlationId ? `cid:${r.metadata.correlationId}` : null
+          }))
+        });
+      } catch (err) {
+        return jsonResult({ 
+          ok: false, 
+          error: "Semantic index unavailable or search failed",
+          detail: err.message,
+          hint: "Ensure acmi-chroma-bridge.py has run and .venv is populated."
+        });
+      }
+    })
+  );
 }

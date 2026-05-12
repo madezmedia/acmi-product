@@ -370,4 +370,37 @@ export const TOOL_DEFS = [
     },
     annotations: { title: "Delete ACMI Key", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   },
+  {
+    name: "acmi_search_semantic",
+    description: "Perform semantic search across fleet coordination history. Finds relevant past events, decisions, and work items based on natural language queries. Returns original ACMI correlationIds for linking.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Natural language search query (e.g. 'previous decisions about SSE timeouts')" },
+        limit: { type: "number", description: "Number of results to return. Default: 5." },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        ok: { type: "boolean" },
+        query: { type: "string" },
+        results: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              relevance: { type: "number" },
+              summary: { type: "string" },
+              metadata: { type: "object" },
+              link: { type: ["string", "null"] },
+            },
+          },
+        },
+      },
+    },
+    annotations: { title: "Semantic Fleet Search", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
 ];
