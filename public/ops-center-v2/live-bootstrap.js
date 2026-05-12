@@ -104,14 +104,21 @@
   }
 
   function adaptHitl(pending) {
-    return pending.map((h, i) => ({
-      ts: h.ts || Date.now() - i * 60_000,
-      kind: h.kind || "hitl-required",
-      title: h.title || (h.summary ? h.summary.split(/[.\n]/)[0].slice(0, 80) : "HITL pending"),
-      summary: h.summary || "",
-      priority: h.priority || 2,
-      cid: h.correlationId || `hitl-${h.ts || i}`,
-    }));
+    return pending.map((h, i) => {
+      // Belt-and-suspenders cid uniqueness: real correlationId if present, else
+      // composite of ts + index + title-slug. Anti-Dead-Project-Detector and
+      // similar batch crons write multiple items with the same wall-clock ts,
+      // which collided to a single cid in earlier versions and broke React keys.
+      const titleSlug = (h.title || h.summary || "").slice(0, 24).replace(/[^a-z0-9]/gi, "").toLowerCase();
+      return {
+        ts: h.ts || Date.now() - i * 60_000,
+        kind: h.kind || "hitl-required",
+        title: h.title || (h.summary ? h.summary.split(/[.\n]/)[0].slice(0, 80) : "HITL pending"),
+        summary: h.summary || "",
+        priority: h.priority || 2,
+        cid: h.correlationId || `hitl-${h.ts || 0}-${i}-${titleSlug || "x"}`,
+      };
+    });
   }
 
   // ──────────────────────────────────────────────────────────────────
