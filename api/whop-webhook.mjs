@@ -14,11 +14,35 @@
 //   UPSTASH_REDIS_REST_TOKEN
 
 import crypto from "node:crypto";
-import { resolveInstance, redis, json, err } from "./_lib/redis.mjs";
 
 export const config = { runtime: "nodejs" };
 
 const REVENUE_THREAD = "acmi:thread:revenue:timeline";
+
+// Direct Upstash call (the _lib/redis.mjs helper is Edge-runtime-only; this
+// endpoint runs on Node runtime so we make the REST POST ourselves).
+async function upstash(...cmd) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) throw new Error("missing UPSTASH creds in env");
+  const endpoint = url.replace(/\/$/, "") + "/";
+  const r = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(cmd),
+  });
+  if (!r.ok) throw new Error(`Upstash ${r.status}`);
+  const d = await r.json();
+  if (d.error) throw new Error(`Upstash: ${d.error}`);
+  return d.result;
+}
+
+function reply(res, status, body) {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Cache-Control", "no-store");
+  res.end(JSON.stringify(body));
+}
 
 async function readRawBody(req) {
   return new Promise((resolve, reject) => {
@@ -97,23 +121,15 @@ function inferAmount(payload) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "no-store");
-
   if (req.method !== "POST") {
-    res.statusCode = 405;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ error: "method not allowed" }));
-    return;
+    return reply(res, 405, { error: "method not allowed" });
   }
 
   let rawBody;
   try {
     rawBody = await readRawBody(req);
   } catch (e) {
-    res.statusCode = 400;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ error: "could not read body", detail: String(e.message || e) }));
-    return;
+    return reply(res, 400, { error: "could not read body", detail: String(e.message || e) });
   }
 
   const secret = process.env.WHOP_WEBHOOK_SECRET || "";
@@ -124,10 +140,7 @@ export default async function handler(req, res) {
   if (secret) {
     const v = verifyWhopSignature(rawBody, signatureHeader, secret);
     if (!v.ok) {
-      res.statusCode = 401;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ error: "invalid signature", reason: v.reason }));
-      return;
+      return reply(res, 401, { error: "invalid signature", reason: v.reason });
     }
   } else {
     signatureMode = "dev-no-secret";
@@ -137,10 +150,7 @@ export default async function handler(req, res) {
   try {
     payload = rawBody ? JSON.parse(rawBody) : {};
   } catch {
-    res.statusCode = 400;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ error: "invalid JSON body" }));
-    return;
+    return reply(res, 400, { error: "invalid JSON body" });
   }
 
   const eventType =
@@ -187,10 +197,9 @@ export default async function handler(req, res) {
   };
 
   try {
-    const instance = resolveInstance(req);
-    await redis(instance, "ZADD", REVENUE_THREAD, String(ts), JSON.stringify(event));
-    return json({ ok: true, correlationId, tier, amount_usd: amount, signature_mode: signatureMode });
+    await upstash("ZADD", REVENUE_THREAD, String(ts), JSON.stringify(event));
+    return reply(res, 200, { ok: true, correlationId, tier, amount_usd: amount, signature_mode: signatureMode });
   } catch (e) {
-    return err(`failed to ZADD revenue event: ${e.message}`);
+    return reply(res, 500, { error: "failed to ZADD revenue event", detail: String(e.message || e) });
   }
 }
