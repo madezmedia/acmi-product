@@ -55,26 +55,78 @@ function App() {
 
   useEffectA(() => { localStorage.setItem("acmi.view", view); }, [view]);
 
-  // periodic synthetic event stream
+  // live data source state — "loading" | "live" | "mock" | "mock-fallback"
+  const [liveDataSource, setLiveDataSource] = useStateA("loading");
+  const lastEventTsRef = useRefA(0);
+
+  // bootstrap from real ACMI APIs · fallback to mock + synthetic injector on failure
   useEffectA(() => {
-    const sources = [
+    let stopped = false;
+    let pollIv = null;
+    let syntheticIv = null;
+
+    const SYNTHETIC = [
       () => ({ ts: Date.now(), source: "cron:c-w-anti", kind:"cron-run", cid:`cronRun-c-w-anti-${Date.now()}`,
-               summary:"[cron-run ✓] Hourly Wake — antigravity (:45) completed ok in 1.7s.", tags:["cron","ok"] }),
+               summary:"[cron-run] Hourly Wake antigravity completed ok.", tags:["cron","ok"] }),
       () => ({ ts: Date.now(), source: "agent:claude-engineer", kind:"signals-update", cid:`signals-${Date.now()}`,
-               summary:"[signals-update @claude-cowork] phase advanced step-2 → step-3 for techex-2026.", tags:["signals"] }),
+               summary:"[signals-update] techex phase advanced step-2 to step-3.", tags:["signals"] }),
       () => ({ ts: Date.now(), source: "lobstertrap", kind:"lobstertrap-decision", cid:`lt-${Date.now()}`,
-               summary:"[lobstertrap-decision ALLOW] perplexity → fetch ai-papers.huggingface.co. risk=0.08. policy=research-allowlist.", tags:["governance","allow"] }),
+               summary:"[lobstertrap-decision ALLOW] perplexity research allowlist match.", tags:["governance","allow"] }),
       () => ({ ts: Date.now(), source: "agent:bentley-temp", kind:"nudge", cid:`nudge-${Date.now()}`,
-               summary:"[nudge @claude-cowork] Audit reminder: log run-report for techex by EOD.", tags:["nudge"] }),
+               summary:"[nudge] Audit reminder log run-report for techex by EOD.", tags:["nudge"] }),
     ];
-    const iv = setInterval(() => {
-      const gen = sources[Math.floor(Math.random()*sources.length)];
-      const ev = gen();
-      setEvents(prev => [ev, ...prev].slice(0, 200));
-      setNewCids(prev => { const n = new Set(prev); n.add(ev.cid); return n; });
-      setTimeout(() => setNewCids(prev => { const n = new Set(prev); n.delete(ev.cid); return n; }), 1200);
-    }, 14000);
-    return () => clearInterval(iv);
+    function startSynthetic() {
+      syntheticIv = setInterval(() => {
+        const ev = SYNTHETIC[Math.floor(Math.random()*SYNTHETIC.length)]();
+        setEvents(prev => [ev, ...prev].slice(0, 200));
+        setNewCids(prev => { const n = new Set(prev); n.add(ev.cid); return n; });
+        setTimeout(() => setNewCids(prev => { const n = new Set(prev); n.delete(ev.cid); return n; }), 1200);
+      }, 14000);
+    }
+
+    async function bootstrap() {
+      if (typeof window.ACMI_LIVE_BOOTSTRAP !== "function") {
+        if (!stopped) { setLiveDataSource("mock"); startSynthetic(); }
+        return;
+      }
+      const live = await window.ACMI_LIVE_BOOTSTRAP();
+      if (stopped) return;
+      if (live && live.live) {
+        if (Array.isArray(live.events) && live.events.length) {
+          setEvents(live.events);
+          lastEventTsRef.current = live.events[0].ts || 0;
+        }
+        if (Array.isArray(live.work) && live.work.length) setWork(live.work);
+        if (Array.isArray(live.hitl) && live.hitl.length) setHitlList(live.hitl);
+        if (Array.isArray(live.fleet) && live.fleet.length && window.ACMI) {
+          window.ACMI.FLEET = live.fleet;
+        }
+        setLiveDataSource("live");
+        pollIv = setInterval(async () => {
+          if (stopped || typeof window.ACMI_LIVE_POLL_EVENTS !== "function") return;
+          const fresh = await window.ACMI_LIVE_POLL_EVENTS(lastEventTsRef.current);
+          if (stopped || fresh.length === 0) return;
+          setEvents(prev => {
+            const seen = new Set(prev.map(e => e.cid));
+            const novel = fresh.filter(e => e.cid && !seen.has(e.cid));
+            if (novel.length === 0) return prev;
+            lastEventTsRef.current = Math.max(lastEventTsRef.current, ...novel.map(e => e.ts));
+            return [...novel, ...prev].slice(0, 300);
+          });
+          const novelCids = new Set(fresh.map(e => e.cid).filter(Boolean));
+          if (novelCids.size > 0) {
+            setNewCids(prev => { const n = new Set(prev); novelCids.forEach(c => n.add(c)); return n; });
+            setTimeout(() => setNewCids(prev => { const n = new Set(prev); novelCids.forEach(c => n.delete(c)); return n; }), 1500);
+          }
+        }, 3000);
+      } else {
+        setLiveDataSource("mock-fallback");
+        startSynthetic();
+      }
+    }
+
+    bootstrap();
+    return () => { stopped = true; if (pollIv) clearInterval(pollIv); if (syntheticIv) clearInterval(syntheticIv); };
   }, []);
 
   // recent runs buffer for cron strip
@@ -230,8 +282,8 @@ function App() {
   }
 
   return (
-    <div className={`app ${rootClass}`}>
-      <TopBar hitlCount={hitlPending} view={view} onSearch={onSearch} />
+    <div className={`app ${rootClass}`} data-source={liveDataSource}>
+      <TopBar hitlCount={hitlPending} view={view} onSearch={onSearch} liveDataSource={liveDataSource} />
       <div className={`app-main ${selected ? "" : "drawer-closed"}`}>
         <LeftRail
           selectedAgent={selectedAgent}
