@@ -54,7 +54,14 @@ function escSummary(s) {
 window.helpers = { fmtRel, fmtTs, fmtTsFull, fmtNextCountdown, fmtDuration, classify, initials, shortSrc, escSummary };
 
 // ─── Top bar ───────────────────────────────────────────────────
-function TopBar({ hitlCount, view, onSearch }) {
+function TopBar({ hitlCount, view, onSearch, liveDataSource }) {
+  const srcLabel = liveDataSource === "live" ? "LIVE · ACMI"
+                 : liveDataSource === "loading" ? "LOADING…"
+                 : liveDataSource === "mock-fallback" ? "MOCK · fallback"
+                 : "MOCK";
+  const srcColor = liveDataSource === "live" ? "var(--ok)"
+                 : liveDataSource === "loading" ? "var(--ink-3)"
+                 : "var(--warn)";
   return (
     <header className="topbar">
       <div className="brand">
@@ -62,9 +69,12 @@ function TopBar({ hitlCount, view, onSearch }) {
         <span style={{color:"var(--ink-2)",fontWeight:400,fontSize:15}}>Control Pad</span>
         <small>v1.1</small>
       </div>
-      <span className="live"><span className="dot"></span>LIVE · {fmtTs(Date.now())} ET</span>
+      <span className="live" style={{color: srcColor}}>
+        <span className="dot" style={{background: srcColor}}></span>
+        {srcLabel} · {fmtTs(Date.now())} ET
+      </span>
       <span style={{fontFamily:"JetBrains Mono, monospace",fontSize:11,color:"var(--ink-3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>
-        ↻ 2s
+        ↻ {liveDataSource === "live" ? "3s" : "14s"}
       </span>
       <div className="grow"></div>
       <div className="search">
