@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en" data-title-variant="C" data-keys-variant="A" data-closing-variant="A">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ACMI — TechEx</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="deck.css" />
+  <link rel="stylesheet" href="slides.css" />
+  <script type="application/json" id="speaker-notes">
+[
+"Hi. I'm building ACMI — the Universal Memory Layer for AI Agents. Three keys per entity. One memory protocol. Every framework. Every model. Backed by Veea's Lobster Trap for one audit trail. Three minutes. Let me show you what we built and why it matters right now.",
+"Here's the question every enterprise security review is asking. Not what did the agent claim to do. What did the agent actually do? Inputs, decisions, outputs, in order, with receipts. Right now, that question can't be answered consistently across a multi-framework stack — and that is the bottleneck for enterprise agent adoption.",
+"The reason is structural. Memory lives inside each framework. LangChain has its own history. CrewAI has its own. Gemini has its own. Three frameworks, three audit gaps, three different mental models. A decision taken in one framework doesn't transfer to the next. Procurement can't sign off on what they can't read end-to-end.",
+"So I built the stack underneath. Two MIT projects working together. Lobster Trap inspects prompts at the LLM boundary — declared intent versus detected intent, with a policy gate. ACMI records the timeline — append-only, framework-agnostic, three keys per entity. Prompt-side safety, audit-side memory. Together they answer the question.",
+"The entire ACMI memory model is three keys per entity. Profile — what the entity is. Signals — what it does. Timeline — when it did it. Append-only. ZSET-backed. Any framework can POST JSON. There is nothing else to learn. That is the whole protocol.",
+"Here's what that looks like in production. Three frameworks running in parallel — LangChain on the left, CrewAI in the middle, Gemini on the right. One governance dashboard. One correlationId chain. One timeline. Real audit trail. This is live, and it's live right now during this pitch.",
+"And here's the part that makes procurement happy. Five action classes. A 220-line YAML policy. When detected intent diverges from declared and risk crosses threshold — DENY. The denial is logged with the same correlationId as the prompt that triggered it. Denials are evidence too. That's the entire enforcement model.",
+"These aren't slide-deck claims. 1,603 events in the last 24 hours. 9 agents. 30+ days in production. 43+ npm downloads. 14+ pull requests per week. Verifiable in a browser tab right now — judges, you can pull this up on your phone before I finish this sentence.",
+"Three buyer profiles, all in this room. Regulators — Workday, JP Morgan, Hippocratic — they need the audit trail. Heterogeneous-stack shops — RB Global, Amazon, Meta — they need cross-framework coordination. Procurement — MIT licensed, no vendor lock-in, copy-paste install. Every judge in this room has a procurement team that can adopt this on Monday.",
+"And the trial is over before procurement starts. Three drop-in surfaces. npm install for the SDK. npx for MCP servers. OAuth-protected HTTP for everything else. Pick the surface that fits your stack — they all hit the same protocol, they all write to the same timeline.",
+"All MIT. Protocol, product, and the Lobster Trap upstream. All public, all open, all auditable. No telemetry. No vendor lock. The repos are the demo.",
+"Prompt safety. Execution audit. Cross-framework coordination. That's all multi-agent governance ever needed to be. github.com/madezmedia/acmi. Thank you."
+]
+  </script>
+</head>
+<body>
+
+<deck-stage width="1920" height="1080">
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 01 — TITLE                                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="01 Title">
+    <div class="slide slide-title no-receipts">
+
+      <!-- Variant A — Abstract timeline -->
+      <div data-variant="A" class="title-var-a">
+        <div class="ta-bg"><div class="bg-hex"></div></div>
+        <svg class="ta-timeline" viewBox="0 0 1920 600" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="tl-amber" x1="0" x2="1">
+              <stop offset="0" stop-color="oklch(0.85 0.16 var(--accent-hue))" stop-opacity="0"/>
+              <stop offset="0.2" stop-color="oklch(0.85 0.16 var(--accent-hue))" stop-opacity="1"/>
+              <stop offset="0.8" stop-color="oklch(0.85 0.16 var(--accent-hue))" stop-opacity="1"/>
+              <stop offset="1" stop-color="oklch(0.85 0.16 var(--accent-hue))" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <line x1="0" y1="300" x2="1920" y2="300" stroke="url(#tl-amber)" stroke-width="1.5"/>
+          <!-- arcs -->
+          <path d="M 180 300 Q 280 220 380 300" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.55"/>
+          <path d="M 380 300 Q 480 380 580 300" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.55"/>
+          <path d="M 580 300 Q 700 220 820 300" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.55"/>
+          <path d="M 820 300 Q 940 380 1060 300" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.55"/>
+          <path d="M 1060 300 Q 1180 220 1300 300" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.55"/>
+          <path d="M 1300 300 Q 1420 380 1540 300" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.55"/>
+          <path d="M 1540 300 Q 1660 220 1780 300" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.55"/>
+          <!-- highlighted nodes -->
+          <g>
+            <circle cx="380" cy="300" r="22" fill="none" stroke="#10b981" stroke-width="1" opacity="0.35"/>
+            <rect x="372" y="292" width="16" height="16" fill="oklch(0.85 0.16 var(--accent-hue))"/>
+            <text x="380" y="356" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="14" letter-spacing="1.5">LANGCHAIN</text>
+          </g>
+          <g>
+            <circle cx="980" cy="300" r="26" fill="none" stroke="#10b981" stroke-width="1" opacity="0.35"/>
+            <polygon points="980,282 996,300 980,318 964,300" fill="oklch(0.85 0.16 var(--accent-hue))"/>
+            <text x="980" y="360" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="14" letter-spacing="1.5">CREWAI</text>
+          </g>
+          <g>
+            <circle cx="1580" cy="300" r="22" fill="none" stroke="#10b981" stroke-width="1" opacity="0.35"/>
+            <circle cx="1580" cy="300" r="8" fill="oklch(0.85 0.16 var(--accent-hue))"/>
+            <text x="1580" y="356" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="14" letter-spacing="1.5">GEMINI</text>
+          </g>
+          <!-- smaller nodes -->
+          <rect x="175" y="295" width="10" height="10" fill="#3b82f6" opacity="0.7"/>
+          <rect x="575" y="295" width="10" height="10" fill="#3b82f6" opacity="0.7"/>
+          <rect x="775" y="295" width="10" height="10" fill="#3b82f6" opacity="0.7"/>
+          <rect x="1175" y="295" width="10" height="10" fill="#3b82f6" opacity="0.7"/>
+          <rect x="1295" y="295" width="10" height="10" fill="#3b82f6" opacity="0.7"/>
+          <rect x="1775" y="295" width="10" height="10" fill="#3b82f6" opacity="0.7"/>
+        </svg>
+      </div>
+
+      <!-- Variant B — Three keys hero -->
+      <div data-variant="B" class="title-var-b">
+        <div class="ta-bg"><div class="bg-dots"></div></div>
+        <div class="tb-keys">
+          <div class="tb-key"><div class="tb-key-glow"></div><div class="tb-key-label">PROFILE</div></div>
+          <div class="tb-key"><div class="tb-key-glow"></div><div class="tb-key-label">SIGNALS</div></div>
+          <div class="tb-key"><div class="tb-key-glow"></div><div class="tb-key-label">TIMELINE</div></div>
+        </div>
+        <div class="tb-bus"></div>
+      </div>
+
+      <!-- Variant C — Dashboard preview -->
+      <div data-variant="C" class="title-var-c">
+        <div class="tc-dash">
+          <div class="tc-dash-head">
+            <span class="tc-dot tc-dot-amber"></span>
+            <span class="tc-dash-title">ACMI · Governance Dashboard</span>
+            <span class="tc-dash-live"><span class="tc-live-dot"></span>LIVE</span>
+          </div>
+          <div class="tc-dash-body">
+            <div class="tc-dash-nav">
+              <div class="tc-nav-item is-active"><span class="tc-nav-mark"></span>Profile</div>
+              <div class="tc-nav-item">Signals</div>
+              <div class="tc-nav-item">Timeline</div>
+              <div class="tc-nav-item">Policy</div>
+              <div class="tc-nav-item">Agents</div>
+            </div>
+            <div class="tc-dash-log">
+              <div class="tc-log-row"><span class="pill pill-allow">allow</span><span class="tc-cid">cor_a4f9·langchain</span><span class="tc-ts">22:14:08</span></div>
+              <div class="tc-log-row"><span class="pill pill-allow">allow</span><span class="tc-cid">cor_b1c2·crewai</span><span class="tc-ts">22:14:11</span></div>
+              <div class="tc-log-row"><span class="pill pill-allow">allow</span><span class="tc-cid">cor_b1c2·gemini</span><span class="tc-ts">22:14:14</span></div>
+              <div class="tc-log-row"><span class="pill pill-allow">allow</span><span class="tc-cid">cor_e7d3·langchain</span><span class="tc-ts">22:14:19</span></div>
+              <div class="tc-log-row"><span class="pill pill-deny">deny</span><span class="tc-cid">cor_e7d3·exfil</span><span class="tc-ts">22:14:22</span></div>
+            </div>
+            <div class="tc-dash-side">
+              <div class="tc-side-lbl">EVENTS / 24H</div>
+              <div class="tc-side-num">1,603</div>
+              <svg class="tc-spark" viewBox="0 0 200 60" preserveAspectRatio="none">
+                <polyline points="0,42 20,38 40,40 60,30 80,32 100,22 120,18 140,20 160,12 180,14 200,8"
+                          fill="none" stroke="#3b82f6" stroke-width="1.5"/>
+                <polyline points="0,42 20,38 40,40 60,30 80,32 100,22 120,18 140,20 160,12 180,14 200,8 200,60 0,60"
+                          fill="#3b82f6" opacity="0.12"/>
+              </svg>
+              <div class="tc-side-lbl">CORRELATION</div>
+              <div class="tc-side-mono">3 frameworks<br/>1 timeline</div>
+            </div>
+          </div>
+        </div>
+        <div class="tc-scrim"></div>
+      </div>
+
+      <!-- Title overlay (always visible across variants) -->
+      <div class="t-overlay">
+        <div class="eyebrow" style="margin-bottom: 36px;">ACMI · TECHEX 2026 <span class="dot">·</span> AGENT WORKFLOWS · ENTERPRISE DATA · VEEA</div>
+        <h1 class="title">ACMI: The Universal Memory Layer<br/>for AI <span class="amber">Agents</span>.</h1>
+        <p class="t-tagline">Three keys per entity. One memory protocol.<br/>Every framework. Every model. One audit trail via Veea Lobster&nbsp;Trap.</p>
+        <div class="t-sponsors">
+          <span class="t-sponsor">VEEA</span><span class="t-dot">·</span>
+          <span class="t-sponsor">GEMINI</span><span class="t-dot">·</span>
+          <span class="t-sponsor">LABLAB.AI</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 02 — What did the agent actually do?                                -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="02 The question">
+    <div class="slide slide-question no-receipts">
+      <div class="bg-dots" style="opacity:0.35;"></div>
+      <div class="q-wrap">
+        <div class="eyebrow">ACT 1 <span class="dot">·</span> THE QUESTION</div>
+        <h1 class="title q-title">What did the agent<br/><span class="amber">actually</span> do?</h1>
+        <p class="q-sub">The question every enterprise security review asks — and the one a multi-framework stack can't answer today.</p>
+      </div>
+      <div class="q-cursor"></div>
+      <div class="slide-foot">
+        <div class="foot"><span class="pg">02 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 03 — The audit gap                                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="03 The audit gap">
+    <div class="slide">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 1 <span class="dot">·</span> THE GAP</div>
+        <h1 class="title">Three frameworks. Three <span class="amber">audit gaps</span>.</h1>
+      </div>
+      <div class="slide-body">
+        <div class="silos">
+          <div class="silo">
+            <div class="silo-hd">
+              <span class="silo-tag">FRAMEWORK</span>
+              <span class="silo-name">LangChain</span>
+            </div>
+            <div class="silo-blob silo-blob-1">
+              <div class="silo-blob-inner"></div>
+              <div class="silo-blob-glyph">mem</div>
+            </div>
+            <div class="silo-meta">
+              <div>Local conversation history</div>
+              <div>Tool calls — buffered in-process</div>
+              <div class="silo-warn">No cross-framework correlation</div>
+            </div>
+          </div>
+          <div class="silo">
+            <div class="silo-hd">
+              <span class="silo-tag">FRAMEWORK</span>
+              <span class="silo-name">CrewAI</span>
+            </div>
+            <div class="silo-blob silo-blob-2">
+              <div class="silo-blob-inner"></div>
+              <div class="silo-blob-glyph">mem</div>
+            </div>
+            <div class="silo-meta">
+              <div>Crew task outputs</div>
+              <div>Agent-scoped scratchpad</div>
+              <div class="silo-warn">No cross-framework correlation</div>
+            </div>
+          </div>
+          <div class="silo">
+            <div class="silo-hd">
+              <span class="silo-tag">FRAMEWORK</span>
+              <span class="silo-name">Gemini</span>
+            </div>
+            <div class="silo-blob silo-blob-3">
+              <div class="silo-blob-inner"></div>
+              <div class="silo-blob-glyph">mem</div>
+            </div>
+            <div class="silo-meta">
+              <div>Function-call history</div>
+              <div>Provider-side context window</div>
+              <div class="silo-warn">No cross-framework correlation</div>
+            </div>
+          </div>
+        </div>
+        <p class="silos-caption">Memory lives inside each framework. Decisions don't transfer. Procurement can't read the chain end-to-end.</p>
+      </div>
+      <div class="slide-foot">
+        <div class="receipts" style="--receipt-cols:3;">
+          <div class="receipt"><div class="receipt-num">3</div><div class="receipt-lbl">Frameworks in scope</div></div>
+          <div class="receipt"><div class="receipt-num">0</div><div class="receipt-lbl">Shared correlation IDs</div></div>
+          <div class="receipt"><div class="receipt-num">N<span class="unit">decisions</span></div><div class="receipt-lbl">Untraceable across the chain</div></div>
+        </div>
+        <div class="foot"><span class="pg">03 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 04 — The fix                                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="04 The fix">
+    <div class="slide">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 2 <span class="dot">·</span> THE FIX</div>
+        <h1 class="title">Two MIT projects. <span class="amber">One stack underneath.</span></h1>
+      </div>
+      <div class="slide-body">
+        <div class="arch">
+          <!-- Lobster Trap panel -->
+          <div class="arch-panel">
+            <div class="arch-panel-hd">
+              <span class="arch-panel-tag">PROMPT-SIDE</span>
+              <span class="arch-panel-name">Veea Lobster Trap</span>
+            </div>
+            <div class="arch-panel-sub">Deep packet inspection at the LLM boundary.</div>
+            <div class="arch-stack">
+              <div class="arch-row"><span class="arch-row-num">01</span><span>Declared intent</span><span class="arch-row-side">from caller</span></div>
+              <div class="arch-row"><span class="arch-row-num">02</span><span>Detected intent</span><span class="arch-row-side">model-side</span></div>
+              <div class="arch-row arch-row-gate"><span class="arch-row-num">03</span><span>Policy gate</span><span class="arch-row-side"><span class="pill pill-allow">allow</span> / <span class="pill pill-deny">deny</span></span></div>
+            </div>
+          </div>
+
+          <!-- Connector -->
+          <div class="arch-link">
+            <div class="arch-link-line"></div>
+            <div class="arch-link-arrow">▶</div>
+            <div class="arch-link-lbl">correlationId</div>
+          </div>
+
+          <!-- ACMI panel -->
+          <div class="arch-panel">
+            <div class="arch-panel-hd">
+              <span class="arch-panel-tag">AUDIT-SIDE</span>
+              <span class="arch-panel-name">ACMI Memory Layer</span>
+            </div>
+            <div class="arch-panel-sub">Append-only timeline, three keys per entity.</div>
+            <div class="arch-stack">
+              <div class="arch-row"><span class="arch-row-glyph arch-glyph-sq"></span><span>Profile</span><span class="arch-row-side">what it is</span></div>
+              <div class="arch-row"><span class="arch-row-glyph arch-glyph-hex"></span><span>Signals</span><span class="arch-row-side">what it does</span></div>
+              <div class="arch-row"><span class="arch-row-glyph arch-glyph-ci"></span><span>Timeline</span><span class="arch-row-side">append-only · ZSET</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-caption">
+          <span class="arch-cap-l">Lobster Trap <span class="muted">inspects.</span></span>
+          <span class="arch-cap-r">ACMI <span class="muted">records.</span></span>
+        </div>
+      </div>
+      <div class="slide-foot">
+        <div class="receipts" style="--receipt-cols:3;">
+          <div class="receipt"><div class="receipt-num">2<span class="unit">repos</span></div><div class="receipt-lbl">MIT licensed</div></div>
+          <div class="receipt"><div class="receipt-num">1<span class="unit">id</span></div><div class="receipt-lbl">correlationId chain</div></div>
+          <div class="receipt"><div class="receipt-num">0<span class="unit">vendors</span></div><div class="receipt-lbl">Procurement lock-in</div></div>
+        </div>
+        <div class="foot"><span class="pg">04 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 05 — Three keys per entity (3 variants)                              -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="05 Three keys">
+    <div class="slide slide-keys">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 2 <span class="dot">·</span> THE PROTOCOL</div>
+        <h1 class="title">Three keys per entity. <span class="amber">That's the protocol.</span></h1>
+      </div>
+      <div class="slide-body">
+
+        <!-- Variant A — three vertical cards -->
+        <div data-variant="A" class="keys-var-a">
+          <div class="key-card">
+            <div class="key-card-glyph sq">P</div>
+            <div class="key-card-tag">KEY 01</div>
+            <div class="key-card-name">Profile</div>
+            <div class="key-card-def">What the entity <em>is</em>. Stable shape, infrequent writes, the canonical answer to "who is this agent."</div>
+            <div class="key-card-spec">
+              <div class="key-card-spec-row"><span>STORAGE</span><b>HASH</b></div>
+              <div class="key-card-spec-row"><span>CARDINALITY</span><b>1 per entity</b></div>
+              <div class="key-card-spec-row"><span>WRITES</span><b>rare</b></div>
+            </div>
+          </div>
+          <div class="key-card">
+            <div class="key-card-glyph hex">S</div>
+            <div class="key-card-tag">KEY 02</div>
+            <div class="key-card-name">Signals</div>
+            <div class="key-card-def">What the entity <em>does</em>. Behavioral surface — risk scores, declared intent, gate decisions, scoped tags.</div>
+            <div class="key-card-spec">
+              <div class="key-card-spec-row"><span>STORAGE</span><b>HASH</b></div>
+              <div class="key-card-spec-row"><span>CARDINALITY</span><b>N per entity</b></div>
+              <div class="key-card-spec-row"><span>WRITES</span><b>per-action</b></div>
+            </div>
+          </div>
+          <div class="key-card">
+            <div class="key-card-glyph ci">T</div>
+            <div class="key-card-tag">KEY 03</div>
+            <div class="key-card-name">Timeline</div>
+            <div class="key-card-def">When the entity <em>did it</em>. Append-only event log, ZSET-backed, correlationId-chained across frameworks.</div>
+            <div class="key-card-spec">
+              <div class="key-card-spec-row"><span>STORAGE</span><b>ZSET</b></div>
+              <div class="key-card-spec-row"><span>ORDER</span><b>append-only</b></div>
+              <div class="key-card-spec-row"><span>QUERY</span><b>O(log n)</b></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variant B — three horizontal rows -->
+        <div data-variant="B" class="keys-var-b">
+          <div class="key-row">
+            <div class="key-card-glyph sq">P</div>
+            <div class="key-row-name">Profile</div>
+            <div class="key-row-def">What the entity <em>is</em>. Stable shape, infrequent writes — the canonical "who is this agent" record.</div>
+            <div class="key-row-spec">HASH<br/>1 per entity<br/>rare writes</div>
+          </div>
+          <div class="key-row">
+            <div class="key-card-glyph hex">S</div>
+            <div class="key-row-name">Signals</div>
+            <div class="key-row-def">What the entity <em>does</em>. Risk scores, declared intent, gate decisions, scoped behavioral tags.</div>
+            <div class="key-row-spec">HASH<br/>N per entity<br/>per-action writes</div>
+          </div>
+          <div class="key-row">
+            <div class="key-card-glyph ci">T</div>
+            <div class="key-row-name">Timeline</div>
+            <div class="key-row-def">When the entity <em>did it</em>. Append-only event log, correlationId-chained across every framework.</div>
+            <div class="key-row-spec">ZSET<br/>append-only<br/>O(log n) query</div>
+          </div>
+        </div>
+
+        <!-- Variant C — three nodes on a shared bus -->
+        <div data-variant="C" class="keys-var-c">
+          <div class="kc-grid">
+            <div class="kc-node">
+              <div class="key-card-glyph sq">P</div>
+              <div class="kc-name">Profile</div>
+              <div class="kc-def">What the entity <em>is</em>.<br/>Canonical, stable, sparse.</div>
+            </div>
+            <div class="kc-node">
+              <div class="key-card-glyph hex">S</div>
+              <div class="kc-name">Signals</div>
+              <div class="kc-def">What the entity <em>does</em>.<br/>Risk, intent, decisions.</div>
+            </div>
+            <div class="kc-node">
+              <div class="key-card-glyph ci">T</div>
+              <div class="kc-name">Timeline</div>
+              <div class="kc-def">When the entity <em>did it</em>.<br/>Append-only ZSET.</div>
+            </div>
+          </div>
+          <div class="kc-bus"></div>
+          <div class="kc-bus-lbl">Shared correlationId bus</div>
+        </div>
+
+      </div>
+      <div class="slide-foot">
+        <div class="receipts" style="--receipt-cols:3;">
+          <div class="receipt"><div class="receipt-num">3<span class="unit">keys</span></div><div class="receipt-lbl">Per entity</div></div>
+          <div class="receipt"><div class="receipt-num">JSON</div><div class="receipt-lbl">Any framework, POST</div></div>
+          <div class="receipt"><div class="receipt-num">∞</div><div class="receipt-lbl">Append-only timeline</div></div>
+        </div>
+        <div class="foot"><span class="pg">05 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 06 — Live demo                                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="06 Live demo">
+    <div class="slide">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 3 <span class="dot">·</span> LIVE</div>
+        <h1 class="title">Three frameworks. <span class="amber">One timeline.</span></h1>
+      </div>
+      <div class="slide-body">
+        <div class="demo-wrap">
+          <div class="demo-term">
+            <div class="demo-term-hd"><span class="demo-term-dot"></span><span class="demo-term-name">[langchain]</span><span>research-agent</span></div>
+            <div class="demo-term-body">
+              <div><span class="tag-bracket">[</span>POST<span class="tag-bracket">]</span> <span class="key">/events</span></div>
+              <div>&nbsp;&nbsp;cid: <span class="str">"cor_b1c2"</span></div>
+              <div>&nbsp;&nbsp;kind: <span class="str">"prompt"</span></div>
+              <div>&nbsp;&nbsp;declared: <span class="str">"research"</span></div>
+              <div><span class="com"># lobstertrap inspect</span></div>
+              <div>&nbsp;&nbsp;detected: <span class="str">"research"</span></div>
+              <div>&nbsp;&nbsp;risk: <span class="key">0.08</span></div>
+              <div>&nbsp;&nbsp;<span class="ok">→ allow</span></div>
+            </div>
+          </div>
+          <div class="demo-term">
+            <div class="demo-term-hd"><span class="demo-term-dot"></span><span class="demo-term-name">[crewai]</span><span>synth-agent</span></div>
+            <div class="demo-term-body">
+              <div><span class="tag-bracket">[</span>POST<span class="tag-bracket">]</span> <span class="key">/events</span></div>
+              <div>&nbsp;&nbsp;cid: <span class="str">"cor_b1c2"</span></div>
+              <div>&nbsp;&nbsp;parent: <span class="str">"langchain"</span></div>
+              <div>&nbsp;&nbsp;kind: <span class="str">"chain"</span></div>
+              <div><span class="com"># inputs: research-output</span></div>
+              <div>&nbsp;&nbsp;synth: <span class="str">"summary"</span></div>
+              <div>&nbsp;&nbsp;risk: <span class="key">0.11</span></div>
+              <div>&nbsp;&nbsp;<span class="ok">→ allow</span></div>
+            </div>
+          </div>
+          <div class="demo-term">
+            <div class="demo-term-hd"><span class="demo-term-dot"></span><span class="demo-term-name">[gemini]</span><span>2.5-flash · cross-check</span></div>
+            <div class="demo-term-body">
+              <div><span class="tag-bracket">[</span>POST<span class="tag-bracket">]</span> <span class="key">/events</span></div>
+              <div>&nbsp;&nbsp;cid: <span class="str">"cor_b1c2"</span></div>
+              <div>&nbsp;&nbsp;parent: <span class="str">"crewai"</span></div>
+              <div>&nbsp;&nbsp;kind: <span class="str">"verify"</span></div>
+              <div><span class="com"># aistudio · gemini-2.5</span></div>
+              <div>&nbsp;&nbsp;detected: <span class="str">"verify"</span></div>
+              <div>&nbsp;&nbsp;risk: <span class="key">0.04</span></div>
+              <div>&nbsp;&nbsp;<span class="ok">→ allow</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="demo-rail">
+          <div class="demo-rail-hd">
+            <div class="demo-rail-hd-tag">CORRELATION CHAIN</div>
+            <div class="demo-rail-hd-name">cor_b1c2 → end-to-end</div>
+          </div>
+          <div class="demo-rail-bar"><div class="demo-rail-bar-fill" style="width: 100%;"></div></div>
+          <div class="demo-rail-cid">langchain → crewai → <b>gemini</b></div>
+        </div>
+      </div>
+      <div class="slide-foot">
+        <div class="receipts" style="--receipt-cols:4;">
+          <div class="receipt"><div class="receipt-num">3<span class="unit">fw</span></div><div class="receipt-lbl">In parallel</div></div>
+          <div class="receipt"><div class="receipt-num">1<span class="unit">cid</span></div><div class="receipt-lbl">End-to-end</div></div>
+          <div class="receipt"><div class="receipt-num">JSON</div><div class="receipt-lbl">No SDK lock-in</div></div>
+          <div class="receipt"><div class="receipt-num">LIVE</div><div class="receipt-lbl">During pitch</div></div>
+        </div>
+        <div class="foot"><span class="pg">06 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 07 — Policy enforcement                                              -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="07 Policy">
+    <div class="slide">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 3 <span class="dot">·</span> ENFORCEMENT</div>
+        <h1 class="title">Denials are <span class="amber">evidence</span> too.</h1>
+      </div>
+      <div class="slide-body">
+        <div class="pol-wrap">
+          <div class="pol-term">
+            <div class="pol-term-hd">
+              <div class="pol-term-hd-dots"><i class="pol-term-hd-dot"></i><i class="pol-term-hd-dot"></i><i class="pol-term-hd-dot"></i></div>
+              <span>lobstertrap · policy gate · live</span>
+            </div>
+            <div class="pol-term-body">
+              <div class="pol-line"><span class="br">[</span>22:14:19<span class="br">]</span> <span class="k">cid</span>=<span class="s">cor_e7d3</span> <span class="c"># langchain inbound</span></div>
+              <div class="pol-line">&nbsp;&nbsp;declared: <span class="s">"research"</span></div>
+              <div class="pol-line">&nbsp;&nbsp;detected: <span class="s">"research"</span></div>
+              <div class="pol-line">&nbsp;&nbsp;risk: <span class="n">0.08</span> <span class="pill pill-allow">allow</span></div>
+              <div class="pol-divider"></div>
+              <div class="pol-line"><span class="br">[</span>22:14:22<span class="br">]</span> <span class="k">cid</span>=<span class="s">cor_e7d3</span> <span class="c"># follow-up</span></div>
+              <div class="pol-line">&nbsp;&nbsp;declared: <span class="s">"research"</span></div>
+              <div class="pol-line">&nbsp;&nbsp;detected: <span class="deny-val">"exfiltration"</span></div>
+              <div class="pol-line">&nbsp;&nbsp;risk: <span class="deny-val">0.94</span> <span class="pill pill-deny">deny</span></div>
+              <div class="pol-line">&nbsp;&nbsp;<span class="c"># logged · cor_e7d3 · receipt</span></div>
+            </div>
+          </div>
+          <div class="pol-rules">
+            <div class="pol-rule"><div class="pol-rule-num">01</div><div class="pol-rule-name">Prompt classification</div><div class="pol-rule-class">CLASSIFY</div></div>
+            <div class="pol-rule"><div class="pol-rule-num">02</div><div class="pol-rule-name">PII redaction</div><div class="pol-rule-class">REDACT</div></div>
+            <div class="pol-rule"><div class="pol-rule-num">03</div><div class="pol-rule-name">Tool-call allow-list</div><div class="pol-rule-class">SCOPE</div></div>
+            <div class="pol-rule"><div class="pol-rule-num">04</div><div class="pol-rule-name">Intent divergence gate</div><div class="pol-rule-class">DENY</div></div>
+            <div class="pol-rule"><div class="pol-rule-num">05</div><div class="pol-rule-name">Audit-log emission</div><div class="pol-rule-class">LOG</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-foot">
+        <div class="receipts" style="--receipt-cols:3;">
+          <div class="receipt"><div class="receipt-num">5<span class="unit">classes</span></div><div class="receipt-lbl">Policy actions</div></div>
+          <div class="receipt"><div class="receipt-num">220<span class="unit">lines</span></div><div class="receipt-lbl">YAML policy file</div></div>
+          <div class="receipt"><div class="receipt-num">1<span class="unit">cid</span></div><div class="receipt-lbl">Allow + deny share it</div></div>
+        </div>
+        <div class="foot"><span class="pg">07 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 08 — Receipts                                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="08 The receipts">
+    <div class="slide slide-receipts">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 3 <span class="dot">·</span> RECEIPTS</div>
+        <h1 class="title">Not slide-deck claims. <span class="amber">Verifiable in a browser tab.</span></h1>
+      </div>
+      <div class="slide-body">
+        <div class="big-receipts">
+          <div class="big-receipt is-accent">
+            <div class="big-receipt-tag">EVENTS · LAST 24H</div>
+            <div class="big-receipt-num"><span class="accent">1,603</span></div>
+            <div class="big-receipt-cap">/api/timeline · /api/metrics</div>
+          </div>
+          <div class="big-receipt">
+            <div class="big-receipt-tag">AGENTS · LIVE</div>
+            <div class="big-receipt-num">9</div>
+            <div class="big-receipt-cap">across LangChain · CrewAI · Gemini</div>
+          </div>
+          <div class="big-receipt">
+            <div class="big-receipt-tag">UPTIME · PRODUCTION</div>
+            <div class="big-receipt-num">30<span class="unit">+ days</span></div>
+            <div class="big-receipt-cap">first deploy 2026-04-10</div>
+          </div>
+        </div>
+        <div class="big-receipts-second">
+          <div class="big-receipt">
+            <div class="big-receipt-tag">NPM · @madezmedia/acmi</div>
+            <div class="big-receipt-num">43<span class="unit">+ installs</span></div>
+            <div class="big-receipt-cap">npmjs.com · weekly</div>
+          </div>
+          <div class="big-receipt">
+            <div class="big-receipt-tag">GITHUB · PR VELOCITY</div>
+            <div class="big-receipt-num">14<span class="unit">+ / week</span></div>
+            <div class="big-receipt-cap">across protocol + product + lobstertrap</div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-foot">
+        <div class="foot" style="background: var(--recessed); border-left: none; flex: 1; justify-content: space-between; padding: 22px var(--pad-x);">
+          <span class="pg">08 / 12</span>
+          <span>ACMI · TECHEX</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 09 — Who buys this                                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="09 Who buys">
+    <div class="slide">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 4 <span class="dot">·</span> THE MARKET</div>
+        <h1 class="title">Every judge has a <span class="amber">procurement team</span> that can adopt this.</h1>
+      </div>
+      <div class="slide-body">
+        <div class="buyers">
+          <div class="buyer-col">
+            <div class="buyer-tag">PROFILE 01 · REGULATORS</div>
+            <div class="buyer-title">Need the audit trail.</div>
+            <div class="buyer-line">Compliance pulls the timeline. Risk reviews the denials. Legal subpoenas the correlationId.</div>
+            <div class="buyer-companies">
+              <div class="buyer-co"><span class="buyer-co-dot"></span>Workday</div>
+              <div class="buyer-co"><span class="buyer-co-dot"></span>JP Morgan</div>
+              <div class="buyer-co"><span class="buyer-co-dot"></span>Hippocratic AI</div>
+            </div>
+          </div>
+          <div class="buyer-col">
+            <div class="buyer-tag">PROFILE 02 · HETEROGENEOUS STACK</div>
+            <div class="buyer-title">Need cross-framework coordination.</div>
+            <div class="buyer-line">LangChain, CrewAI, and Gemini in the same workflow. One memory layer, one timeline.</div>
+            <div class="buyer-companies">
+              <div class="buyer-co"><span class="buyer-co-dot"></span>RB Global</div>
+              <div class="buyer-co"><span class="buyer-co-dot"></span>Amazon</div>
+              <div class="buyer-co"><span class="buyer-co-dot"></span>Meta</div>
+            </div>
+          </div>
+          <div class="buyer-col">
+            <div class="buyer-tag">PROFILE 03 · PROCUREMENT</div>
+            <div class="buyer-title">Need MIT. No vendor lock.</div>
+            <div class="buyer-line">Self-host the protocol. Self-host the product. Self-host Lobster Trap. Trial is over before legal opens the PDF.</div>
+            <div class="buyer-companies">
+              <div class="buyer-co"><span class="buyer-co-dot"></span>MIT licensed · all three repos</div>
+              <div class="buyer-co"><span class="buyer-co-dot"></span>No telemetry</div>
+              <div class="buyer-co"><span class="buyer-co-dot"></span>Self-hosted Redis · npm · MCP</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-foot">
+        <div class="receipts" style="--receipt-cols:3;">
+          <div class="receipt"><div class="receipt-num">3<span class="unit">profiles</span></div><div class="receipt-lbl">Buyer archetypes</div></div>
+          <div class="receipt"><div class="receipt-num">MIT</div><div class="receipt-lbl">Protocol · Product · Trap</div></div>
+          <div class="receipt"><div class="receipt-num">0<span class="unit">vendors</span></div><div class="receipt-lbl">Lock-in surface area</div></div>
+        </div>
+        <div class="foot"><span class="pg">09 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 10 — Drop-in surfaces                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="10 Drop-in">
+    <div class="slide">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 4 <span class="dot">·</span> ADOPT</div>
+        <h1 class="title">The trial is over <span class="amber">before procurement starts</span>.</h1>
+      </div>
+      <div class="slide-body">
+        <div class="surfaces">
+          <div class="surface">
+            <div class="surface-num">01</div>
+            <div class="surface-mid">
+              <div class="surface-cmd">npm install @madezmedia/acmi</div>
+              <div class="surface-desc">Drop-in SDK. Three keys per entity, append-only timeline. Works alongside any framework.</div>
+            </div>
+            <div class="surface-target">SURFACE<br/><b>Node SDK</b></div>
+          </div>
+          <div class="surface">
+            <div class="surface-num">02</div>
+            <div class="surface-mid">
+              <div class="surface-cmd">npx @madezmedia/acmi-mcp</div>
+              <div class="surface-desc">MCP server. Plug into Claude Desktop, Cursor, any MCP host. Zero config.</div>
+            </div>
+            <div class="surface-target">SURFACE<br/><b>MCP</b></div>
+          </div>
+          <div class="surface">
+            <div class="surface-num">03</div>
+            <div class="surface-mid">
+              <div class="surface-cmd">curl -X POST /api/mcp · OAuth</div>
+              <div class="surface-desc">OAuth-protected HTTP. Hosted endpoint with token refresh. Bring your own model.</div>
+            </div>
+            <div class="surface-target">SURFACE<br/><b>Hosted HTTP</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-foot">
+        <div class="receipts" style="--receipt-cols:3;">
+          <div class="receipt"><div class="receipt-num">3<span class="unit">surfaces</span></div><div class="receipt-lbl">Same protocol</div></div>
+          <div class="receipt"><div class="receipt-num">1<span class="unit">timeline</span></div><div class="receipt-lbl">All write to ACMI</div></div>
+          <div class="receipt"><div class="receipt-num">0<span class="unit">config</span></div><div class="receipt-lbl">Default-on</div></div>
+        </div>
+        <div class="foot"><span class="pg">10 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 11 — Open source                                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="11 Open source">
+    <div class="slide">
+      <div class="slide-head">
+        <div class="eyebrow">ACT 4 <span class="dot">·</span> SOURCE</div>
+        <h1 class="title">Open source. <span class="amber">MIT.</span> All three.</h1>
+      </div>
+      <div class="slide-body">
+        <div class="repos">
+          <div class="repo">
+            <div class="repo-l">
+              <div class="repo-tag">PROTOCOL</div>
+              <div class="repo-url"><span class="at">github.com/</span>madezmedia/acmi-protocol</div>
+              <div class="repo-desc">The spec. Three keys per entity, append-only timeline. JSON schema, reference adapter.</div>
+            </div>
+            <div class="repo-badges">
+              <div class="repo-badge is-accent"><span class="l">stars</span><span class="r">238</span></div>
+              <div class="repo-badge is-data"><span class="l">version</span><span class="r">v1.4.0</span></div>
+              <div class="repo-badge is-allow"><span class="l">license</span><span class="r">MIT</span></div>
+            </div>
+          </div>
+          <div class="repo">
+            <div class="repo-l">
+              <div class="repo-tag">PRODUCT</div>
+              <div class="repo-url"><span class="at">github.com/</span>madezmedia/acmi</div>
+              <div class="repo-desc">The SDK + governance dashboard. npm · MCP · OAuth HTTP. Powers the live pitch demo.</div>
+            </div>
+            <div class="repo-badges">
+              <div class="repo-badge is-accent"><span class="l">stars</span><span class="r">461</span></div>
+              <div class="repo-badge is-data"><span class="l">version</span><span class="r">v0.9.2</span></div>
+              <div class="repo-badge is-allow"><span class="l">license</span><span class="r">MIT</span></div>
+            </div>
+          </div>
+          <div class="repo">
+            <div class="repo-l">
+              <div class="repo-tag">UPSTREAM · VEEA</div>
+              <div class="repo-url"><span class="at">github.com/</span>veea/lobster-trap</div>
+              <div class="repo-desc">Deep packet inspection at the LLM boundary. Declared vs detected intent · 5 action classes.</div>
+            </div>
+            <div class="repo-badges">
+              <div class="repo-badge is-accent"><span class="l">stars</span><span class="r">1.2k</span></div>
+              <div class="repo-badge is-data"><span class="l">version</span><span class="r">v2.1.0</span></div>
+              <div class="repo-badge is-allow"><span class="l">license</span><span class="r">MIT</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-foot">
+        <div class="receipts" style="--receipt-cols:3;">
+          <div class="receipt"><div class="receipt-num">3<span class="unit">repos</span></div><div class="receipt-lbl">Public · auditable</div></div>
+          <div class="receipt"><div class="receipt-num">MIT</div><div class="receipt-lbl">All three</div></div>
+          <div class="receipt"><div class="receipt-num">0<span class="unit">telemetry</span></div><div class="receipt-lbl">No phone-home</div></div>
+        </div>
+        <div class="foot"><span class="pg">11 / 12</span><span>ACMI · TECHEX</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 12 — Closing                                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <section data-label="12 Closing">
+    <div class="slide slide-closing no-receipts">
+
+      <!-- Variant A — three-line tagline -->
+      <div data-variant="A" class="closing-var-a">
+        <div class="eyebrow">ACMI · WITH VEEA LOBSTER TRAP · GEMINI · LABLAB.AI</div>
+        <div class="closing-lines">
+          <div class="closing-line">Prompt <span class="amber">safety</span>.</div>
+          <div class="closing-line">Execution <span class="amber">audit</span>.</div>
+          <div class="closing-line">Cross-framework <span class="amber">coordination</span>.</div>
+        </div>
+        <div class="closing-url"><span class="at">github.com/</span>madezmedia/acmi</div>
+      </div>
+
+      <!-- Variant B — single sentence -->
+      <div data-variant="B" class="closing-var-b">
+        <div class="eyebrow">ACMI · WITH VEEA LOBSTER TRAP · GEMINI · LABLAB.AI</div>
+        <div class="closing-headline">That's all multi-agent <span class="amber">governance</span><br/>ever needed to be.</div>
+        <div class="closing-divider"></div>
+        <div class="closing-url"><span class="at">github.com/</span>madezmedia/acmi</div>
+      </div>
+
+      <!-- Variant C — three columns -->
+      <div data-variant="C" class="closing-var-c">
+        <div class="eyebrow">ACMI · WITH VEEA LOBSTER TRAP · GEMINI · LABLAB.AI</div>
+        <div class="closing-cols">
+          <div class="closing-col">
+            <div class="closing-col-num">01</div>
+            <div class="closing-col-name">Prompt safety</div>
+            <div class="closing-col-def">Declared vs detected at the LLM boundary. Five action classes.</div>
+          </div>
+          <div class="closing-col">
+            <div class="closing-col-num">02</div>
+            <div class="closing-col-name">Execution audit</div>
+            <div class="closing-col-def">Append-only timeline. Three keys per entity. correlationId end-to-end.</div>
+          </div>
+          <div class="closing-col">
+            <div class="closing-col-num">03</div>
+            <div class="closing-col-name">Cross-framework coord</div>
+            <div class="closing-col-def">LangChain. CrewAI. Gemini. Same protocol, same trail.</div>
+          </div>
+        </div>
+        <div class="closing-url-row">
+          <span class="lab">REPO</span>
+          <span><span class="at">github.com/</span>madezmedia/acmi</span>
+        </div>
+      </div>
+
+      <div class="slide-foot">
+        <div class="foot"><span class="pg">12 / 12</span><span>ACMI · TECHEX 2026</span></div>
+      </div>
+    </div>
+  </section>
+
+</deck-stage>
+
+<script src="deck-stage.js"></script>
+
+<!-- React for Tweaks -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="tweaks.jsx"></script>
+
+</body>
+</html>
