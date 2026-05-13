@@ -20,6 +20,7 @@
 | `GOV-W1` | **Rule 9 Atomic Commit** | Audit | Rule 9 | `git commit -m "... Co-Authored-By: ..."` |
 | `DEP-W1` | **Vercel Null-Deploy** | Infra | Edge-Sync | `git commit --allow-empty` |
 | AUD-W1 | **Fleet Health Check** | Audit | Checklist v1 | `python .agent/scripts/checklist.py` |
+| `GOV-W2` | **PR Review Enforcement** | Audit | Review v1.3 | `scripts/acmi-pr-checker.sh` |
 
 ## 💰 Monetization & Product Workflows
 
@@ -35,6 +36,20 @@
 | ID | Name | Role | Standard | Tooling |
 | :--- | :--- | :--- | :--- | :--- |
 | `OPS-W1` | **Task Lifecycle Tracking** | Ops | Project v1.2 | `scripts/acmi-task-manager.sh` |
+| `OPS-W2` | **HITL Escalation** | Ops | Alert v1.0 | `scripts/acmi-escalator.sh` |
+
+---
+
+## 🎭 Agent-Workflow Identity (Roundtable v1.2)
+
+Workflows are baked into agent personality via **Affinities** and **Triggers**.
+
+| Workflow | Primary Trigger | Expert Affinity |
+| :--- | :--- | :--- |
+| `ACMI-W1` | `signal:onboarding_required` | `infra-lead` |
+| `GOV-W1` | `event:commit-attempt` | `audit-specialist` |
+| `OPS-W2` | `signal:blocked_duration > 24h` | `fleet-monitor` |
+| `MKT-W1` | `signal:design_handoff_ready` | `media-producer` |
 
 ---
 
