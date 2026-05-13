@@ -401,6 +401,75 @@
   footer a { color: var(--ink-2); text-decoration: none; }
   footer a:hover { color: var(--accent); }
 
+  /* Sizzle reel — hero media section (Claude Design handoff) */
+  .sizzle-section {
+    padding: 56px 0 64px 0;
+    border-bottom: 1px solid var(--rule);
+    background: #0a0e27;
+    color: #e5e7eb;
+  }
+  .sizzle-section .sec-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #ffd166;
+    margin-bottom: 14px;
+  }
+  .sizzle-section h2 {
+    font-family: 'Inter Tight', var(--serif);
+    font-size: clamp(24px, 3vw, 32px);
+    color: #ffffff;
+    font-weight: 500;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.02em;
+  }
+  .sizzle-section .sub {
+    color: #94a3b8;
+    font-size: 15px;
+    margin: 0 0 24px 0;
+    max-width: 720px;
+  }
+  .sizzle-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #05070f;
+    border: 1px solid #1f2937;
+    overflow: hidden;
+  }
+  .sizzle-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
+  .sizzle-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #94a3b8;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .sizzle-meta a {
+    color: #ffd166;
+    text-decoration: none;
+  }
+  .sizzle-meta a:hover { color: #ffffff; }
+  .sizzle-tape {
+    display: flex; gap: 18px; flex-wrap: wrap;
+  }
+  .sizzle-tape span { color: #94a3b8; }
+  .sizzle-tape span strong { color: #e5e7eb; font-weight: 500; }
+
   /* Mobile */
   @media (max-width: 760px) {
     .nav { display: none; }
@@ -412,6 +481,7 @@
     .slot, .kit-item { border-right: none; border-bottom: 1px solid var(--rule); }
     section { padding: 48px 0; }
     .hero { padding: 48px 0 36px 0; }
+    .sizzle-section { padding: 36px 0 40px 0; }
   }
 </style>
 </head>
@@ -421,6 +491,7 @@
   <div class="topbar-inner">
     <div class="brand">acmi<span class="dot">.</span></div>
     <nav class="nav">
+      <a href="#reel">Reel</a>
       <a href="#problem">Problem</a>
       <a href="#protocol">Protocol</a>
       <a href="#inside">Inside</a>
@@ -440,10 +511,36 @@
     </p>
     <div class="hero-ctas">
       <a class="btn btn-primary" href="#pricing">Get the Starter Kit · $47</a>
+      <a class="btn btn-ghost" href="#reel">Watch the 75s reel</a>
       <a class="btn btn-ghost" href="#protocol">How the protocol works</a>
     </div>
   </div>
 </header>
+
+<section id="reel" class="sizzle-section">
+  <div class="wrap">
+    <div class="sec-label">75-second reel · the story in motion</div>
+    <h2>Three frameworks. Three audit gaps. One coordination layer.</h2>
+    <p class="sub">Question → silos → policy gate → three keys → live dashboard → receipts. The protocol you'll deploy, animated.</p>
+    <div class="sizzle-frame">
+      <iframe
+        src="/monetization/sizzle/"
+        title="ACMI — 75-second Sizzle Reel"
+        loading="lazy"
+        allow="autoplay; fullscreen"
+        allowfullscreen
+      ></iframe>
+    </div>
+    <div class="sizzle-meta">
+      <div class="sizzle-tape">
+        <span>Runtime <strong>75s</strong></span>
+        <span>Format <strong>1920×1080 · 16:9</strong></span>
+        <span>Stack <strong>React · animated in-browser</strong></span>
+      </div>
+      <a href="/monetization/sizzle/" target="_blank" rel="noopener">Open full-screen ↗</a>
+    </div>
+  </div>
+</section>
 
 <div class="proof-strip">
   <div class="proof-cell">
@@ -746,6 +843,8 @@
         Built by <a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">Mad EZ Media</a> · running in production at <a href="https://acmi-product.vercel.app" target="_blank" rel="noopener">acmi-product.vercel.app</a>
       </div>
       <div>
+        <a href="/monetization/sizzle/" target="_blank" rel="noopener">Sizzle reel</a> ·
+        <a href="/monetization/deck/" target="_blank" rel="noopener">Pitch deck</a> ·
         <a href="https://github.com/madezmedia/acmi-product" target="_blank" rel="noopener">GitHub</a> ·
         <a href="https://smithery.ai/server/@madezmediapartners/acmi-mcp" target="_blank" rel="noopener">Smithery</a> ·
         <a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">X</a> ·

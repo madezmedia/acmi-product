@@ -1,0 +1,243 @@
+/* ============================================================
+   ACMI deck — design system
+   Dark-mode enterprise. Vercel/Stripe/Linear energy.
+   ============================================================ */
+
+:root {
+  /* Locked palette */
+  --canvas: #0a0e27;
+  --panel: #1a1a2e;
+  --recessed: #0f1729;
+  --accent-hue: 48;
+  --accent: oklch(0.85 0.16 var(--accent-hue));  /* default ≈ #ffd166 */
+  --data: #3b82f6;
+  --allow: #10b981;
+  --deny: #ef4444;
+  --text: #e5e7eb;
+  --text-strong: #ffffff;
+  --text-muted: #94a3b8;
+  --border: #1f2937;
+  --border-strong: #2a3344;
+
+  /* Type scale — multiplied by --type-scale tweak */
+  --type-scale: 1;
+  --type-eyebrow: calc(18px * var(--type-scale));
+  --type-title: calc(80px * var(--type-scale));
+  --type-title-xl: calc(120px * var(--type-scale));
+  --type-h2: calc(52px * var(--type-scale));
+  --type-body: calc(30px * var(--type-scale));
+  --type-small: calc(22px * var(--type-scale));
+  --type-mono: calc(20px * var(--type-scale));
+  --type-receipt-num: calc(56px * var(--type-scale));
+  --type-receipt-lbl: calc(13px * var(--type-scale));
+  --type-footer: calc(14px * var(--type-scale));
+
+  /* Spacing */
+  --pad-x: 96px;
+  --pad-top: 96px;
+  --pad-bottom: 80px;
+  --gap-title: 48px;
+  --gap-item: 24px;
+
+  /* Fonts */
+  --font-title: "Inter Tight", system-ui, -apple-system, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+html, body {
+  background: #000;
+  color: var(--text);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+deck-stage {
+  background: #000;
+}
+
+/* ──────────── Slide frame ──────────── */
+
+.slide {
+  position: absolute;
+  inset: 0;
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.slide-head {
+  padding: var(--pad-top) var(--pad-x) 0;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--type-eyebrow);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 28px;
+}
+.eyebrow .dot { color: var(--accent); margin: 0 8px; }
+
+.title {
+  font-family: var(--font-title);
+  font-size: var(--type-title);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+  color: var(--text-strong);
+  margin: 0;
+  max-width: 1480px;
+  text-wrap: balance;
+}
+.title .amber { color: var(--accent); }
+
+.slide-body {
+  padding: var(--gap-title) var(--pad-x) 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.slide-foot {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--border);
+}
+
+/* ──────────── Receipts strip ──────────── */
+
+.receipts {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--receipt-cols, 4), 1fr);
+  background: var(--recessed);
+}
+.receipt {
+  padding: 22px var(--pad-x) 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 1px solid var(--border);
+}
+.receipt:last-child { border-right: none; }
+.receipt:not(:first-child) { padding-left: 28px; padding-right: 28px; }
+.receipt:first-child { padding-left: var(--pad-x); }
+.receipt-num {
+  font-family: var(--font-title);
+  font-size: var(--type-receipt-num);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.receipt-num .unit {
+  font-size: 0.5em;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+.receipt-lbl {
+  font-family: var(--font-mono);
+  font-size: var(--type-receipt-lbl);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ──────────── Footer (page num) ──────────── */
+
+.foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 var(--pad-x);
+  background: var(--recessed);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-footer);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-left: 1px solid var(--border);
+  min-width: 280px;
+  justify-content: flex-end;
+}
+.foot .pg { color: var(--text); }
+
+/* Slides without receipts get a simpler foot */
+.slide.no-receipts .slide-foot { background: transparent; border-top: none; padding: 0 var(--pad-x) 32px; }
+.slide.no-receipts .receipts { display: none; }
+.slide.no-receipts .foot { background: transparent; border-left: none; min-width: 0; padding: 0; }
+
+/* ──────────── Pills ──────────── */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pill-allow { background: color-mix(in oklab, var(--allow) 14%, transparent); color: var(--allow); border: 1px solid color-mix(in oklab, var(--allow) 30%, transparent); }
+.pill-deny  { background: color-mix(in oklab, var(--deny) 14%, transparent);  color: var(--deny);  border: 1px solid color-mix(in oklab, var(--deny) 30%, transparent); }
+.pill-log   { background: color-mix(in oklab, var(--accent) 14%, transparent); color: var(--accent); border: 1px solid color-mix(in oklab, var(--accent) 35%, transparent); }
+.pill-data  { background: color-mix(in oklab, var(--data) 14%, transparent);   color: var(--data);   border: 1px solid color-mix(in oklab, var(--data) 30%, transparent); }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ──────────── Variation system ──────────── */
+
+[data-variant] { display: none !important; }
+html[data-title-variant="A"]   .slide-title [data-variant="A"],
+html[data-title-variant="B"]   .slide-title [data-variant="B"],
+html[data-title-variant="C"]   .slide-title [data-variant="C"]   { display: block !important; }
+
+html[data-keys-variant="A"]    .slide-keys [data-variant="A"]    { display: grid !important; }
+html[data-keys-variant="B"]    .slide-keys [data-variant="B"]    { display: flex !important; }
+html[data-keys-variant="C"]    .slide-keys [data-variant="C"]    { display: block !important; }
+
+html[data-closing-variant="A"] .slide-closing [data-variant="A"],
+html[data-closing-variant="B"] .slide-closing [data-variant="B"],
+html[data-closing-variant="C"] .slide-closing [data-variant="C"] { display: flex !important; }
+
+/* ──────────── Hex grid background ──────────── */
+
+.bg-hex {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(60deg, transparent 24%, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.04) 26%, transparent 27%, transparent 74%, rgba(255,255,255,0.04) 75%, rgba(255,255,255,0.04) 76%, transparent 77%),
+    linear-gradient(120deg, transparent 24%, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.04) 26%, transparent 27%, transparent 74%, rgba(255,255,255,0.04) 75%, rgba(255,255,255,0.04) 76%, transparent 77%);
+  background-size: 88px 152px;
+  pointer-events: none;
+  opacity: 0.6;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+}
+
+.bg-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  opacity: 0.5;
+}
