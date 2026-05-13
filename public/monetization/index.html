@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACMI — The Coordination Layer for AI Devs Running More Than One Agent</title>
+<meta name="description" content="MIT protocol, paid fleet recipe. 10 production agents, Redis schema, governance dashboard. Stop your Claude, Cursor, and Cline from forgetting what each other did. $47 kit, $39/mo lab.">
+<meta property="og:title" content="ACMI — The Coordination Layer for AI Fleets">
+<meta property="og:description" content="MIT protocol, paid fleet recipe. 10 production agents. Stop your agents from forgetting what each other did.">
+<meta property="og:image" content="https://acmi-product.vercel.app/brand/cover-techex-B.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --ink-2: #4a4a4a;
+    --ink-3: #7a7a7a;
+    --paper: #f6f3ec;
+    --paper-2: #efeadb;
+    --paper-3: #e6e0cf;
+    --rule: #1a1a1a;
+    --accent: #c84a1f;
+    --accent-soft: #f4d8c8;
+    --green: #2b6650;
+    --amber: #b8860b;
+    --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --maxw: 1080px;
+    --gutter: 24px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
+  body {
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--gutter); }
+  a { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { color: var(--accent); }
+  code, .mono { font-family: var(--mono); font-size: 0.92em; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 48px 0; }
+  h1, h2, h3, h4 { font-family: var(--serif); font-weight: 500; letter-spacing: -0.01em; line-height: 1.15; }
+  h1 { font-size: clamp(36px, 6vw, 64px); margin: 0 0 18px 0; }
+  h2 { font-size: clamp(28px, 4vw, 42px); margin: 0 0 18px 0; }
+  h3 { font-size: clamp(20px, 2.6vw, 26px); margin: 0 0 10px 0; }
+  h4 { font-size: 18px; font-weight: 600; margin: 0 0 6px 0; }
+  p { margin: 0 0 16px 0; }
+
+  /* Top bar */
+  .topbar {
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px var(--gutter);
+    max-width: var(--maxw); margin: 0 auto;
+  }
+  .brand {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .brand .dot { color: var(--accent); }
+  .nav { display: flex; gap: 22px; font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em; }
+  .nav a { text-decoration: none; color: var(--ink-2); }
+  .nav a:hover { color: var(--accent); }
+  .cta-mini {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration: none;
+    border: 1px solid var(--ink);
+  }
+  .cta-mini:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+
+  /* Hero */
+  .hero { padding: 72px 0 56px 0; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 18px;
+  }
+  .eyebrow .accent { color: var(--accent); }
+  .hero h1 .em { font-style: italic; color: var(--accent); }
+  .hero-sub {
+    font-size: clamp(18px, 2vw, 22px);
+    color: var(--ink-2);
+    max-width: 760px;
+    margin-top: 18px;
+    margin-bottom: 36px;
+  }
+  .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    padding: 14px 22px;
+    text-decoration: none;
+    border: 1px solid var(--ink);
+    transition: all .15s ease;
+  }
+  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-primary:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  .btn-ghost { background: transparent; color: var(--ink); }
+  .btn-ghost:hover { background: var(--paper-2); border-color: var(--ink); color: var(--ink); }
+
+  /* Proof strip */
+  .proof-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-2);
+  }
+  .proof-cell {
+    padding: 18px 20px;
+    border-right: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .proof-cell:last-child { border-right: none; }
+  .proof-cell .label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .proof-cell .val { color: var(--ink); }
+  .proof-cell .val a { text-decoration: none; }
+  .live-dot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--green);
+    margin-right: 6px; vertical-align: middle;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+  /* Section */
+  section { padding: 72px 0; border-bottom: 1px solid var(--rule); }
+  section.tight { padding: 56px 0; }
+  .sec-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+
+  /* Problem quotes */
+  .quotes {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 28px;
+  }
+  .quote {
+    border-left: 3px solid var(--accent);
+    padding: 14px 16px;
+    background: var(--paper-2);
+  }
+  .quote .q {
+    font-style: italic;
+    font-size: 17px;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .quote .src {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .quote .src a { color: var(--ink-3); }
+
+  /* Three slot diagram */
+  .slots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin-top: 32px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+  .slot {
+    padding: 28px 22px;
+    border-right: 1px solid var(--rule);
+  }
+  .slot:last-child { border-right: none; }
+  .slot .glyph {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .slot h3 { margin-bottom: 6px; }
+  .slot .when {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+    letter-spacing: 0.04em;
+  }
+  .slot p { font-size: 16px; color: var(--ink-2); }
+
+  /* Comparison block */
+  .vs-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 28px;
+  }
+  .vs-card {
+    border: 1px solid var(--rule);
+    padding: 26px;
+    background: var(--paper);
+  }
+  .vs-card .name {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 8px;
+  }
+  .vs-card .tagline { font-size: 19px; margin-bottom: 14px; }
+  .vs-card ul { padding-left: 18px; margin: 0; color: var(--ink-2); }
+  .vs-card li { margin-bottom: 6px; font-size: 15px; }
+  .vs-card.acmi { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .vs-card.acmi .name { color: var(--accent-soft); }
+  .vs-card.acmi ul { color: var(--paper); }
+
+  /* Pricing */
+  .price-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 32px;
+  }
+  .tier {
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    padding: 32px 28px;
+    display: flex; flex-direction: column;
+  }
+  .tier.recommended { background: var(--ink); color: var(--paper); border-color: var(--ink); position: relative; }
+  .tier.recommended::before {
+    content: "Recommended";
+    position: absolute; top: -12px; left: 24px;
+    background: var(--accent); color: var(--paper);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 10px;
+  }
+  .tier .tier-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    color: var(--ink-3);
+  }
+  .tier.recommended .tier-name { color: var(--accent-soft); }
+  .tier .tier-title { font-size: 26px; margin-bottom: 6px; line-height: 1.2; }
+  .tier .price {
+    font-family: var(--mono);
+    font-size: 36px;
+    font-weight: 600;
+    margin: 18px 0 4px 0;
+  }
+  .tier .price-note {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-bottom: 18px;
+  }
+  .tier.recommended .price-note { color: var(--accent-soft); }
+  .tier ul {
+    list-style: none; padding: 0; margin: 0 0 24px 0;
+    flex-grow: 1;
+  }
+  .tier li {
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--paper-3);
+    font-size: 15px;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .tier.recommended li { border-bottom-color: rgba(255,255,255,0.15); }
+  .tier li::before { content: "→"; font-family: var(--mono); color: var(--accent); font-weight: 600; flex-shrink: 0; }
+  .tier .btn { width: 100%; text-align: center; }
+
+  /* Inside the kit */
+  .kit-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    margin-top: 28px;
+    border-top: 1px solid var(--rule);
+    border-left: 1px solid var(--rule);
+  }
+  .kit-item {
+    padding: 22px 20px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .kit-item .n {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    letter-spacing: 0.1em; margin-bottom: 6px;
+  }
+  .kit-item h4 { margin-bottom: 4px; }
+  .kit-item p { font-size: 15px; color: var(--ink-2); margin: 0; }
+
+  /* Install snippet */
+  .install {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 22px 24px;
+    margin-top: 24px;
+    font-family: var(--mono);
+    font-size: 14px;
+    overflow-x: auto;
+  }
+  .install .prompt { color: var(--accent); }
+  .install .comment { color: var(--ink-3); }
+
+  /* Founder section */
+  .founder {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 32px;
+    align-items: start;
+  }
+  .founder-side .label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .founder-side h3 { margin-bottom: 8px; }
+  .founder-side p { font-size: 15px; color: var(--ink-2); }
+
+  /* FAQ */
+  details.faq {
+    border-bottom: 1px solid var(--rule);
+    padding: 18px 0;
+  }
+  details.faq summary {
+    cursor: pointer;
+    font-size: 19px;
+    font-weight: 500;
+    list-style: none;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  details.faq summary::-webkit-details-marker { display: none; }
+  details.faq summary::after {
+    content: "+";
+    font-family: var(--mono);
+    color: var(--accent);
+    font-size: 24px;
+    transition: transform .2s ease;
+  }
+  details.faq[open] summary::after { content: "−"; }
+  details.faq .answer {
+    margin-top: 12px;
+    color: var(--ink-2);
+    font-size: 16px;
+  }
+
+  /* Footer */
+  footer {
+    padding: 48px 0 32px 0;
+    border-top: 1px solid var(--rule);
+    background: var(--paper-2);
+  }
+  footer .row {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px;
+    font-family: var(--mono); font-size: 13px; color: var(--ink-2);
+  }
+  footer a { color: var(--ink-2); text-decoration: none; }
+  footer a:hover { color: var(--accent); }
+
+  /* Mobile */
+  @media (max-width: 760px) {
+    .nav { display: none; }
+    .proof-strip { grid-template-columns: repeat(2, 1fr); }
+    .proof-cell { border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+    .proof-cell:nth-child(2) { border-right: none; }
+    .proof-cell:nth-child(3), .proof-cell:nth-child(4) { border-bottom: none; }
+    .quotes, .slots, .vs-grid, .price-grid, .kit-list, .founder { grid-template-columns: 1fr; }
+    .slot, .kit-item { border-right: none; border-bottom: 1px solid var(--rule); }
+    section { padding: 48px 0; }
+    .hero { padding: 48px 0 36px 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">acmi<span class="dot">.</span></div>
+    <nav class="nav">
+      <a href="#problem">Problem</a>
+      <a href="#protocol">Protocol</a>
+      <a href="#inside">Inside</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="cta-mini" href="#pricing">Get the Kit</a>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Agentic Context Memory Interface · <span class="accent">v1.3 · MIT</span></div>
+    <h1>Stop teaching your agents the same thing <span class="em">twice</span>.</h1>
+    <p class="hero-sub">
+      ACMI is the coordination layer for AI developers running more than one agent. The protocol is MIT — clone the repo, install the npm package, deploy on your Redis. What you buy is the <em>fleet recipe</em>: ten production agents, the schema they live in, the dashboard that watches them, and ongoing access as I ship more.
+    </p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="#pricing">Get the Starter Kit · $47</a>
+      <a class="btn btn-ghost" href="#protocol">How the protocol works</a>
+    </div>
+  </div>
+</header>
+
+<div class="proof-strip">
+  <div class="proof-cell">
+    <span class="label">npm</span>
+    <span class="val mono">@madezmedia/acmi</span>
+  </div>
+  <div class="proof-cell">
+    <span class="label">Smithery</span>
+    <span class="val mono"><a href="https://smithery.ai/server/@madezmediapartners/acmi-mcp" target="_blank" rel="noopener">acmi-mcp</a></span>
+  </div>
+  <div class="proof-cell">
+    <span class="label">GitHub</span>
+    <span class="val mono"><a href="https://github.com/madezmedia/acmi-product" target="_blank" rel="noopener">madezmedia/acmi-product</a></span>
+  </div>
+  <div class="proof-cell">
+    <span class="label">Dashboard</span>
+    <span class="val mono"><span class="live-dot"></span><a href="https://acmi-product.vercel.app/governance-dashboard.html" target="_blank" rel="noopener">Live in prod</a></span>
+  </div>
+</div>
+
+<section id="problem">
+  <div class="wrap">
+    <div class="sec-label">The problem</div>
+    <h2>Your three AI agents have three different ideas of what "done" looks like.</h2>
+    <p style="max-width: 760px; color: var(--ink-2); font-size: 18px;">
+      You opened Claude Code yesterday and shipped a feature. You opened Cursor this morning and it had no idea that feature existed. Tomorrow you'll open Cline and re-explain the whole project. The buyer of this kit already knows what context rot feels like — these are their words, not mine:
+    </p>
+    <div class="quotes">
+      <div class="quote">
+        <p class="q">"Every time the agent forgets what it once knew, the user has to re-explain everything from scratch. This not only disrupts the workflow — it ends up filling memory again, only for it to be lost once more."</p>
+        <p class="src"><a href="https://forum.cursor.com/t/the-vicious-circle-of-agent-context-loss/104068" target="_blank" rel="noopener">— Cursor forum · "The Vicious Circle of Agent Context Loss"</a></p>
+      </div>
+      <div class="quote">
+        <p class="q">"Once you've compacted multiple times and the summary itself fills the window, the only option is to start fresh and manually re-explain everything from scratch."</p>
+        <p class="src"><a href="https://github.com/anthropics/claude-code/issues/26317" target="_blank" rel="noopener">— Claude Code GitHub issue #26317</a></p>
+      </div>
+      <div class="quote">
+        <p class="q">"Claude forgets which skills were being used during the session, forgets procedures/methodologies, and does not proactively re-read skill files after compaction. Coding conventions get summarized into oblivion."</p>
+        <p class="src"><a href="https://github.com/anthropics/claude-code/issues/10960" target="_blank" rel="noopener">— Claude Code GitHub issue #10960</a></p>
+      </div>
+      <div class="quote">
+        <p class="q">"Context loss is the biggest productivity killer in long Claude Code sessions."</p>
+        <p class="src"><a href="https://www.mindstudio.ai/blog/what-is-context-rot-claude-code" target="_blank" rel="noopener">— MindStudio · "What Is Context Rot in Claude Code"</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="protocol">
+  <div class="wrap">
+    <div class="sec-label">The protocol</div>
+    <h2>Three slots per entity. That's the whole thing.</h2>
+    <p style="max-width: 760px; color: var(--ink-2);">
+      Every entity in ACMI — an agent, a human, a project, a thread, a work item — has exactly three slots. No schemas, no migrations, no joins. The reference SDK is <code>@madezmedia/acmi</code> on npm; the MCP server is <code>@madezmedia/acmi-mcp</code>, listed publicly on Smithery.
+    </p>
+    <div class="slots">
+      <div class="slot">
+        <div class="glyph">slot · 01</div>
+        <h3>Profile</h3>
+        <div class="when">who</div>
+        <p>Identity, configuration, role. Stable. Overwrite or merge. Your agent's name, model, expertise, working directories, do/don't-use-for rules.</p>
+      </div>
+      <div class="slot">
+        <div class="glyph">slot · 02</div>
+        <h3>Signals</h3>
+        <div class="when">now</div>
+        <p>Current state. What's open. What's hot. A mutable KV map — mood, priorities, scores, the work item this agent is currently focused on.</p>
+      </div>
+      <div class="slot">
+        <div class="glyph">slot · 03</div>
+        <h3>Timeline</h3>
+        <div class="when">then</div>
+        <p>Everything that happened, in order. Append-only event log. Every event carries a <code>correlationId</code> — workflows chain across agents and sessions.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-label">The wedge</div>
+    <h2>Other tools give one agent better memory. ACMI gives your whole fleet a shared timeline.</h2>
+    <div class="vs-grid">
+      <div class="vs-card">
+        <div class="name">Single-Agent Memory Tools</div>
+        <div class="tagline">Mem0 · Letta · Zep · LangMem · Cognee</div>
+        <ul>
+          <li>Vector stores or knowledge graphs</li>
+          <li>One agent gets smarter</li>
+          <li>Closed SaaS pricing (Mem0: $19–249/mo, Zep credit-based, Cognee €1,970/mo on-prem)</li>
+          <li>No cross-agent handoff primitive</li>
+          <li>Vendor lock-in to a runtime or framework</li>
+        </ul>
+      </div>
+      <div class="vs-card acmi">
+        <div class="name">ACMI · The Fleet Protocol</div>
+        <div class="tagline">Cross-agent coordination, MIT, on your Redis</div>
+        <ul>
+          <li>Three-slot structured contract</li>
+          <li>Your whole fleet shares one timeline</li>
+          <li>MIT license · your data, your bill</li>
+          <li><code>correlationId</code> chains hand off work cleanly</li>
+          <li>Framework-agnostic — Claude Code, Cursor, Cline, LangGraph, CrewAI all participate</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="inside">
+  <div class="wrap">
+    <div class="sec-label">Inside the Starter Kit</div>
+    <h2>Ten hours of fleet wiring you don't have to do.</h2>
+    <p style="max-width: 760px; color: var(--ink-2);">
+      The protocol is free. The kit is the working fleet — the ten production agents I run for myself, the Redis schema they live in, the dashboards that watch them, the cron schedule that keeps them moving. Drop-in ready, ~15 minutes to your first event on the timeline.
+    </p>
+    <div class="kit-list">
+      <div class="kit-item">
+        <div class="n">01</div>
+        <h4>Protocol Spec v1.3</h4>
+        <p>The full 40-page ratified doc. Profile/Signals/Timeline, correlationId chains, work items, rollups, multi-tenant fields.</p>
+      </div>
+      <div class="kit-item">
+        <div class="n">02</div>
+        <h4>10 Production Agent Profiles</h4>
+        <p>claude-engineer, bentley, claude-web, gemini-cli, perplexity, antigravity, claude-cowork, synthesizer, researcher, publisher. Working configs, not templates.</p>
+      </div>
+      <div class="kit-item">
+        <div class="n">03</div>
+        <h4>Redis Schema + Upstash Deploy</h4>
+        <p>Keyspace layout, ZADD patterns, env vars, a <code>bootstrap.sh</code> that stands the whole thing up in one command.</p>
+      </div>
+      <div class="kit-item">
+        <div class="n">04</div>
+        <h4>39 Cron + launchd Templates</h4>
+        <p>The full production schedule: 31 openclaw + 8 launchd. Inbox drains, health checks, integration smoke tests, governance audits.</p>
+      </div>
+      <div class="kit-item">
+        <div class="n">05</div>
+        <h4>Lobster Trap Policy Template</h4>
+        <p>Veea-integrated governance policy. Drop-in for anyone running vLLM, Ollama, or any LLM gateway needing auditable allow/deny decisions.</p>
+      </div>
+      <div class="kit-item">
+        <div class="n">06</div>
+        <h4>Forkable Governance Dashboard</h4>
+        <p>The React dashboard live at <a href="https://acmi-product.vercel.app/governance-dashboard.html" target="_blank" rel="noopener">acmi-product.vercel.app</a> right now. Fork, point at your Redis, you have the same view.</p>
+      </div>
+      <div class="kit-item">
+        <div class="n">07</div>
+        <h4>16-Tool MCP Server</h4>
+        <p><code>@madezmedia/acmi-mcp</code> — install once, works in Claude Desktop, Claude Code, Cursor, Cline, Cowork, Perplexity.</p>
+      </div>
+      <div class="kit-item">
+        <div class="n">08</div>
+        <h4>Discord access · 90 days</h4>
+        <p><code>#starter-kit-help</code> — direct line while you set up. After 90 days, upgrade to the Lab or roll off.</p>
+      </div>
+    </div>
+    <div class="install">
+      <span class="comment"># the protocol is open. inspect before you pay.</span><br>
+      <span class="prompt">$</span> npm install @madezmedia/acmi<br>
+      <span class="prompt">$</span> npx @madezmedia/acmi-mcp <span class="comment"># 16 tools, works in any MCP host</span><br>
+      <br>
+      <span class="comment"># or browse first:</span><br>
+      <span class="prompt">$</span> open https://github.com/madezmedia/acmi-product
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="sec-label">Pricing</div>
+    <h2>Two tiers. Both ship a working fleet.</h2>
+    <div class="price-grid">
+      <div class="tier">
+        <div class="tier-name">Tier 01 · One-time</div>
+        <div class="tier-title">ACMI Starter Kit</div>
+        <div class="price">$47</div>
+        <div class="price-note">one-time payment</div>
+        <ul>
+          <li>Protocol Spec v1.3 (PDF)</li>
+          <li>10 production agent profiles + prompts</li>
+          <li>Redis schema + Upstash deploy guide</li>
+          <li>39 cron + launchd templates</li>
+          <li>Lobster Trap policy template</li>
+          <li>Forkable governance dashboard</li>
+          <li>16-tool MCP server</li>
+          <li>Discord access (90 days)</li>
+        </ul>
+        <a class="btn btn-ghost" href="https://whop.com/madezmedia/acmi-starter-kit" target="_blank" rel="noopener">Get the Kit on Whop →</a>
+      </div>
+      <div class="tier recommended">
+        <div class="tier-name">Tier 02 · Recurring</div>
+        <div class="tier-title">Claude Engineer Lab</div>
+        <div class="price">$39<span style="font-size: 18px; color: var(--accent-soft);">/mo</span></div>
+        <div class="price-note">grandfathered for life at $39 if you join now</div>
+        <ul>
+          <li><strong>Everything in the Starter Kit, instantly</strong></li>
+          <li>1 live build per week · Tuesdays 2pm ET</li>
+          <li>1 async skill drop per week · Fridays</li>
+          <li>Roadmap voting access</li>
+          <li>Private Discord · lifetime member access</li>
+          <li>Direct DM access (best-effort)</li>
+          <li>14-day early access on all new releases</li>
+          <li>Price locks at $39 even when public price rises to $49</li>
+        </ul>
+        <a class="btn btn-primary" style="background: var(--accent); border-color: var(--accent);" href="https://whop.com/madezmedia/claude-engineer-lab" target="_blank" rel="noopener">Join the Lab →</a>
+      </div>
+    </div>
+    <p style="margin-top: 28px; font-size: 14px; color: var(--ink-3); font-family: var(--mono); text-align: center;">
+      Whop checkout · 14-day refund policy · cancel anytime
+    </p>
+  </div>
+</section>
+
+<section class="tight">
+  <div class="wrap">
+    <div class="founder">
+      <div class="founder-side">
+        <div class="label">Who's behind this</div>
+        <h3>Mikey Shaw · Mad EZ Media</h3>
+        <p>Engineer-operator. Builds in public.</p>
+      </div>
+      <div>
+        <p style="font-size: 18px;">
+          I run a 10-agent ACMI fleet to operate my business. Six of them are coordinating today as you read this — you can watch them on the <a href="https://acmi-product.vercel.app/governance-dashboard.html" target="_blank" rel="noopener">production dashboard</a>.
+        </p>
+        <p style="font-size: 18px;">
+          I built ACMI because I kept opening Claude Code, Cursor, and Cline in three tabs and watching each one re-derive the project from scratch. I open-sourced the protocol because protocols only matter when they're shared. The kit and the Lab exist because there's about ten hours of working code between the protocol-as-spec and the protocol-as-running-fleet, and most builders would rather skip that ten hours.
+        </p>
+        <p style="font-size: 18px;">
+          Receipts: <a href="https://github.com/madezmedia/acmi-product" target="_blank" rel="noopener">public repo</a>, <a href="https://acmi-product.vercel.app" target="_blank" rel="noopener">live site</a>, <a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">building in public on X</a>. TechEx hackathon submission filed this week (sizzle reel, six decks, governance dashboard live in prod).
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-label">FAQ</div>
+    <h2>The honest answers.</h2>
+    <details class="faq" open>
+      <summary>Is the protocol really MIT? Why would I pay $47?</summary>
+      <div class="answer">Yes, MIT. You're paying for the working fleet — 10 agent configurations, the dashboard, the cron schedule, the Redis layout, the deploy guide. About 10 hours of work you skip. If you'd rather wire it yourself from the GitHub repo, do that. It's free.</div>
+    </details>
+    <details class="faq">
+      <summary>Will this work with my agent framework?</summary>
+      <div class="answer">ACMI is framework-agnostic. It's a Redis-backed event log with a three-slot model. Anything that can write to Redis (or use the MCP server) can participate. Tested: Claude Code, Cursor, Cline, Cowork, Claude Desktop, Perplexity, LangGraph, CrewAI, raw Node/Python.</div>
+    </details>
+    <details class="faq">
+      <summary>What infrastructure do I need?</summary>
+      <div class="answer">An Upstash Redis instance (free tier works for getting started) and any MCP-capable agent host. That's it. No vector DB required, no additional servers.</div>
+    </details>
+    <details class="faq">
+      <summary>Do I need to know Redis?</summary>
+      <div class="answer">No. The deploy guide doesn't ask you to write Redis commands — you call MCP tools or the npm SDK. If you do know Redis, the timeline is just sorted sets and you can <code>ZRANGE</code> it.</div>
+    </details>
+    <details class="faq">
+      <summary>How is this different from Mem0 / Letta / Zep / LangMem?</summary>
+      <div class="answer">Those tools give one agent better memory. ACMI is a coordination contract for multiple agents to share a timeline. Run Mem0 next to ACMI if you want vector-based recall — they're complementary, not competitive. Letta is an agent runtime; ACMI is a protocol that any runtime can write to.</div>
+    </details>
+    <details class="faq">
+      <summary>What are the "live builds" in the Lab actually like?</summary>
+      <div class="answer">60 minutes, Tuesdays 2pm ET in Discord. I build the next thing on the public roadmap — a new agent, a new dashboard view, a new MCP integration. You watch the actual code happen, bugs and all. Recording posted within 24 hours.</div>
+    </details>
+    <details class="faq">
+      <summary>What's the refund policy?</summary>
+      <div class="answer">Whop's standard 14-day refund. One click in your Whop account. No questions, no retention games.</div>
+    </details>
+    <details class="faq">
+      <summary>Is there a team / enterprise tier?</summary>
+      <div class="answer">Coming after the TechEx hackathon case study ships — likely $299–499/mo with the governance dashboard + Lobster Trap audit layer and an SLA. If you want first dibs, DM me on X (<a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">@madezmedia</a>).</div>
+    </details>
+    <details class="faq">
+      <summary>What if I'm not using Claude?</summary>
+      <div class="answer">The patterns work for any agent framework. The Starter Kit's agent prompts are Claude-flavored, but the protocol itself is model-agnostic. If you're 100% on a different stack, the kit gives you the schema and dashboard — you'll write your own prompts.</div>
+    </details>
+  </div>
+</section>
+
+<section style="background: var(--ink); color: var(--paper); border-bottom: none;">
+  <div class="wrap" style="text-align: center;">
+    <h2 style="color: var(--paper);">Ready to give your fleet a shared timeline?</h2>
+    <p style="font-size: 19px; color: var(--accent-soft); max-width: 640px; margin: 16px auto 32px auto;">
+      Inspect the protocol before you pay. Buy the kit if you want to skip the wiring. Join the Lab if you want to be in the room while it ships.
+    </p>
+    <div class="hero-ctas" style="justify-content: center;">
+      <a class="btn btn-primary" style="background: var(--accent); border-color: var(--accent);" href="https://whop.com/madezmedia/acmi-starter-kit" target="_blank" rel="noopener">Get the Kit · $47</a>
+      <a class="btn btn-ghost" style="background: transparent; color: var(--paper); border-color: var(--paper);" href="https://whop.com/madezmedia/claude-engineer-lab" target="_blank" rel="noopener">Join the Lab · $39/mo</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="row">
+      <div>
+        <strong style="font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;">ACMI</strong> · The Fleet Protocol · v1.3 · MIT<br>
+        Built by <a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">Mad EZ Media</a> · running in production at <a href="https://acmi-product.vercel.app" target="_blank" rel="noopener">acmi-product.vercel.app</a>
+      </div>
+      <div>
+        <a href="https://github.com/madezmedia/acmi-product" target="_blank" rel="noopener">GitHub</a> ·
+        <a href="https://smithery.ai/server/@madezmediapartners/acmi-mcp" target="_blank" rel="noopener">Smithery</a> ·
+        <a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">X</a> ·
+        <a href="#pricing">Pricing</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
