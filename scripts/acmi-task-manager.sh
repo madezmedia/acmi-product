@@ -4,10 +4,14 @@
 # Rule 9: All automated actions attributed.
 # Co-Authored-By: Gemini CLI <gemini-cli@madezmedia.local>
 
-# Configuration
-UPSTASH_URL="https://loved-platypus-102968.upstash.io"
-UPSTASH_TOKEN="***REDACTED-ROTATED-2026-05-13***"
-MCP_URL="https://acmi-product.vercel.app/api/mcp"
+# Configuration — credentials sourced from environment, never hardcoded.
+# Operator must export UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN before running
+# (or source a .env file that defines them — outside this repo, never committed).
+: "${UPSTASH_REDIS_REST_URL:?missing UPSTASH_REDIS_REST_URL — export it or source your fleet .env first}"
+: "${UPSTASH_REDIS_REST_TOKEN:?missing UPSTASH_REDIS_REST_TOKEN — export it or source your fleet .env first}"
+UPSTASH_URL="$UPSTASH_REDIS_REST_URL"
+UPSTASH_TOKEN="$UPSTASH_REDIS_REST_TOKEN"
+MCP_URL="${ACMI_MCP_URL:-https://acmi-product.vercel.app/api/mcp}"
 
 # Help
 function show_help {
