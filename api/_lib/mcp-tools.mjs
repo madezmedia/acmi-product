@@ -457,18 +457,24 @@ export function registerAcmiTools(server, redis) {
         return jsonResult({
           ok: true,
           query,
-          results: (Array.isArray(results) ? results : []).map(r => ({
-            relevance: typeof r.score === "number" ? r.score : (r.similarity || 0),
-            summary: r.doc || r.document || r.text || "",
-            metadata: {
-              date_iso: r.date_iso || "",
-              source: r.source || "",
-              title: r.title || "",
-              project: r.project || "",
-              agent_source: r.agent_source || "",
-            },
-            link: r.metadata?.correlationId ? `cid:${r.metadata.correlationId}` : null,
-          })),
+          results: (Array.isArray(results) ? results : []).map(r => {
+            const meta = r.metadata || {};
+            return {
+              relevance: typeof r.score === "number" ? r.score : (r.similarity || 0),
+              summary: r.doc || r.document || r.text || "",
+              metadata: {
+                date_iso: meta.date_iso || "",
+                source: meta.source || "",
+                title: meta.title || "",
+                project: meta.project || "",
+                agent_source: meta.agent_source || "",
+                cid: meta.cid || "",
+                pcid: meta.pcid || "",
+                thread: meta.thread || ""
+              },
+              link: meta.cid ? `cid:${meta.cid}` : null,
+            };
+          }),
         });
       } catch (err) {
         return jsonResult({
