@@ -323,7 +323,7 @@
 </div>
 
 <script>
-const API = "/api/governance?hours=24";
+const API = "/api/governance?hours=168";
 const INTERVAL = 15000;
 let lastTs = 0;
 let pollHandle = null;
@@ -385,7 +385,7 @@ function renderHero(h) {
     <div class="stat-card neutral">
       <div class="stat-label">Total Decisions</div>
       <div class="stat-value">${total.toLocaleString()}</div>
-      <div class="stat-sub">last 24h · live ${h.allow_count || 0} allow / ${h.deny_count || 0} deny</div>
+      <div class="stat-sub">last 7d · live ${h.allow_count || 0} allow / ${h.deny_count || 0} deny</div>
     </div>
     <div class="stat-card ${blockTone}">
       <div class="stat-label">Block Rate</div>
