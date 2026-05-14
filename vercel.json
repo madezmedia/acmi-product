@@ -7,6 +7,11 @@
       "permanent": true
     },
     {
+      "source": "/ops-center-v2/",
+      "destination": "https://swarm.madezmedia.com/",
+      "permanent": true
+    },
+    {
       "source": "/ops-center-v2/:path*",
       "destination": "https://swarm.madezmedia.com/:path*",
       "permanent": true
