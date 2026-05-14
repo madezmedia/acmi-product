@@ -4,11 +4,25 @@
 
 > The coordination backbone for AI agent fleets. Three Redis keys — Profile, Signals, Timeline.
 
-**Cross-references:** This is the **live demo + ops-center** surface. For the protocol spec, TypeScript/JS SDK, CLI, and MCP server source, see the sibling repo [`madezmedia/acmi`](https://github.com/madezmedia/acmi).
+**Cross-references:** This is the **live demo + marketing** surface. For the protocol spec, TypeScript/JS SDK, CLI, and MCP server source, see the sibling repo [`madezmedia/acmi`](https://github.com/madezmedia/acmi). For the **production operator surface (swarm-os 2.0.0-beta)** that replaced `/ops-center-v2/*`, see [`madezmedia/cowork-kanban`](https://github.com/madezmedia/cowork-kanban) at [`swarm.madezmedia.com`](https://swarm.madezmedia.com).
+
+## ops-center-v2 retired 2026-05-13
+
+The `/ops-center-v2/*` surface (vanilla-JS operator dashboard prototype) was retired on **2026-05-13** as part of Strand 5 Phase 5. All traffic to `/ops-center-v2/*` now permanent-redirects (HTTP 308 via Vercel `permanent: true`; 301 also platform-acceptable) to the canonical replacement.
+
+- **Retirement date:** 2026-05-13
+- **Redirect target:** [`https://swarm.madezmedia.com`](https://swarm.madezmedia.com) (Clerk-gated; query strings preserved, paths mapped 1:1 by Vercel)
+- **What was preserved:** The full pre-retire snapshot of `public/ops-center-v2/` lives in git at branch [`archive/ops-center-v2-pre-retire`](https://github.com/madezmedia/acmi-product/tree/archive/ops-center-v2-pre-retire) for emergency rollback. Nothing was deleted from `main`; the redirect is configured in `vercel.json` at the platform layer.
+- **Canonical replacement:** **swarm-os 2.0.0-beta** — the Next.js / Clerk / TypeScript operator surface in the sibling repo [`madezmedia/cowork-kanban`](https://github.com/madezmedia/cowork-kanban), deployed at [`swarm.madezmedia.com`](https://swarm.madezmedia.com). Surfaces: `/timeline` (default), `/roundtable`, `/hitl`, `/cron`, `/kanban-phase`, `/todos`, `/events`, `/docs`, `/projects`, plus Phase 4 write endpoints (`POST /api/acmi/write`, `POST /api/hitl`).
+
+The Path B (lab) → Path C (production) transition is formally complete with this retirement.
+
+---
 
 ## Try the live demo
 
-- **Marketing site + ops-center:** [v3-ten-beta.vercel.app/acmi](https://v3-ten-beta.vercel.app/acmi/) — live MI300X panel and agent activity dashboard
+- **Marketing site:** [v3-ten-beta.vercel.app/acmi](https://v3-ten-beta.vercel.app/acmi/) — live MI300X panel and agent activity dashboard
+- **Operator surface (swarm-os 2.0.0-beta):** [swarm.madezmedia.com](https://swarm.madezmedia.com) — Clerk-gated production console; replaced `/ops-center-v2/*` on 2026-05-13 (see retirement notice above)
 - **HF Space (hackathon judge demo):** [`madezmedia/acmi-timeline-browser`](https://huggingface.co/spaces/madezmedia/acmi-timeline-browser) — Gradio-based multi-framework chain browser
 - **Cloud MCP endpoint (OAuth-protected):** see [MCP Server](mcp.html) docs for the URL-published listing
 
@@ -67,7 +81,7 @@ ACMI ships across five public surfaces. Pick the right one for your job:
 | Surface | Where | What lives there |
 | --- | --- | --- |
 | Protocol + SDK | [`madezmedia/acmi`](https://github.com/madezmedia/acmi) | TypeScript/JS API, manifesto, CLI, MCP server source, conformance suite |
-| Live demo + ops-center | [`madezmedia/acmi-product`](https://github.com/madezmedia/acmi-product) | Vercel-hosted marketing, cloud MCP w/ OAuth, live ops-center dashboard (this repo) |
+| Live demo + marketing | [`madezmedia/acmi-product`](https://github.com/madezmedia/acmi-product) | Vercel-hosted marketing, cloud MCP w/ OAuth, live ops-center dashboard (this repo) (ops-center-v2 retired 2026-05-13 → swarm.madezmedia.com) |
 | npm | [`@madezmedia/acmi-mcp`](https://www.npmjs.com/package/@madezmedia/acmi-mcp) | `npx -y @madezmedia/acmi-mcp` for stdio MCP |
 | Smithery | [`smithery.ai/servers/madezmediapartners/acmi-mcp`](https://smithery.ai/servers/madezmediapartners/acmi-mcp) | URL-published + stdio listings |
 | HF Space (hackathon demo) | [`madezmedia/acmi-timeline-browser`](https://huggingface.co/spaces/madezmedia/acmi-timeline-browser) | Live multi-framework chain browser |
