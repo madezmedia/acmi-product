@@ -175,15 +175,33 @@ export default async function handler(req, res) {
     payload?.data?.member?.id ||
     null;
 
+  // Map Whop event type → ACMI kind + correlationId prefix.
+  // Whop sends e.g. "payment.succeeded", "membership.went_valid",
+  // "membership.went_invalid", "subscription.created", "subscription.cancelled".
+  const et = String(eventType).toLowerCase();
+  let kind = "purchase";
+  let cidPrefix = "whopPurchase";
+  let summaryVerb = "purchase";
+  if (et.includes("cancel") || et.includes("went_invalid") || et.includes("subscription.deleted")) {
+    kind = "subscription-cancelled";
+    cidPrefix = "whopSubCancelled";
+    summaryVerb = "sub-cancelled";
+  } else if (et.includes("subscription") || et.includes("membership.went_valid") || et.includes("recurring")) {
+    kind = "subscription-created";
+    cidPrefix = "whopSubCreated";
+    summaryVerb = "sub-created";
+  }
+
   const ts = Date.now();
-  const correlationId = `whopPurchase${tier.replace(/[^a-zA-Z0-9]/g, "")}-${ts}`;
+  const tierSlug = tier.replace(/[^a-zA-Z0-9]/g, "");
+  const correlationId = `${cidPrefix}${tierSlug}-${ts}`;
 
   const event = {
     ts,
     source: "whop:webhook",
-    kind: "purchase",
+    kind,
     correlationId,
-    summary: `[purchase ${tier} @mikey] ${amount ? `$${amount}` : "amount?"} via Whop · event=${eventType} · sig=${signatureMode}`,
+    summary: `[${summaryVerb} ${tier} @mikey] ${amount ? `$${amount}` : "amount?"} via Whop · event=${eventType} · sig=${signatureMode}`,
     payload: {
       tier,
       amount_usd: amount,
@@ -193,12 +211,12 @@ export default async function handler(req, res) {
       signature_mode: signatureMode,
       raw_keys: Object.keys(payload || {}).slice(0, 30),
     },
-    tags: ["whop", "purchase", "revenue", tier],
+    tags: ["whop", kind, "revenue", tier],
   };
 
   try {
     await upstash("ZADD", REVENUE_THREAD, String(ts), JSON.stringify(event));
-    return reply(res, 200, { ok: true, correlationId, tier, amount_usd: amount, signature_mode: signatureMode });
+    return reply(res, 200, { ok: true, kind, correlationId, tier, amount_usd: amount, signature_mode: signatureMode });
   } catch (e) {
     return reply(res, 500, { error: "failed to ZADD revenue event", detail: String(e.message || e) });
   }
