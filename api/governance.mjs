@@ -33,7 +33,10 @@ export default async function handler(req) {
   try {
     const instance = resolveInstance(req);
     const url = new URL(req.url);
-    const windowHours = Math.max(1, Math.min(72, parseInt(url.searchParams.get("hours") || "24", 10)));
+    // Cap at 720h (30d) — dashboard defaults to 168h (7d) since PR #51, and judges
+    // viewing the TechEx submission may request up to 30d to see full demo history.
+    // Older 72h cap silently dropped the 12-event demo seed once it aged past 3 days.
+    const windowHours = Math.max(1, Math.min(720, parseInt(url.searchParams.get("hours") || "24", 10)));
     const since = Date.now() - windowHours * 3600 * 1000;
 
     const raw = await redis(instance, "ZRANGEBYSCORE", THREAD_KEY, String(since), "+inf", "WITHSCORES");
