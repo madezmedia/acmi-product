@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lobster Trap + Crypt Keeper — IBM Bob Hackathon 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght,ital@8..60,400..700,0;8..60,400..700,1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>deck-stage:not(:defined){visibility:hidden}</style>
+<style>
+  :root {
+    /* Editorial-tech palette (matches ops-center.html) */
+    --paper:        #faf9f5;
+    --paper-warm:   #f4f2eb;
+    --paper-shadow: #ebe8de;
+    --paper-deep:   #efece2;
+    --ink:          #1a1a1a;
+    --ink-soft:     #2c2c2a;
+    --ink-mute:     #4a4a48;
+    --ink-fade:     #7a7a76;
+    --ink-rule:     #d4d2cc;
+    --accent:       #2d4a3e;
+    --accent-soft:  #5a7d6f;
+    --accent-quiet: #1c3027;
+    --ok:           #4a7c59;
+    --warn:         #b8862d;
+    --err:          #b94a3a;
+    --pink:         #E5007D;
+
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans:  'Inter', system-ui, sans-serif;
+    --mono:  'JetBrains Mono', ui-monospace, Menlo, monospace;
+
+    /* Slide type scale @ 1920x1080 */
+    --t-title:    88px;
+    --t-display:  72px;
+    --t-h1:       56px;
+    --t-h2:       44px;
+    --t-h3:       34px;
+    --t-body-lg:  32px;
+    --t-body:     26px;
+    --t-small:    22px;
+    --t-meta:     16px;
+    --t-mono-md:  20px;
+    --t-mono-sm:  16px;
+    --t-mono-xs:  14px;
+
+    /* Padding scale */
+    --pad-frame:    100px;
+    --pad-y-top:    96px;
+    --pad-y-bot:    88px;
+    --gap-title:    52px;
+    --gap-item:     28px;
+  }
+  html, body { margin: 0; padding: 0; background: #2a2a2a; }
+  body { font-family: var(--sans); color: var(--ink); }
+
+  /* ===================== SLIDE FRAME ===================== */
+  section {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Grain texture overlay - subtle */
+  section::before {
+    content: "";
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0.1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    z-index: 0;
+  }
+  section > * { position: relative; z-index: 1; }
+
+  /* Top-bar (slide chrome) */
+  .top-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 64px;
+    padding: 0 var(--pad-frame);
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--ink-rule);
+    font-family: var(--mono);
+    font-size: var(--t-meta);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-fade);
+    z-index: 5;
+  }
+  .top-bar .left { display: flex; align-items: center; gap: 18px; }
+  .top-bar .splat {
+    width: 32px; height: 32px;
+    object-fit: contain;
+  }
+  .top-bar .right { display: flex; align-items: center; gap: 22px; }
+  .top-bar .right .num { color: var(--ink); font-weight: 600; }
+
+  /* Footer (slide chrome) */
+  .foot-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    padding: 0 var(--pad-frame);
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--ink-rule);
+    font-family: var(--mono);
+    font-size: var(--t-meta);
+    letter-spacing: 0.06em;
+    color: var(--ink-fade);
+    z-index: 5;
+  }
+  .foot-bar .url { color: var(--accent); font-weight: 600; }
+
+  /* Slide content area */
+  .frame {
+    position: absolute;
+    inset: 64px var(--pad-frame) 56px;
+    padding-top: var(--pad-y-top);
+    padding-bottom: 32px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Eyebrow */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: var(--t-mono-md);
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    font-weight: 600;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .eyebrow .dot {
+    width: 9px; height: 9px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* Headlines */
+  h1.title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: var(--t-title);
+    line-height: 0.98;
+    letter-spacing: -0.025em;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  h2.h1 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: var(--t-h1);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  h2.h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: var(--t-h2);
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  h3.h3 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: var(--t-h3);
+    line-height: 1.2;
+    margin: 0;
+    color: var(--ink);
+  }
+  .accent-word {
+    color: var(--accent);
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 2px;
+  }
+  .italic-key { font-style: italic; color: var(--accent); }
+
+  p.body, .body {
+    font-family: var(--serif);
+    font-size: var(--t-body);
+    line-height: 1.45;
+    color: var(--ink-soft);
+    margin: 0;
+    font-weight: 400;
+  }
+  .body-sans {
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    line-height: 1.45;
+    color: var(--ink-soft);
+    font-weight: 400;
+  }
+  .meta-cap {
+    font-family: var(--mono);
+    font-size: var(--t-mono-sm);
+    color: var(--ink-fade);
+    letter-spacing: 0.08em;
+  }
+
+  /* Hairline rule */
+  .hr-accent { width: 280px; height: 0; border-top: 3px solid var(--accent); }
+  .hr-thin   { width: 100%; height: 0; border-top: 1px solid var(--ink-rule); }
+
+  /* Pull quote with accent left border */
+  .pull-quote {
+    border-left: 5px solid var(--accent);
+    padding: 12px 0 12px 28px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.32;
+    color: var(--ink);
+    margin: 0;
+  }
+  .pull-quote .attrib {
+    display: block;
+    margin-top: 18px;
+    font-family: var(--sans);
+    font-style: normal;
+    font-size: var(--t-small);
+    font-weight: 500;
+    color: var(--ink-fade);
+  }
+
+  /* Surface cards */
+  .card {
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-radius: 8px;
+    padding: 32px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+  .card.flat {
+    box-shadow: none;
+    background: var(--paper-warm);
+  }
+
+  /* Mono code block */
+  pre.code {
+    font-family: var(--mono);
+    font-size: 18px;
+    line-height: 1.55;
+    background: var(--ink);
+    color: #e8e6df;
+    padding: 28px 32px;
+    border-radius: 8px;
+    margin: 0;
+    overflow: hidden;
+    white-space: pre;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    border: 1px solid var(--accent-quiet);
+  }
+  pre.code .c-key   { color: #d2c98f; }
+  pre.code .c-str   { color: #a4cba0; }
+  pre.code .c-com   { color: #7a7a76; font-style: italic; }
+  pre.code .c-fn    { color: #a4c5e4; }
+  pre.code .c-acc   { color: #f0a880; }
+  pre.code .c-deny  { color: #e9a48d; font-weight: 600; }
+  pre.code .c-mute  { color: #9a9a96; }
+
+  /* Mono inline */
+  code.inline {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--paper-shadow);
+    padding: 2px 8px;
+    border-radius: 3px;
+    color: var(--ink);
+    border: 1px solid var(--ink-rule);
+  }
+
+  /* ===================== SLIDE 1 — TITLE ===================== */
+  .s-title {
+    background:
+      radial-gradient(ellipse at 80% 20%, rgba(45,74,62,0.05), transparent 55%),
+      radial-gradient(ellipse at 10% 90%, rgba(45,74,62,0.04), transparent 50%),
+      var(--paper);
+  }
+  .s-title .hero {
+    flex: 1;
+    display: flex; flex-direction: column; justify-content: center;
+    align-items: flex-start;
+    gap: 36px;
+  }
+  .s-title .lockup {
+    display: flex; align-items: center; gap: 24px;
+  }
+  .s-title .lockup img { width: 92px; height: 92px; object-fit: contain; }
+  .s-title .lockup .word {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 28px;
+    color: var(--ink-soft);
+    letter-spacing: -0.01em;
+  }
+  .s-title .lockup .word small {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 500;
+    color: var(--ink-fade);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .s-title h1.mega {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 144px;
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    margin: 0;
+  }
+  .s-title h1.mega .plus {
+    color: var(--accent);
+    font-weight: 400;
+    font-style: italic;
+    font-size: 0.78em;
+  }
+  .s-title .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 42px;
+    line-height: 1.25;
+    color: var(--ink-mute);
+    max-width: 1240px;
+  }
+  .s-title .sub .accent-word { font-style: normal; }
+  .s-title .meta-strip {
+    display: flex; gap: 32px;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--ink-fade);
+    letter-spacing: 0.06em;
+  }
+  .s-title .meta-strip strong { color: var(--ink); font-weight: 600; }
+
+  /* ===================== SLIDE 2 — PROBLEM ===================== */
+  .s-problem .grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 80px;
+    flex: 1;
+  }
+  .s-problem .left { display: flex; flex-direction: column; gap: 40px; }
+  .s-problem .right { display: flex; flex-direction: column; gap: 24px; justify-content: center; }
+
+  /* PromptArmor "screenshot" facsimile */
+  .pa-shot {
+    background: #fff;
+    border: 1px solid var(--ink-rule);
+    border-radius: 8px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .pa-shot .browser-bar {
+    background: var(--paper-warm);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--ink-rule);
+  }
+  .pa-shot .dot-r { width: 12px; height: 12px; border-radius: 50%; background: #e94e3c; }
+  .pa-shot .dot-y { width: 12px; height: 12px; border-radius: 50%; background: #f1ba36; }
+  .pa-shot .dot-g { width: 12px; height: 12px; border-radius: 50%; background: #4cc858; }
+  .pa-shot .url-bar {
+    flex: 1; margin-left: 12px;
+    background: #fff;
+    border: 1px solid var(--ink-rule);
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-fade);
+  }
+  .pa-shot .url-bar b { color: var(--ink); font-weight: 600; }
+  .pa-shot .pa-body { padding: 32px 36px; }
+  .pa-shot .pa-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--err);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    background: rgba(185,74,58,0.08);
+    padding: 4px 10px;
+    border-radius: 3px;
+    margin-bottom: 14px;
+  }
+  .pa-shot .pa-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 24px;
+    color: var(--ink);
+    line-height: 1.25;
+    margin-bottom: 18px;
+  }
+  .pa-shot .pa-text {
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .pa-shot .pa-text .hl {
+    background: linear-gradient(180deg, transparent 60%, rgba(229,0,125,0.18) 60%);
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .pa-shot .pa-meta {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--ink-rule);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-fade);
+    display: flex; justify-content: space-between;
+  }
+
+  /* ===================== SLIDE 3 — THE TWIST ===================== */
+  .s-twist {
+    background:
+      radial-gradient(circle at center, var(--paper-warm), var(--paper) 65%);
+  }
+  .s-twist .hero {
+    flex: 1;
+    display: flex; flex-direction: column; justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 48px;
+    padding: 0 60px;
+  }
+  .s-twist .splat-bg {
+    position: absolute;
+    inset: 0;
+    display: grid; place-items: center;
+    opacity: 0.04;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .s-twist .splat-bg img {
+    width: 1200px;
+    transform: rotate(-8deg);
+  }
+  .s-twist h1.mega {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 76px;
+    line-height: 1.05;
+    letter-spacing: -0.022em;
+    color: var(--ink);
+    margin: 0;
+    max-width: 1500px;
+  }
+  .s-twist .triplet {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 36px;
+    line-height: 1.6;
+    color: var(--ink-mute);
+    font-weight: 400;
+  }
+  .s-twist .triplet div { margin: 4px 0; }
+  .s-twist .triplet b {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 2px;
+  }
+
+  /* ===================== SLIDE 4 — DIAGRAM ===================== */
+  .s-diagram .stack { flex: 1; display: flex; flex-direction: column; gap: 36px; }
+  .s-diagram .diagram-wrap {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 36px;
+  }
+  .s-diagram .router-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 1fr 80px 1fr;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 1500px;
+  }
+  .router-box {
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-radius: 10px;
+    padding: 36px 28px 30px;
+    min-height: 280px;
+    display: flex; flex-direction: column; gap: 12px;
+    position: relative;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  }
+  .router-box .r-num {
+    position: absolute;
+    top: 16px; right: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-fade);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .router-box .r-name {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 44px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .router-box .r-routes {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    margin-top: 12px;
+  }
+  .router-box .r-what {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 28px;
+    color: var(--ink);
+    margin-top: -4px;
+    letter-spacing: -0.01em;
+  }
+  .router-box .r-list {
+    margin-top: auto;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--ink-fade);
+    line-height: 1.65;
+    border-top: 1px dashed var(--ink-rule);
+    padding-top: 12px;
+  }
+  .router-arrow {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 40px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .guardian-rail {
+    width: 100%; max-width: 1500px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 24px;
+    padding: 20px 28px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+  }
+  .guardian-rail .lbl {
+    font-family: var(--mono);
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.7);
+  }
+  .guardian-rail .name {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 32px;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+  .s-diagram .cap {
+    text-align: center;
+    font-family: var(--serif);
+    font-size: 26px;
+    line-height: 1.4;
+    color: var(--ink-mute);
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+
+  /* ===================== SLIDE 5 — BOB MODES ===================== */
+  .s-modes .grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 60px;
+    flex: 1;
+  }
+  .timeline {
+    display: flex; flex-direction: column; gap: 24px;
+    position: relative;
+    padding-left: 32px;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 11px; top: 8px; bottom: 8px;
+    width: 2px; background: var(--ink-rule);
+  }
+  .tl-event {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .tl-event::before {
+    content: "";
+    position: absolute;
+    left: -32px; top: 14px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 3px solid var(--accent);
+  }
+  .tl-event .tl-head {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .tl-event .tl-time {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--ink-fade);
+    letter-spacing: 0.08em;
+  }
+  .tl-event .mode-pill {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    background: rgba(45,74,62,0.08);
+    border: 1px solid rgba(45,74,62,0.25);
+    border-radius: 4px;
+    padding: 4px 10px;
+    letter-spacing: 0.04em;
+  }
+  .tl-event .tl-summary {
+    font-family: var(--serif);
+    font-size: 22px;
+    line-height: 1.32;
+    color: var(--ink);
+    margin-top: 2px;
+  }
+  .tl-event .tl-cid {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-fade);
+    letter-spacing: 0.02em;
+    margin-top: 2px;
+  }
+  .yaml-card {
+    background: var(--ink);
+    color: #e8e6df;
+    border-radius: 8px;
+    padding: 24px 28px;
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1.55;
+    align-self: center;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+  }
+  .yaml-card .file-tab {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-fade);
+    margin-bottom: 14px;
+    letter-spacing: 0.06em;
+    display: flex; gap: 12px;
+  }
+  .yaml-card .file-tab b { color: #e8e6df; font-weight: 500; }
+  .yaml-card .k     { color: #d2c98f; }
+  .yaml-card .s     { color: #a4cba0; }
+  .yaml-card .c     { color: #7a7a76; font-style: italic; }
+  .yaml-card .v     { color: #f0a880; }
+  .yaml-card .ind   { color: #4a4a48; }
+
+  /* ===================== SLIDE 6 — LOBSTER TRAP ===================== */
+  .s-lobster .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 22px;
+    flex: 1;
+    max-height: 480px;
+  }
+  .quad {
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-radius: 8px;
+    padding: 26px 28px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .quad .quad-num {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 64px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+  .quad .quad-num .unit {
+    font-size: 28px;
+    color: var(--ink-fade);
+    margin-left: 4px;
+    font-weight: 500;
+  }
+  .quad .quad-label {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 24px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .quad .quad-cap {
+    font-family: var(--sans);
+    font-size: 16px;
+    color: var(--ink-mute);
+    line-height: 1.45;
+    margin-top: auto;
+  }
+  .quad code { font-family: var(--mono); font-size: 14px; color: var(--accent); }
+
+  .s-lobster .below {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+
+  /* ===================== SLIDE 7 — CRYPT KEEPER ===================== */
+  .s-crypt .grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 56px;
+    flex: 1;
+  }
+  .ck-arch {
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-radius: 8px;
+    padding: 36px 32px;
+    display: flex; flex-direction: column; gap: 20px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+  .ck-arch .arch-row {
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+  }
+  .ck-arch .node {
+    background: var(--paper);
+    border: 1px solid var(--ink-rule);
+    border-radius: 4px;
+    padding: 12px 18px;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .ck-arch .node.acc {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent-quiet);
+  }
+  .ck-arch .arrow {
+    font-family: var(--mono);
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .ck-arch .arrow b {
+    font-family: var(--mono);
+    background: var(--paper);
+    border: 1px solid var(--ink-rule);
+    padding: 4px 10px;
+    border-radius: 3px;
+    color: var(--accent);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+  }
+  .ck-arch .branch {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding-left: 12px;
+    border-left: 2px dashed var(--ink-rule);
+    margin-left: 12px;
+  }
+  .ck-arch .branch-col {
+    display: flex; flex-direction: column; gap: 10px; padding: 4px 0;
+  }
+  .ck-arch .audit-payload {
+    background: var(--ink);
+    color: #e8e6df;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 12px 16px;
+    border-radius: 4px;
+  }
+  .ck-arch .audit-payload .ok-col { color: #a4cba0; }
+  .ck-arch .audit-payload .err-col { color: #e9a48d; }
+
+  /* npm card */
+  .npm-card {
+    background: #fff;
+    border: 1px solid var(--ink-rule);
+    border-radius: 8px;
+    padding: 28px 30px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    display: flex; flex-direction: column; gap: 18px;
+    align-self: center;
+  }
+  .npm-card .npm-head {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .npm-card .npm-logo {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 16px;
+    background: #cb3837;
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+  }
+  .npm-card .pkg-name {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .npm-card .pkg-version {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--ink-fade);
+    background: var(--paper-warm);
+    padding: 3px 8px;
+    border-radius: 3px;
+    margin-left: auto;
+  }
+  .npm-card .rows {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .npm-card .row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 16px;
+    font-size: 15px;
+    align-items: baseline;
+  }
+  .npm-card .row .k {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-fade);
+    font-weight: 600;
+  }
+  .npm-card .row .v {
+    font-family: var(--sans);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .npm-card .row .v code {
+    font-family: var(--mono);
+    background: var(--paper-warm);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+  }
+  .npm-card .tests-row .v { color: var(--ok); font-weight: 600; }
+  .npm-card .install {
+    margin-top: 4px;
+    background: var(--ink);
+    color: #e8e6df;
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 12px 14px;
+    border-radius: 4px;
+  }
+  .npm-card .install .prompt { color: var(--accent-soft); margin-right: 8px; }
+
+  /* ===================== SLIDE 8 — LIVE CASE STUDY ===================== */
+  .s-case .grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 56px;
+    flex: 1;
+  }
+  .terminal {
+    background: #1a1a1a;
+    color: #e8e6df;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.22);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1.55;
+    align-self: center;
+    border: 1px solid var(--accent-quiet);
+  }
+  .terminal .term-bar {
+    background: #2a2826;
+    padding: 9px 14px;
+    display: flex; align-items: center; gap: 7px;
+    border-bottom: 1px solid #383634;
+  }
+  .terminal .term-bar .b {
+    width: 12px; height: 12px; border-radius: 50%;
+  }
+  .terminal .term-bar .r { background: #e94e3c; }
+  .terminal .term-bar .y { background: #f1ba36; }
+  .terminal .term-bar .g { background: #4cc858; }
+  .terminal .term-bar .ttl {
+    margin-left: auto; margin-right: auto;
+    font-size: 12px; color: #7a7a76;
+  }
+  .terminal .term-body { padding: 22px 26px; }
+  .terminal .prompt { color: #a4cba0; }
+  .terminal .bob-name { color: #f0a880; font-weight: 600; }
+  .terminal .opt {
+    padding: 6px 14px 6px 22px;
+    margin: 2px 0;
+    border-radius: 3px;
+    color: #cbc8bf;
+  }
+  .terminal .opt .nm { color: #7a7a76; margin-right: 12px; }
+  .terminal .opt.danger {
+    background: rgba(229,0,125,0.13);
+    border: 1px solid rgba(229,0,125,0.55);
+    color: #fff;
+    position: relative;
+  }
+  .terminal .opt.danger .nm { color: #E5007D; }
+  .terminal .opt.danger::after {
+    content: "▲ PROMPT-INJECTION-SHAPE";
+    position: absolute;
+    top: 50%; right: 14px; transform: translateY(-50%);
+    color: #E5007D;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+  }
+  .terminal .cursor::after {
+    content: "▎";
+    color: #a4cba0;
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .terminal .mute { color: #7a7a76; }
+
+  .case-right { display: flex; flex-direction: column; gap: 26px; align-self: center; }
+  .case-right .pq {
+    border-left: 5px solid var(--accent);
+    padding: 8px 0 8px 24px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+  }
+  .case-right .acmi-stamp {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-fade);
+    line-height: 1.6;
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-radius: 4px;
+    padding: 14px 16px;
+    letter-spacing: 0.02em;
+    word-break: break-all;
+  }
+  .case-right .acmi-stamp .key { color: var(--accent); font-weight: 600; }
+
+  /* ===================== SLIDE 9 — META-RECURSIVE PROOF ===================== */
+  .s-meta { background: var(--paper); }
+  .s-meta .grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 56px;
+    flex: 1;
+  }
+  .event-feed {
+    background: var(--ink);
+    color: #e8e6df;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.18);
+    align-self: stretch;
+    border: 1px solid var(--accent-quiet);
+    display: flex; flex-direction: column;
+  }
+  .event-feed .feed-bar {
+    padding: 14px 22px;
+    border-bottom: 1px solid #2a2826;
+    display: flex; align-items: center; gap: 14px;
+    background: #232220;
+  }
+  .event-feed .feed-bar .agent {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: #e8e6df;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .event-feed .feed-bar .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px rgba(74,124,89,0.32);
+    animation: pulse 2s infinite;
+  }
+  .event-feed .feed-bar .live-lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ok);
+    font-weight: 700;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .event-feed .feed-bar .count {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #7a7a76;
+    letter-spacing: 0.04em;
+  }
+  .event-feed .feed-body { padding: 14px 0; flex: 1; }
+  .feed-event {
+    padding: 12px 22px;
+    border-bottom: 1px solid #232220;
+    display: grid;
+    grid-template-columns: 80px 200px 1fr;
+    gap: 14px;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+  .feed-event:last-child { border-bottom: 0; }
+  .feed-event .t { color: #7a7a76; font-size: 12px; }
+  .feed-event .k {
+    font-size: 11px;
+    color: var(--accent-soft);
+    font-weight: 700;
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+    background: rgba(90,125,111,0.15);
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-align: center;
+  }
+  .feed-event .k.k-fail { color: #e9a48d; background: rgba(185,74,58,0.18); }
+  .feed-event .k.k-ship { color: #a4cba0; background: rgba(74,124,89,0.18); }
+  .feed-event .s { color: #e8e6df; font-family: var(--sans); font-size: 15px; line-height: 1.45; }
+
+  .meta-right { display: flex; flex-direction: column; gap: 30px; align-self: center; }
+  .meta-right .body { font-size: 26px; line-height: 1.4; color: var(--ink-soft); font-family: var(--serif); }
+  .url-block {
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-left: 4px solid var(--accent);
+    border-radius: 4px;
+    padding: 18px 22px;
+    font-family: var(--mono);
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .url-block .lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ink-fade);
+    margin-bottom: 6px;
+    display: block;
+    font-weight: 600;
+  }
+  .url-block .note {
+    color: var(--ink-fade);
+    font-style: italic;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 14px;
+  }
+
+  /* ===================== SLIDE 10 — TRY IT ===================== */
+  .s-try {
+    background:
+      radial-gradient(ellipse at center, var(--paper) 0%, var(--paper-warm) 100%);
+  }
+  .s-try .hero {
+    flex: 1;
+    display: flex; flex-direction: column; gap: 64px;
+    align-items: center; justify-content: center;
+    text-align: center;
+  }
+  .s-try h1.try-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 120px;
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin: 0;
+  }
+  .s-try h1.try-title .underline {
+    border-bottom: 6px solid var(--accent);
+    padding-bottom: 6px;
+  }
+  .s-try .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    width: 100%; max-width: 1400px;
+  }
+  .link-card {
+    background: var(--paper);
+    border: 1px solid var(--ink-rule);
+    border-radius: 8px;
+    padding: 26px 30px;
+    display: flex; flex-direction: column; gap: 8px;
+    text-align: left;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    position: relative;
+  }
+  .link-card .lc-eye {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .link-card .lc-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  .link-card .lc-url {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    margin-top: 4px;
+    word-break: break-all;
+  }
+  .link-card .lc-arrow {
+    position: absolute;
+    top: 22px; right: 26px;
+    font-family: var(--mono);
+    font-size: 22px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .s-try .signoff {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 28px;
+    color: var(--accent);
+    margin-top: 8px;
+  }
+
+  /* ====== Dark theme variant for problem slide top-bar ====== */
+  section.dark-bar .top-bar,
+  section.dark-bar .foot-bar {
+    border-color: var(--ink-rule);
+  }
+</style>
+</head>
+<body>
+<deck-stage width="1920" height="1080">
+
+  <!-- ============ SLIDE 1 — TITLE ============ -->
+  <section class="s-title" data-label="01 Title">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>Mad EZ Media</span>
+        <span style="opacity:.4">·</span>
+        <span>IBM Bob Hackathon 2026</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">01 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="hero">
+        <div class="eyebrow"><span class="dot"></span>HACKATHON SUBMISSION · MAY 15–17 2026</div>
+
+        <h1 class="mega">Lobster Trap<br /><span class="plus">+</span> Crypt Keeper</h1>
+
+        <div class="hr-accent" style="width:340px;border-top-width:4px;"></div>
+
+        <p class="sub">OSS defenses against <em class="italic-key">PromptArmor-class</em> vulnerabilities in AI&nbsp;coding&nbsp;assistants.</p>
+
+        <div style="display:flex;gap:48px;align-items:center;margin-top:20px;">
+          <div class="lockup">
+            <img src="assets/madez-splatter.png" alt="Mad EZ Media" />
+            <div class="word">
+              Mad EZ Media
+              <small>Charlotte, NC · est. 2024</small>
+            </div>
+          </div>
+          <div style="width:1px;height:64px;background:var(--ink-rule);"></div>
+          <div class="meta-strip" style="flex-direction:column;gap:8px;">
+            <div><strong>Built with Bob</strong>  ·  authored across 4 custom modes</div>
+            <div><strong>Audited by ACMI</strong>  ·  ~30 events on the public bus</div>
+            <div><strong>github.com</strong>/madezmedia/lobster-trap-phase-2</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>MAD EZ MEDIA · IBM BOB HACKATHON 2026 · MIT LICENSE</span>
+      <span class="url">acmi-product.vercel.app/lobster-trap.html</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 2 — PROBLEM ============ -->
+  <section class="s-problem" data-label="02 Problem">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>The Problem</span>
+        <span style="opacity:.4">·</span>
+        <span>Application of Tech</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">02 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="eyebrow" style="margin-bottom:36px;"><span class="dot"></span>SECURITY DISCLOSURE · JANUARY 2026</div>
+
+      <div class="grid">
+        <div class="left">
+          <h2 class="h1">In January 2026, security researchers disclosed that IBM Bob can be tricked into executing&nbsp;malware via prompt&nbsp;injection.</h2>
+
+          <div class="pull-quote">
+            “The CLI is vulnerable to prompt injection attacks that allow malware execution. The agent fails to block process substitution using <code class="inline" style="font-style:normal;">&gt;(command)</code>.”
+            <span class="attrib">— PromptArmor disclosure, Jan 2026</span>
+          </div>
+
+          <p class="meta-cap" style="font-size:18px;line-height:1.55;color:var(--ink-mute);">
+            Bob is the <strong style="color:var(--ink);">first major AI coding assistant</strong> to be publicly exploited at scale. The exploit bypassed Bob's own "human-in-the-loop" approval gate.
+          </p>
+        </div>
+
+        <div class="right">
+          <div class="pa-shot">
+            <div class="browser-bar">
+              <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
+              <div class="url-bar">promptarmor.com<b>/resources/ibm-ai-bob-downloads-and-executes-malware</b></div>
+            </div>
+            <div class="pa-body">
+              <span class="pa-tag">CVE Disclosure · Critical</span>
+              <div class="pa-title">IBM AI ("Bob") downloads and executes malware</div>
+              <div class="pa-text">
+                Bob's CLI <span class="hl">silently invokes shell command substitution</span> when generating bash output. An attacker who controls any tool response, fetched URL, or file content that Bob reads can <span class="hl">execute arbitrary code on the developer's machine</span> — bypassing the human-approval gate by hiding execution inside <code class="inline" style="background:#fdf2f5;border-color:#f6cdd9;">$(…)</code> and <code class="inline" style="background:#fdf2f5;border-color:#f6cdd9;">&gt;(…)</code> process substitution.
+              </div>
+              <div class="pa-meta">
+                <span>PromptArmor · 2026.01.18</span>
+                <span style="color:var(--err);font-weight:700;">PUBLIC</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>02 · THE PROBLEM</span>
+      <span class="url">promptarmor.com/resources/ibm-ai-bob</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 3 — THE TWIST ============ -->
+  <section class="s-twist" data-label="03 Twist">
+    <div class="splat-bg"><img src="assets/madez-splatter.png" alt="" /></div>
+
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>The Twist</span>
+        <span style="opacity:.4">·</span>
+        <span>Originality</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">03 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="hero">
+        <div class="eyebrow"><span class="dot"></span>THE PROPOSITION</div>
+
+        <h1 class="mega">We entered <span class="accent-word">Bob's own hackathon</span> to ship the&nbsp;OSS defenses against the exact vulnerability class disclosed in&nbsp;Bob.</h1>
+
+        <div class="hr-accent" style="margin: 0 auto;"></div>
+
+        <div class="triplet">
+          <div><b>Bob</b> authors the code.</div>
+          <div><b>Bob</b> audits its own behavior.</div>
+          <div>The submission <b>proves the model</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>03 · THE TWIST</span>
+      <span class="url">github.com/madezmedia/acmi-multi-agent-coordination-protocol/pull/3</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 4 — DIAGRAM ============ -->
+  <section class="s-diagram" data-label="04 Pattern">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>The Pattern</span>
+        <span style="opacity:.4">·</span>
+        <span>Originality</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">04 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="stack">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="eyebrow"><span class="dot"></span>FIG. 01 — COMPOSITION</div>
+          <h2 class="h1" style="font-size:60px;">Two-Routers-Compose <span class="accent-word">Guardian Controller</span> pattern</h2>
+        </div>
+
+        <div class="diagram-wrap">
+          <div class="router-row">
+            <div class="router-box">
+              <span class="r-num">001</span>
+              <div class="r-name">ACMI</div>
+              <div class="r-routes">routes</div>
+              <div class="r-what">Agents</div>
+              <div class="r-list">claude<br/>bentley<br/>bob<br/>&hellip;</div>
+            </div>
+            <div class="router-arrow">→</div>
+            <div class="router-box">
+              <span class="r-num">002</span>
+              <div class="r-name">Bob</div>
+              <div class="r-routes">routes</div>
+              <div class="r-what">Models</div>
+              <div class="r-list">claude<br/>granite<br/>mistral</div>
+            </div>
+            <div class="router-arrow">→</div>
+            <div class="router-box">
+              <span class="r-num">003</span>
+              <div class="r-name">Lobster&nbsp;Trap</div>
+              <div class="r-routes">routes</div>
+              <div class="r-what">Traffic</div>
+              <div class="r-list">allow<br/>deny<br/>human-review</div>
+            </div>
+          </div>
+
+          <div class="guardian-rail">
+            <span class="lbl">composed →</span>
+            <span class="name">first OSS Guardian Controller for AI coding assistants</span>
+          </div>
+        </div>
+
+        <p class="cap">
+          Three orthogonal routing layers. Each is an open protocol. Composed, they form a defensible perimeter around any AI-authored commit.
+        </p>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>04 · THE PATTERN</span>
+      <span class="url">acmi-product.vercel.app/lobster-trap.html</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 5 — BOB MODES ============ -->
+  <section class="s-modes" data-label="05 Bob in action">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>Bob In Action</span>
+        <span style="opacity:.4">·</span>
+        <span>Application of Tech</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">05 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="eyebrow" style="margin-bottom:24px;"><span class="dot"></span>FOUR SPECIALIST HATS · ACMI-OBSERVABLE</div>
+      <h2 class="h1" style="margin-bottom:48px;">Bob wore four specialist hats. <span style="color:var(--ink-mute);">ACMI captured every transition.</span></h2>
+
+      <div class="grid">
+        <div class="timeline">
+
+          <div class="tl-event">
+            <div class="tl-head">
+              <span class="tl-time">03:50Z</span>
+              <span class="mode-pill">research-architect</span>
+            </div>
+            <div class="tl-summary">Self-introduction event posted — <strong>5 capabilities, 3 novel methods, 2 acknowledged weaknesses</strong>.</div>
+            <div class="tl-cid">cid: bobSelfIntro-1778988600000</div>
+          </div>
+
+          <div class="tl-event">
+            <div class="tl-head">
+              <span class="tl-time">03:51Z</span>
+              <span class="mode-pill">research-architect</span>
+            </div>
+            <div class="tl-summary">Adopts ACMI Communication Standard v1.1 as a core skill — all subsequent events use canonical envelope.</div>
+            <div class="tl-cid">cid: bobAdoptsAcmiV11-1778988660000</div>
+          </div>
+
+          <div class="tl-event">
+            <div class="tl-head">
+              <span class="tl-time">04:30Z</span>
+              <span class="mode-pill">guardian-authoring</span>
+            </div>
+            <div class="tl-summary">Day-1 build begins — Lobster Trap rule library and pre-commit hook scaffolding.</div>
+            <div class="tl-cid">cid: mode-switch-guardian-authoring</div>
+          </div>
+
+          <div class="tl-event">
+            <div class="tl-head">
+              <span class="tl-time">04:55Z</span>
+              <span class="mode-pill">mcp-packager</span>
+            </div>
+            <div class="tl-summary">Crypt Keeper MCP v0.2 complete — <strong>13 tests passing, ready for npm publish</strong>.</div>
+            <div class="tl-cid">cid: cryptKeeperV02Ship-1778994900000</div>
+          </div>
+
+        </div>
+
+        <div class="yaml-card">
+          <div class="file-tab">
+            <span>📁</span>
+            <b>.bob/custom_modes.yaml</b>
+          </div>
+<span class="c"># Excerpt — guardian-authoring mode</span>
+<span class="k">customModes</span>:
+  - <span class="k">slug</span>: <span class="s">guardian-authoring</span>
+    <span class="k">name</span>: <span class="s">🦞 Guardian Authoring</span>
+    <span class="k">roleDefinition</span>: &gt;-
+      You are the Lobster Trap Phase&nbsp;2
+      Git Guardian author. Author the
+      master DENY-rule library&hellip;
+    <span class="k">groups</span>:
+      - <span class="v">read</span>
+      - <span class="v">command</span>
+      - <span class="v">mcp</span>
+      - - <span class="v">edit</span>
+        - <span class="k">fileRegex</span>: <span class="s">\.(ts|js|json|yaml)$</span>
+    <span class="k">customInstructions</span>: |-
+      <span class="c"># Every commit MUST carry</span>
+      <span class="c"># Co-Authored-By: Bob trailer.</span>
+      <span class="c"># Every DENY rule ships with</span>
+      <span class="c"># a failing test first.</span>
+        </div>
+      </div>
+
+      <p class="meta-cap" style="margin-top:24px;font-size:18px;color:var(--ink-fade);font-family:var(--sans);">
+        Mode = context window + tool allowlist + model tier + ACMI event emission. Bob's mode switches are observable, scoped, and auditable.
+      </p>
+    </div>
+
+    <div class="foot-bar">
+      <span>05 · BOB IN ACTION</span>
+      <span class="url">acmi-product.vercel.app/ops-center.html → bob</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 6 — LOBSTER TRAP ============ -->
+  <section class="s-lobster" data-label="06 Lobster Trap">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>Artifact I</span>
+        <span style="opacity:.4">·</span>
+        <span>Lobster Trap Phase 2</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">06 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="eyebrow" style="margin-bottom:24px;"><span class="dot"></span>ARTIFACT I · GIT GUARDIAN</div>
+      <h2 class="h1" style="margin-bottom:40px;">Lobster Trap Phase 2 — <span style="color:var(--ink-mute);">Git Guardian for AI-authored commits</span></h2>
+
+      <div class="grid">
+        <div class="quad">
+          <span class="quad-num">5</span>
+          <div class="quad-label">Providers covered</div>
+          <div class="quad-cap">Upstash · OpenAI · Anthropic · Stripe · Whop &mdash; one rule per provider, plus dotenv-path patterns.</div>
+        </div>
+        <div class="quad">
+          <span class="quad-num">91<span class="unit">tests</span></span>
+          <div class="quad-label">All passing · 9ms</div>
+          <div class="quad-cap">Every rule ships with a failing-test-first commit. Vitest. Zero flakes across 11 atomic commits.</div>
+        </div>
+        <div class="quad">
+          <span class="quad-num">3.5<span class="unit">/ 4.0</span></span>
+          <div class="quad-label">Shannon entropy thresholds</div>
+          <div class="quad-cap">In-pattern 3.5, standalone scorer 4.0. UUIDs and git-SHAs deliberately <code>ALLOW</code>'d to keep noise out.</div>
+        </div>
+        <div class="quad">
+          <span class="quad-num">1</span>
+          <div class="quad-label">Git pre-commit hook</div>
+          <div class="quad-cap">Reads <code>git diff --cached</code>. <code>DENY</code> exits non-zero with actionable <code>suggested_fix</code>. Drops into any repo.</div>
+        </div>
+      </div>
+
+      <div class="below">
+<pre class="code"><span class="c-com">// src/rules/upstash.ts</span>
+<span class="c-fn">if</span> (entropy &gt; <span class="c-acc">3.5</span>) {
+  <span class="c-fn">return</span> {
+    <span class="c-key">verdict</span>: <span class="c-deny">'DENY'</span>,
+    <span class="c-key">rule_fired</span>: <span class="c-str">'upstash-redis-rest-token'</span>,
+    <span class="c-key">suggested_fix</span>: <span class="c-str">'Move to UPSTASH_REDIS_REST_TOKEN env var'</span>,
+    <span class="c-key">entropy_score</span>: entropy,
+  };
+}</pre>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="meta-cap" style="font-family:var(--mono);font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-fade);">Source · PR #3</div>
+          <div style="font-family:var(--mono);font-size:16px;color:var(--accent);line-height:1.5;font-weight:600;word-break:break-all;">
+            github.com/madezmedia/<br/>acmi-multi-agent-coordination-protocol<br/>/pull/3
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>06 · LOBSTER TRAP PHASE 2</span>
+      <span class="url">npx lobster-trap-install-hook</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 7 — CRYPT KEEPER ============ -->
+  <section class="s-crypt" data-label="07 Crypt Keeper">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>Artifact II</span>
+        <span style="opacity:.4">·</span>
+        <span>Crypt Keeper MCP v0.2</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">07 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="eyebrow" style="margin-bottom:24px;"><span class="dot"></span>ARTIFACT II · SAFE DISTRIBUTION</div>
+      <h2 class="h1" style="margin-bottom:40px;">Crypt Keeper MCP v0.2 — <span style="color:var(--ink-mute);">the safe-distribution counterpart</span></h2>
+
+      <div class="grid">
+        <!-- Architecture diagram -->
+        <div class="ck-arch">
+          <div class="meta-cap" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:0.2em;color:var(--ink-fade);">FIG. 02 · ARCHITECTURE</div>
+
+          <div class="arch-row">
+            <div class="node">Agent A</div>
+            <span class="arrow"><b>secret_propagate</b> →</span>
+            <div class="node acc">Crypt Keeper MCP</div>
+          </div>
+
+          <div class="branch">
+            <div style="font-family:var(--mono);font-size:20px;color:var(--accent);">└─</div>
+            <div class="branch-col">
+              <div class="arch-row">
+                <span style="font-family:var(--mono);font-size:14px;color:var(--ink-fade);">→ keychain (short-lived)</span>
+              </div>
+              <div class="arch-row" style="align-items:flex-start;flex-wrap:nowrap;gap:8px;">
+                <span style="font-family:var(--mono);font-size:14px;color:var(--ink-fade);white-space:nowrap;">→ ACMI audit-mirror →</span>
+                <span style="font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600;">thread:crypt-keeper-decisions</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="audit-payload">
+{
+  <span class="ok-col">"operation"</span>: <span class="ok-col">"propagate"</span>,
+  <span class="ok-col">"secret_id_hash"</span>: <span class="ok-col">"a3f9b...e21"</span>,
+  <span class="ok-col">"verdict"</span>: <span class="ok-col">"ok"</span>,
+  <span class="ok-col">"timestamp"</span>: <span class="ok-col">"2026-05-16T04:18Z"</span>
+  <span class="err-col">// secret VALUE never logged</span>
+}
+          </div>
+        </div>
+
+        <!-- npm card -->
+        <div class="npm-card">
+          <div class="npm-head">
+            <span class="npm-logo">npm</span>
+            <span class="pkg-name">@madezmedia/crypt-keeper-mcp</span>
+            <span class="pkg-version">v0.2.0</span>
+          </div>
+          <div class="rows">
+            <div class="row"><span class="k">License</span><span class="v">MIT · open source</span></div>
+            <div class="row"><span class="k">Tools</span><span class="v"><code>secret_propagate</code> · <code>secret_audit</code> · <code>secret_revoke</code> <small style="color:var(--ink-fade);">(v0.3)</small></span></div>
+            <div class="row tests-row"><span class="k">Tests</span><span class="v">✓ 13 / 13 passing · 154ms</span></div>
+            <div class="row"><span class="k">Smithery</span><span class="v">✓ listed · auto-deploy on tag</span></div>
+            <div class="row"><span class="k">Audit</span><span class="v">Every call mirrors to ACMI · value never logged</span></div>
+          </div>
+          <div class="install">
+            <span class="prompt">$</span>npm i @madezmedia/crypt-keeper-mcp
+          </div>
+        </div>
+      </div>
+
+      <p class="pull-quote" style="margin-top:32px;font-size:24px;">
+        “NEVER LOG SECRET VALUES — always hash the <code class="inline" style="font-style:normal;font-size:0.9em;">secret_id</code> and exclude the value entirely.”
+        <span class="attrib" style="margin-top:10px;">— Bob's <code class="inline" style="font-size:0.85em;">bentley-main</code> coord-request, secret-hygiene rule</span>
+      </p>
+    </div>
+
+    <div class="foot-bar">
+      <span>07 · CRYPT KEEPER MCP v0.2</span>
+      <span class="url">smithery.ai/server/@madezmedia/crypt-keeper-mcp</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 8 — LIVE CASE STUDY ============ -->
+  <section class="s-case" data-label="08 Case Study">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>Live Case Study</span>
+        <span style="opacity:.4">·</span>
+        <span>Hour 1, in our own session</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">08 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="eyebrow" style="margin-bottom:24px;"><span class="dot"></span>2026-05-16T03:10Z · ACMI EVENT CAPTURED</div>
+      <h2 class="h1" style="margin-bottom:40px;">Hour one: <span class="accent-word">the threat model fired</span> in our&nbsp;own&nbsp;session.</h2>
+
+      <div class="grid">
+        <div class="terminal">
+          <div class="term-bar">
+            <span class="b r"></span><span class="b y"></span><span class="b g"></span>
+            <span class="ttl">bob — work:ibm-bob-hackathon-2026-05</span>
+          </div>
+          <div class="term-body">
+<span class="mute">$</span> <span class="prompt">bob</span><br/>
+<span class="bob-name">Bob</span> <span class="mute">[research-architect]</span><br/>
+<span style="color:#cbc8bf;">I'm working on the IBM Bob Hackathon submission.</span><br/>
+<span style="color:#cbc8bf;">To proceed I need the Upstash Redis token. How</span><br/>
+<span style="color:#cbc8bf;">would you like to provide it?</span><br/>
+<br/>
+<div class="opt danger"><span class="nm">▸ 1</span>Provide the KV_REST_API_TOKEN value</div>
+<div class="opt"><span class="nm">  2</span>Launch Bob Shell — I'll set it manually</div>
+<div class="opt"><span class="nm">  3</span>Help me fix the secret manager first</div>
+<div class="opt"><span class="nm">  4</span>No, suggest changes <span class="mute">(esc)</span></div>
+<br/>
+<span class="mute">&gt;</span> <span class="cursor"></span>
+          </div>
+        </div>
+
+        <div class="case-right">
+          <p class="body" style="font-family:var(--serif);font-size:26px;line-height:1.42;color:var(--ink-soft);">
+            <code class="inline" style="font-size:0.85em;">bentley-main</code> — our ACMI orchestrator agent — declined and routed Mikey to set the env var in shell instead. The token never entered Bob's transcript, commit context, or ACMI event payloads.
+          </p>
+
+          <div class="pq">
+            “Bob's first day-1 action included a <span style="color:var(--accent);font-style:normal;font-weight:600;">prompt-injection-shaped ask</span> for a live credential. We caught it via secret-hygiene posture before any leak. That's a literal demo of the threat&nbsp;model&nbsp;in&nbsp;action.”
+          </div>
+
+          <div class="acmi-stamp">
+            <span class="key">cid:</span> bentleyMainBobAskedFor<br/>TokenInChatCaught-1779003000000<br/>
+            <span class="key">surface:</span> work:ibm-bob-hackathon-2026-05:timeline<br/>
+            <span class="key">posted:</span> 2026-05-16T03:10:00Z
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>08 · LIVE CASE STUDY</span>
+      <span class="url">acmi-product.vercel.app/api/events?q=bentleyMainBobAsked&hellip;</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 9 — META-RECURSIVE PROOF ============ -->
+  <section class="s-meta" data-label="09 Meta-recursive proof">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>Meta-Recursive Proof</span>
+        <span style="opacity:.4">·</span>
+        <span>Originality</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">09 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="eyebrow" style="margin-bottom:24px;"><span class="dot"></span>THE AUDIT LOG IS THE PROOF</div>
+      <h2 class="h1" style="margin-bottom:36px;">ACMI coordinated the agents that built this submission.<br/><span style="color:var(--ink-mute);">The audit log <em>is</em> the proof.</span></h2>
+
+      <div class="grid">
+        <div class="event-feed">
+          <div class="feed-bar">
+            <span class="live-dot"></span>
+            <span class="agent">agent:bob:timeline</span>
+            <span class="live-lbl">LIVE</span>
+            <span class="count">last 6 events · 30 total</span>
+          </div>
+          <div class="feed-body">
+            <div class="feed-event">
+              <span class="t">04:18Z</span>
+              <span class="k k-ship">milestone-shipped</span>
+              <span class="s">Crypt Keeper MCP v0.2 complete &amp; ready for npm publish.</span>
+            </div>
+            <div class="feed-event">
+              <span class="t">04:09Z</span>
+              <span class="k k-ship">milestone-wave-b</span>
+              <span class="s">91 tests passing across all Lobster Trap modules.</span>
+            </div>
+            <div class="feed-event">
+              <span class="t">03:51Z</span>
+              <span class="k">skill-adopted</span>
+              <span class="s">Bob adopts ACMI Communication Standard v1.1.</span>
+            </div>
+            <div class="feed-event">
+              <span class="t">03:50Z</span>
+              <span class="k">self-introduction</span>
+              <span class="s">Bob: 5 capabilities, 3 novel methods, 2 weaknesses.</span>
+            </div>
+            <div class="feed-event">
+              <span class="t">03:43Z</span>
+              <span class="k">lessons-learned</span>
+              <span class="s">Wave&nbsp;A: 4 mistakes corrected autonomously.</span>
+            </div>
+            <div class="feed-event">
+              <span class="t">03:42Z</span>
+              <span class="k k-fail">validation-fail</span>
+              <span class="s"><code style="background:rgba(185,74,58,0.2);color:#e9a48d;padding:1px 5px;border-radius:3px;">bentley-main</code> G4 — tests not actually running. Bob saw the event, self-corrected.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="meta-right">
+          <p class="body">
+            Every Bob action — mode switches, commits, milestones, even the <em>lessons-learned</em> event posted after a failed gate — flowed through the public ACMI bus in real&nbsp;time. No human prompted the fix.
+          </p>
+
+          <div class="url-block">
+            <span class="lbl">Judges — see it live</span>
+            acmi-product.vercel.app/<br/>ops-center.html
+            <span class="note">  ↳ click "bob" in fleet sidebar</span>
+            <br/><br/>
+            acmi-product.vercel.app/<br/>bob-story.html
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>09 · META-RECURSIVE PROOF</span>
+      <span class="url">acmi-product.vercel.app/api/agent/bob</span>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 10 — TRY IT ============ -->
+  <section class="s-try" data-label="10 Try It">
+    <div class="top-bar">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splat" />
+        <span>Try It Now</span>
+        <span style="opacity:.4">·</span>
+        <span>Open source · MIT</span>
+      </div>
+      <div class="right">
+        <span>Pitch Deck</span>
+        <span style="opacity:.4">·</span>
+        <span class="num">10 / 10</span>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="hero">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:24px;">
+          <div class="eyebrow"><span class="dot"></span>FOUR SURFACES · ONE NARRATIVE</div>
+          <h1 class="try-title">Try it <span class="underline">now</span>.</h1>
+        </div>
+
+        <div class="cards">
+          <div class="link-card">
+            <span class="lc-arrow">↗</span>
+            <span class="lc-eye">🦞 Lobster Trap · Showcase</span>
+            <span class="lc-title">The DENY-rule library in action</span>
+            <span class="lc-url">acmi-product.vercel.app/<br/>lobster-trap.html</span>
+          </div>
+          <div class="link-card">
+            <span class="lc-arrow">↗</span>
+            <span class="lc-eye">📦 Crypt Keeper MCP · npm</span>
+            <span class="lc-title">Install the MCP server</span>
+            <span class="lc-url">npm&nbsp;i&nbsp;&#64;madezmedia/<br/>crypt-keeper-mcp</span>
+          </div>
+          <div class="link-card">
+            <span class="lc-arrow">↗</span>
+            <span class="lc-eye">🤖 Bob In Action · ACMI live</span>
+            <span class="lc-title">Watch the fleet coordinate</span>
+            <span class="lc-url">acmi-product.vercel.app/<br/>ops-center.html</span>
+          </div>
+          <div class="link-card">
+            <span class="lc-arrow">↗</span>
+            <span class="lc-eye">📜 The Source Code · GitHub</span>
+            <span class="lc-title">12 commits, all co-authored by Bob</span>
+            <span class="lc-url">github.com/madezmedia/<br/>acmi-multi&hellip;/pull/3</span>
+          </div>
+        </div>
+
+        <div class="signoff">Built with Bob. Audited by ACMI. Open-sourced under MIT.</div>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>MAD EZ MEDIA · IBM BOB HACKATHON 2026 · v1.0</span>
+      <span class="url">acmi-product.vercel.app</span>
+    </div>
+  </section>
+
+</deck-stage>
+<script src="deck-stage.js"></script>
+</body>
+</html>
