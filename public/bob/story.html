@@ -95,6 +95,38 @@
     color:var(--ink-mute);
   }
 
+  /* Conversation cards */
+  .convo-thread {
+    background:#fff; border:1px solid var(--ink-rule); border-radius:6px; padding:0.9rem 1rem;
+    margin-bottom:0.85rem;
+  }
+  .convo-meta { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; font-size:0.7rem; color:var(--ink-quiet); margin-bottom:0.5rem; }
+  .convo-thread-pill { font-family:var(--font-mono); padding:0.1rem 0.4rem; border-radius:3px; background:var(--paper-warm); color:var(--ink-mute); letter-spacing:0.02em; }
+  .convo-msg { padding:0.5rem 0; border-top:1px dashed var(--ink-rule); }
+  .convo-msg:first-of-type { border-top:none; padding-top:0; }
+  .convo-msg-head { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+  .convo-source {
+    font-size:0.68rem; font-weight:600; padding:0.13rem 0.5rem; border-radius:3px; letter-spacing:0.04em;
+    background:var(--paper-warm); color:var(--ink-mute);
+  }
+  .convo-source.bob { background:var(--ibm); color:#fff; }
+  .convo-source.bentley-main, .convo-source.bentley-temp { background:#e7e1f5; color:#5b3a9c; }
+  .convo-source.claude-engineer, .convo-source.claude-web { background:#eef5f2; color:var(--accent); }
+  .convo-arrow { color:var(--ink-rule); }
+  .convo-target { font-size:0.7rem; color:var(--ink-fade); }
+  .convo-kind {
+    font-family:var(--font-mono); font-size:0.6rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase;
+    padding:0.1rem 0.4rem; border-radius:3px; background:var(--paper-warm); color:var(--ink-mute);
+  }
+  .convo-kind.coord-request { background:#fef5e7; color:#a06000; }
+  .convo-kind.coord-ack, .convo-kind.coord-update { background:#eef5f2; color:var(--accent); }
+  .convo-kind.validation-pass { background:#e8f5e9; color:#1b5e20; }
+  .convo-kind.validation-fail { background:#fde7e7; color:#a01818; }
+  .convo-ts { font-family:var(--font-mono); font-size:0.65rem; color:var(--ink-quiet); margin-left:auto; }
+  .convo-text { color:var(--ink-mute); font-size:0.85rem; line-height:1.5; margin-top:0.35rem; padding-left:0.2rem; }
+  .convo-text .mention { color:var(--accent); font-weight:500; }
+  .convo-cid { font-family:var(--font-mono); font-size:0.6rem; color:var(--ink-quiet); margin-top:0.25rem; word-break:break-all; }
+
   .footer { margin-top:2rem; padding-top:1.2rem; border-top:1px solid var(--ink-rule); font-size:0.78rem; color:var(--ink-quiet); display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
   .footer a { color:var(--ink-fade); text-decoration:none; }
   .footer a:hover { color:var(--accent); }
@@ -176,7 +208,131 @@ function extractSection(summary, headRegex) {
   return (stop ? rest.slice(0, stop.index) : rest).trim();
 }
 
-function render(data) {
+function highlightMentions(s) {
+  return escapeHtml(s).replace(/@([a-z0-9\-_]+)/gi, '<span class="mention">@$1</span>');
+}
+function tsToMs(ts) {
+  if (ts === null || ts === undefined) return 0;
+  if (typeof ts === 'number') return ts;
+  const n = Number(ts);
+  if (!isNaN(n) && n > 1e12) return n;
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+function fmtTsRel(ts) {
+  const ms = tsToMs(ts); if (!ms) return '—';
+  const age = Date.now() - ms;
+  if (age < 60000) return 'just now';
+  if (age < 3600000) return Math.floor(age/60000) + 'm ago';
+  if (age < 86400000) return Math.floor(age/3600000) + 'h ago';
+  return Math.floor(age/86400000) + 'd ago';
+}
+function fmtTsAbs(ts) {
+  const ms = tsToMs(ts); if (!ms) return '';
+  return new Date(ms).toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+}
+function stripLeading(s) { return String(s || '').replace(/^\[[^\]]+\]\s*/, ''); }
+function safeClass(s) { return String(s || '').replace(/[^a-z0-9_-]/gi, '-'); }
+
+function touchesBob(ev) {
+  if (!ev) return false;
+  const src = String(ev.source || '').toLowerCase();
+  if (src === 'bob') return true;
+  const sum = String(ev.summary || '').toLowerCase();
+  if (sum.includes('@bob')) return true;
+  if (/(^|\s)bob($|[\s:.,])/.test(sum)) return true;
+  const cid = String(ev.correlationId || '');
+  if (/Bob/.test(cid)) return true;
+  return false;
+}
+
+// Extract first @target mention from a summary (for "X → Y" display)
+function firstTarget(summary, excludeSource) {
+  const matches = String(summary || '').match(/@([a-z0-9\-_]+)/gi) || [];
+  for (const m of matches) {
+    const name = m.slice(1).toLowerCase();
+    if (name !== String(excludeSource || '').toLowerCase() && name !== 'fleet' && name !== 'mikey') {
+      return name;
+    }
+  }
+  return matches[0] ? matches[0].slice(1) : '';
+}
+
+function buildConversationGroups(allEvents) {
+  // Group by parent-child chains. Root = event with no parent (or parent not in set).
+  // Each group = [root, ...replies sorted by ts asc]
+  const byCid = new Map();
+  allEvents.forEach(e => { if (e.correlationId) byCid.set(e.correlationId, e); });
+  const childrenOf = new Map();
+  allEvents.forEach(e => {
+    const pcid = e.parentCorrelationId;
+    if (pcid && byCid.has(pcid)) {
+      if (!childrenOf.has(pcid)) childrenOf.set(pcid, []);
+      childrenOf.get(pcid).push(e);
+    }
+  });
+  // Roots = events whose parent is NOT in our set (or has no parent)
+  const roots = allEvents.filter(e => !e.parentCorrelationId || !byCid.has(e.parentCorrelationId));
+  // Build groups depth-first
+  const groups = [];
+  function gather(ev, depth) {
+    const out = [{ ev, depth }];
+    const kids = (childrenOf.get(ev.correlationId) || []).slice().sort((a, b) => tsToMs(a.ts) - tsToMs(b.ts));
+    for (const kid of kids) {
+      out.push(...gather(kid, depth + 1));
+    }
+    return out;
+  }
+  for (const root of roots) {
+    const chain = gather(root, 0);
+    // Only keep groups that have ≥2 events OR a single coord-request/validation event
+    if (chain.length >= 2 || /coord-(request|update|ack)|validation|role-formalization|lane-spawn/.test(root.kind || '')) {
+      groups.push(chain);
+    }
+  }
+  // Sort groups by most-recent-event-ts desc
+  groups.sort((a, b) => {
+    const maxA = Math.max(...a.map(x => tsToMs(x.ev.ts)));
+    const maxB = Math.max(...b.map(x => tsToMs(x.ev.ts)));
+    return maxB - maxA;
+  });
+  return groups;
+}
+
+function renderConversationGroup(group) {
+  const root = group[0].ev;
+  const threadName = root._thread || 'thread:agent-coordination';
+  const msgs = group.map(({ ev, depth }) => {
+    const kind = ev.kind || '?';
+    const src = ev.source || '?';
+    const target = firstTarget(ev.summary, src);
+    const summary = stripLeading(ev.summary || '');
+    const truncated = summary.length > 320 ? summary.slice(0, 320) + '…' : summary;
+    return `
+      <div class="convo-msg" style="margin-left:${depth * 1.1}rem">
+        <div class="convo-msg-head">
+          <span class="convo-source ${safeClass(src)}">${escapeHtml(src)}</span>
+          ${target ? `<span class="convo-arrow">→</span><span class="convo-target">@${escapeHtml(target)}</span>` : ''}
+          <span class="convo-kind ${safeClass(kind)}">${escapeHtml(kind)}</span>
+          <span class="convo-ts">${escapeHtml(fmtTsRel(ev.ts))} · ${escapeHtml(fmtTsAbs(ev.ts))}</span>
+        </div>
+        <div class="convo-text">${highlightMentions(truncated)}</div>
+      </div>
+    `;
+  }).join('');
+  return `
+    <div class="convo-thread">
+      <div class="convo-meta">
+        <span class="convo-thread-pill">${escapeHtml(threadName)}</span>
+        <span>${group.length} message${group.length === 1 ? '' : 's'}</span>
+        <span style="margin-left:auto">started ${escapeHtml(fmtTsRel(root.ts))}</span>
+      </div>
+      ${msgs}
+    </div>
+  `;
+}
+
+function render(data, coordEvents, guardianEvents) {
   const root = document.getElementById('root');
   const p = data.profile || {};
   const s = data.signals || {};
@@ -328,9 +484,41 @@ function render(data) {
     `;
   }
 
+  // Conversation evidence — live proof that the audit guarantee is real
+  const allRelated = [
+    ...tl.map(e => ({ ...e, _thread: 'agent:bob' })),
+    ...(coordEvents || []).map(e => ({ ...e, _thread: 'thread:agent-coordination' })),
+    ...(guardianEvents || []).map(e => ({ ...e, _thread: 'thread:lobster-trap-fleet-guardian' })),
+  ];
+  // Deduplicate by cid (Bob's events may also appear in threads)
+  const seen = new Set();
+  const dedup = allRelated.filter(e => {
+    if (!e.correlationId) return true;
+    if (seen.has(e.correlationId)) return false;
+    seen.add(e.correlationId); return true;
+  });
+  const groups = buildConversationGroups(dedup).slice(0, 8);
+
+  if (groups.length > 0) {
+    const totalMsgs = groups.reduce((n, g) => n + g.length, 0);
+    html += `
+      <div class="section">
+        <div class="section-h">
+          <h2>Live conversations</h2>
+          <span class="section-meta">${groups.length} threads · ${totalMsgs} messages</span>
+        </div>
+        <div class="lede" style="font-size:0.92rem">Incoming coord-requests and validation verdicts correlated to Bob's actions, pulled live from <code style="font-family:var(--font-mono);font-size:0.85em">thread:agent-coordination</code> and <code style="font-family:var(--font-mono);font-size:0.85em">thread:lobster-trap-fleet-guardian</code>. Reply chains follow <code style="font-family:var(--font-mono);font-size:0.85em">parentCorrelationId</code>.</div>
+        ${groups.map(renderConversationGroup).join('')}
+        <div style="font-size:0.78rem;color:var(--ink-fade);margin-top:0.6rem;text-align:right">
+          <a href="/bob/timeline.html" style="color:var(--accent)">See full live timeline →</a>
+        </div>
+      </div>
+    `;
+  }
+
   html += `
     <div class="footer">
-      <span>Source of truth: <code style="font-family:var(--font-mono)">acmi:agent:bob:*</code></span>
+      <span>Source of truth: <code style="font-family:var(--font-mono)">acmi:agent:bob:*</code> + correlated threads</span>
       <span><a href="/bob/timeline.html">→ Live timeline</a> · <a href="https://github.com/madezmedia/acmi-product">Source on GitHub</a></span>
     </div>
   `;
@@ -341,17 +529,21 @@ function render(data) {
 async function load() {
   const root = document.getElementById('root');
   try {
-    const r = await fetch(BASE + '/api/agent/bob');
-    if (!r.ok) {
-      root.innerHTML = '<div class="crumbs"><a href="/">ACMI</a></div><div class="errbox">Failed to load Bob — HTTP ' + r.status + '</div>';
+    const [agentRes, coordRes, guardianRes] = await Promise.all([
+      fetch(BASE + '/api/agent/bob').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(BASE + '/api/comms?thread=agent-coordination&limit=200').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(BASE + '/api/comms?thread=lobster-trap-fleet-guardian&limit=200').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+
+    if (!agentRes || !agentRes.ok || !agentRes.profile) {
+      root.innerHTML = '<div class="crumbs"><a href="/">ACMI</a></div><div class="errbox">Bob not found in this ACMI instance</div>';
       return;
     }
-    const data = await r.json();
-    if (!data.ok || !data.profile) {
-      root.innerHTML = '<div class="errbox">Bob not found in this ACMI instance</div>';
-      return;
-    }
-    render(data);
+
+    const coordEvents = ((coordRes && coordRes.events) || []).filter(touchesBob);
+    const guardianEvents = ((guardianRes && guardianRes.events) || []).filter(touchesBob);
+
+    render(agentRes, coordEvents, guardianEvents);
   } catch (e) {
     root.innerHTML = '<div class="errbox">Network error: ' + escapeHtml(e.message) + '</div>';
   }

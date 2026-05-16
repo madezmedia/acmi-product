@@ -12,6 +12,7 @@ const ALLOWED_THREADS = new Set([
   "newsroom",
   "cloud-handoffs",
   "daily-agents-fleet",
+  "lobster-trap-fleet-guardian",
 ]);
 
 export default async function handler(req) {

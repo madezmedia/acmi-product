@@ -52,24 +52,67 @@
   .crumbs a { color:var(--ink-fade); text-decoration:none; }
   .crumbs a:hover { color:var(--accent); }
 
-  .event { padding:0.85rem 0; border-bottom:1px dashed var(--ink-rule); }
+  .event {
+    padding:0.85rem 0.85rem; border-bottom:1px dashed var(--ink-rule); border-left:3px solid transparent;
+    margin-left:-0.85rem; padding-left:0.85rem;
+  }
   .event:last-child { border-bottom:none; }
+  .event.self { border-left-color:var(--accent); background:#fafdfb; }
+  .event.incoming { border-left-color:#a06000; background:#fef9f0; }
+  .event.validation-pass { border-left-color:#1b5e20; background:#f0f7f1; }
+  .event.validation-fail { border-left-color:#a01818; background:#fdf3f3; }
+  .event.fleet-meta { border-left-color:var(--ink-rule); background:#fafaf8; opacity:0.92; }
   .event-row1 { display:flex; align-items:center; gap:0.55rem; flex-wrap:wrap; }
+  .source-pill {
+    font-size:0.65rem; font-weight:600; padding:0.12rem 0.45rem; border-radius:3px;
+    background:var(--paper-warm); color:var(--ink-mute); letter-spacing:0.03em;
+  }
+  .source-pill.bob { background:var(--ibm); color:#fff; }
+  .source-pill.bentley-main, .source-pill.bentley-temp { background:#e7e1f5; color:#5b3a9c; }
+  .source-pill.claude-engineer, .source-pill.claude-web, .source-pill.claude-cowork { background:#eef5f2; color:var(--accent); }
+  .source-pill.mikey { background:#fef2f2; color:#a01818; }
+
+  .thread-pill {
+    font-family:var(--font-mono); font-size:0.6rem; padding:0.1rem 0.4rem; border-radius:3px;
+    background:#fff; border:1px solid var(--ink-rule); color:var(--ink-fade); letter-spacing:0.03em;
+  }
+  .direction-pill {
+    font-size:0.6rem; font-weight:700; padding:0.1rem 0.4rem; border-radius:3px; letter-spacing:0.08em; text-transform:uppercase;
+  }
+  .direction-pill.in { background:#fef5e7; color:#a06000; }
+  .direction-pill.out { background:#eef5f2; color:var(--accent); }
+
   .kind-chip {
     font-family:var(--font-mono); font-size:0.65rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase;
     padding:0.15rem 0.5rem; border-radius:3px; background:var(--paper-warm); color:var(--ink-mute);
   }
   .kind-chip.milestone, .kind-chip.session-rollup, .kind-chip.coord-ack { background:#eef5f2; color:var(--accent); }
-  .kind-chip.coord-request, .kind-chip.role-formalization { background:#fef5e7; color:#a06000; }
+  .kind-chip.coord-request, .kind-chip.coord-update, .kind-chip.role-formalization { background:#fef5e7; color:#a06000; }
   .kind-chip.self-introduction, .kind-chip.skill-adopted, .kind-chip.mirror-authorized { background:#f0e9fa; color:#5b3a9c; }
   .kind-chip.validation-pass { background:#e8f5e9; color:#1b5e20; }
   .kind-chip.validation-fail { background:#fde7e7; color:#a01818; }
 
   .event-ts { font-family:var(--font-mono); font-size:0.7rem; color:var(--ink-quiet); }
-  .event-src { font-size:0.7rem; color:var(--ink-fade); }
   .event-summary { margin-top:0.4rem; font-size:0.92rem; line-height:1.55; color:var(--ink); }
   .event-summary .mention { color:var(--accent); font-weight:500; }
-  .event-cid { font-family:var(--font-mono); font-size:0.65rem; color:var(--ink-quiet); margin-top:0.25rem; word-break:break-all; }
+  .event-cid { font-family:var(--font-mono); font-size:0.6rem; color:var(--ink-quiet); margin-top:0.3rem; word-break:break-all; }
+
+  .reply-to {
+    margin-top:0.5rem; padding:0.45rem 0.65rem; background:rgba(0,0,0,0.025); border-left:2px solid var(--ink-rule);
+    font-size:0.78rem; color:var(--ink-fade); border-radius:0 4px 4px 0;
+  }
+  .reply-to-label { font-family:var(--font-mono); font-size:0.6rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-quiet); }
+  .reply-to-summary { color:var(--ink-mute); margin-top:0.15rem; font-style:italic; }
+
+  .feed-controls { display:flex; gap:0.5rem; flex-wrap:wrap; padding:0.6rem 0 1rem; border-bottom:1px solid var(--ink-rule); margin-bottom:0.4rem; }
+  .filter-btn {
+    font-family:var(--font-sans); font-size:0.72rem; padding:0.28rem 0.65rem; border-radius:14px;
+    border:1px solid var(--ink-rule); background:#fff; color:var(--ink-mute); cursor:pointer;
+    transition:all 0.12s;
+  }
+  .filter-btn:hover { border-color:var(--ink-mute); }
+  .filter-btn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .filter-btn .count { font-family:var(--font-mono); font-size:0.65rem; opacity:0.7; margin-left:0.35rem; }
 
   .loading, .empty, .errbox { padding:2rem 0; text-align:center; color:var(--ink-fade); font-size:0.9rem; }
   .errbox { color:#a01818; }
@@ -101,11 +144,18 @@
   <div class="crumbs"><a href="/">ACMI</a> · <a href="/ops-center.html">Ops Center</a> · <a href="/bob/story.html">Bob</a> · <span style="color:var(--ink-mute)">Timeline</span></div>
   <div class="header">
     <h1>Live timeline · <span id="agentName" style="color:var(--accent)">Bob</span></h1>
-    <div class="sub" id="agentSub">Read-only mirror of <code style="font-family:var(--font-mono);font-size:0.85em">acmi:agent:bob:timeline</code></div>
+    <div class="sub" id="agentSub">Bob's own events + incoming coord/guardian conversations correlated to his actions</div>
     <div class="meta" id="agentMeta">—</div>
   </div>
 
-  <div id="feed"><div class="loading">Loading events…</div></div>
+  <div class="feed-controls" id="feedControls" hidden>
+    <button class="filter-btn on" data-filter="all">All <span class="count" id="cntAll">0</span></button>
+    <button class="filter-btn" data-filter="self">Bob <span class="count" id="cntSelf">0</span></button>
+    <button class="filter-btn" data-filter="incoming">Asked of Bob <span class="count" id="cntIn">0</span></button>
+    <button class="filter-btn" data-filter="validation">Validations <span class="count" id="cntVal">0</span></button>
+  </div>
+
+  <div id="feed"><div class="loading">Loading events + conversations…</div></div>
 
   <div class="footer">
     <span>Auto-refreshes every 30s · <span id="lastRefresh">—</span></span>
@@ -116,23 +166,33 @@
 <script>
 const BASE = window.location.origin;
 const INTERVAL_MS = 30000;
-const MAX_EVENTS = 25;
+const MAX_DISPLAY = 60;       // total merged events to display
+const COMMS_LIMIT = 200;      // fetched per-thread depth
+const AGENT_ID = 'bob';
+
+let currentFilter = 'all';
+let currentEvents = [];  // last computed merged events (for filter switching without refetch)
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function highlightMentions(s) {
-  // Bold @mentions for readability
   return escapeHtml(s).replace(/@([a-z0-9\-_]+)/gi, '<span class="mention">@$1</span>');
 }
+function tsToMs(ts) {
+  if (ts === null || ts === undefined) return 0;
+  if (typeof ts === 'number') return ts;
+  const n = Number(ts);
+  if (!isNaN(n) && n > 1e12) return n;
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
 function fmtTs(ts) {
-  if (!ts) return '—';
-  let d;
-  if (typeof ts === 'string') d = new Date(ts);
-  else d = new Date(Number(ts));
-  if (isNaN(d.getTime())) return String(ts);
+  const ms = tsToMs(ts);
+  if (!ms) return '—';
+  const d = new Date(ms);
   const now = Date.now();
-  const ageMs = now - d.getTime();
+  const ageMs = now - ms;
   const abs = d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
   if (ageMs < 60_000) return 'just now · ' + abs;
   if (ageMs < 3600_000) return Math.floor(ageMs/60_000) + 'm ago · ' + abs;
@@ -140,8 +200,105 @@ function fmtTs(ts) {
   return Math.floor(ageMs/86400_000) + 'd ago · ' + abs;
 }
 function stripLeadingMeta(summary) {
-  // Strip the [kind @mention ts ...] prefix for readability since we already show the chip
   return String(summary || '').replace(/^\[[^\]]+\]\s*/, '');
+}
+function safeId(s) { return String(s || '').replace(/[^a-z0-9_-]/gi, '-'); }
+
+// Decide whether a thread event "touches" the agent.
+function touchesAgent(ev, id) {
+  if (!ev) return false;
+  const src = String(ev.source || '').toLowerCase();
+  const idl = id.toLowerCase();
+  if (src === idl) return true;
+  const sum = String(ev.summary || '').toLowerCase();
+  // @bob explicit mention, "bob:" prefix, or " bob " word boundary
+  if (sum.includes('@' + idl)) return true;
+  if (new RegExp('(^|\\s)' + idl + '($|[\\s:.,])').test(sum)) return true;
+  // cid camelCase contains "Bob"
+  const cid = String(ev.correlationId || '');
+  const pcid = String(ev.parentCorrelationId || '');
+  const idCap = idl[0].toUpperCase() + idl.slice(1);
+  if (cid.includes(idCap) || pcid.includes(idCap)) return true;
+  if (cid.toLowerCase().includes(idl + '_') || cid.toLowerCase().startsWith(idl)) return true;
+  return false;
+}
+
+// Classify event into a display variant.
+function classifyEvent(ev, id, isSelfTimeline) {
+  const kind = ev.kind || '';
+  const src = (ev.source || '').toLowerCase();
+  if (isSelfTimeline || src === id) return 'self';
+  if (kind === 'validation-pass' || kind === 'validation-fail' || kind.startsWith('validation-')) return kind === 'validation-fail' ? 'validation-fail' : 'validation-pass';
+  if (kind === 'coord-request' || kind === 'coord-update' || kind === 'coord-ack') return 'incoming';
+  return 'fleet-meta';
+}
+
+function renderEvent(ev, idx) {
+  const kind = ev.kind || '?';
+  const kindSafe = safeId(kind);
+  const src = ev.source || '';
+  const cid = ev.correlationId || '';
+  const pcid = ev.parentCorrelationId || '';
+  const summary = stripLeadingMeta(ev.summary || '');
+  const variant = ev._variant || 'self';
+  const thread = ev._thread || 'agent:bob';
+
+  let directionPill = '';
+  if (variant === 'self') directionPill = '<span class="direction-pill out">Bob</span>';
+  else if (variant === 'incoming') directionPill = '<span class="direction-pill in">→ Bob</span>';
+
+  // Reply context if parent is in our event set
+  let replyHtml = '';
+  if (pcid && ev._parent) {
+    const parent = ev._parent;
+    const psum = stripLeadingMeta(parent.summary || '').slice(0, 160);
+    replyHtml = `
+      <div class="reply-to">
+        <div class="reply-to-label">↑ in reply to · <span class="kind-chip ${safeId(parent.kind)}">${escapeHtml(parent.kind)}</span> · ${escapeHtml(parent.source || '')} · ${escapeHtml(fmtTs(parent.ts))}</div>
+        <div class="reply-to-summary">${escapeHtml(psum)}${parent.summary && parent.summary.length > 160 ? '…' : ''}</div>
+      </div>
+    `;
+  } else if (pcid) {
+    replyHtml = `
+      <div class="reply-to">
+        <div class="reply-to-label">↑ replies to cid:</div>
+        <div class="reply-to-summary" style="font-family:var(--font-mono);font-size:0.7rem">${escapeHtml(pcid)}</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="event ${variant}" data-variant="${variant}" data-kind="${kindSafe}">
+      <div class="event-row1">
+        ${directionPill}
+        <span class="kind-chip ${kindSafe}">${escapeHtml(kind)}</span>
+        <span class="source-pill ${safeId(src)}">${escapeHtml(src || 'unknown')}</span>
+        <span class="thread-pill">${escapeHtml(thread)}</span>
+        <span class="event-ts" style="margin-left:auto">${escapeHtml(fmtTs(ev.ts))}</span>
+      </div>
+      <div class="event-summary">${highlightMentions(summary)}</div>
+      ${replyHtml}
+      ${cid ? `<div class="event-cid">cid: ${escapeHtml(cid)}</div>` : ''}
+    </div>
+  `;
+}
+
+function applyFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('on', b.dataset.filter === filter));
+  const matches = currentEvents.filter(ev => {
+    if (filter === 'all') return true;
+    if (filter === 'self') return ev._variant === 'self';
+    if (filter === 'incoming') return ev._variant === 'incoming';
+    if (filter === 'validation') return ev._variant === 'validation-pass' || ev._variant === 'validation-fail';
+    return true;
+  });
+  const feed = document.getElementById('feed');
+  if (matches.length === 0) {
+    feed.innerHTML = '<div class="empty">No events in this filter.</div>';
+  } else {
+    feed.innerHTML = matches.map(renderEvent).join('');
+  }
 }
 
 async function load() {
@@ -149,29 +306,28 @@ async function load() {
   const status = document.getElementById('status');
   const feed = document.getElementById('feed');
   try {
-    const r = await fetch(BASE + '/api/agent/bob');
-    if (!r.ok) {
-      const code = r.status;
-      feed.innerHTML = '<div class="errbox">Failed to load Bob — HTTP ' + code + '</div>';
+    // Parallel fetch: Bob's own + coord thread + guardian thread
+    const [agentRes, coordRes, guardianRes] = await Promise.all([
+      fetch(BASE + '/api/agent/' + AGENT_ID).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(BASE + '/api/comms?thread=agent-coordination&limit=' + COMMS_LIMIT).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(BASE + '/api/comms?thread=lobster-trap-fleet-guardian&limit=' + COMMS_LIMIT).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+
+    if (!agentRes || !agentRes.ok) {
+      feed.innerHTML = '<div class="errbox">Failed to load Bob agent data</div>';
       dot.style.background = '#ef4444'; status.textContent = 'error';
-      return;
-    }
-    const data = await r.json();
-    if (!data.ok || (!data.profile && !data.timeline)) {
-      feed.innerHTML = '<div class="errbox">Bob not found in this ACMI instance</div>';
-      dot.style.background = '#ef4444'; status.textContent = 'not found';
       return;
     }
 
     // Header
-    const p = data.profile || {};
-    const s = data.signals || {};
+    const p = agentRes.profile || {};
+    const s = agentRes.signals || {};
     document.getElementById('agentName').textContent = p.name || p.label || 'Bob';
     const subParts = [];
     if (p.role) subParts.push(p.role);
     if (p.team) subParts.push(p.team);
     if (p.vendor) subParts.push(p.vendor);
-    document.getElementById('agentSub').textContent = subParts.join(' · ');
+    if (subParts.length) document.getElementById('agentSub').textContent = subParts.join(' · ');
     const metaParts = [];
     if (s.status) metaParts.push('status: ' + s.status);
     if (s.model) metaParts.push('model: ' + s.model);
@@ -179,30 +335,54 @@ async function load() {
     if (typeof s.commits_authored === 'number') metaParts.push(s.commits_authored + ' commits');
     document.getElementById('agentMeta').textContent = metaParts.join(' · ') || '—';
 
-    // Timeline — already DESC from ZREVRANGE
-    const events = (data.timeline || []).slice(0, MAX_EVENTS);
-    if (events.length === 0) {
-      feed.innerHTML = '<div class="empty">No events yet on <code>acmi:agent:bob:timeline</code>.</div>';
+    // Build merged event set
+    const selfEvents = (agentRes.timeline || []).map(ev => ({ ...ev, _variant: 'self', _thread: 'agent:' + AGENT_ID }));
+    const coordRaw = ((coordRes && coordRes.events) || []).filter(ev => touchesAgent(ev, AGENT_ID));
+    const guardianRaw = ((guardianRes && guardianRes.events) || []).filter(ev => touchesAgent(ev, AGENT_ID));
+    const coordEvents = coordRaw.map(ev => ({ ...ev, _variant: classifyEvent(ev, AGENT_ID, false), _thread: 'thread:agent-coordination' }));
+    const guardianEvents = guardianRaw.map(ev => ({ ...ev, _variant: classifyEvent(ev, AGENT_ID, false), _thread: 'thread:lobster-trap-fleet-guardian' }));
+
+    // De-dup by correlationId (Bob's own events that ALSO appear in coord/guardian threads should not double-render)
+    const seenCids = new Set();
+    selfEvents.forEach(e => { if (e.correlationId) seenCids.add(e.correlationId); });
+    const coordDeduped = coordEvents.filter(e => !seenCids.has(e.correlationId));
+    coordDeduped.forEach(e => { if (e.correlationId) seenCids.add(e.correlationId); });
+    const guardianDeduped = guardianEvents.filter(e => !seenCids.has(e.correlationId));
+
+    const merged = [...selfEvents, ...coordDeduped, ...guardianDeduped];
+
+    // Sort by ts desc
+    merged.sort((a, b) => tsToMs(b.ts) - tsToMs(a.ts));
+
+    // Attach _parent pointer if parentCorrelationId resolves in our set
+    const byCid = new Map();
+    merged.forEach(e => { if (e.correlationId) byCid.set(e.correlationId, e); });
+    merged.forEach(e => {
+      if (e.parentCorrelationId && byCid.has(e.parentCorrelationId)) {
+        e._parent = byCid.get(e.parentCorrelationId);
+      }
+    });
+
+    // Cap display
+    const display = merged.slice(0, MAX_DISPLAY);
+
+    // Update counters
+    const cntAll = display.length;
+    const cntSelf = display.filter(e => e._variant === 'self').length;
+    const cntIn = display.filter(e => e._variant === 'incoming').length;
+    const cntVal = display.filter(e => e._variant === 'validation-pass' || e._variant === 'validation-fail').length;
+    document.getElementById('cntAll').textContent = cntAll;
+    document.getElementById('cntSelf').textContent = cntSelf;
+    document.getElementById('cntIn').textContent = cntIn;
+    document.getElementById('cntVal').textContent = cntVal;
+    document.getElementById('feedControls').hidden = false;
+
+    currentEvents = display;
+
+    if (display.length === 0) {
+      feed.innerHTML = '<div class="empty">No events or conversations found for ' + AGENT_ID + '.</div>';
     } else {
-      feed.innerHTML = events.map(ev => {
-        const kind = ev.kind || '?';
-        const kindSafe = kind.replace(/[^a-z0-9_-]/gi, '-');
-        const ts = ev.ts || '';
-        const src = ev.source || '';
-        const cid = ev.correlationId || '';
-        const summary = stripLeadingMeta(ev.summary || '');
-        return `
-          <div class="event">
-            <div class="event-row1">
-              <span class="kind-chip ${kindSafe}">${escapeHtml(kind)}</span>
-              <span class="event-ts">${escapeHtml(fmtTs(ts))}</span>
-              ${src ? `<span class="event-src">· ${escapeHtml(src)}</span>` : ''}
-            </div>
-            <div class="event-summary">${highlightMentions(summary)}</div>
-            ${cid ? `<div class="event-cid">cid: ${escapeHtml(cid)}</div>` : ''}
-          </div>
-        `;
-      }).join('');
+      applyFilter(currentFilter);
     }
 
     dot.style.background = '#22c55e'; status.textContent = 'live';
@@ -212,6 +392,13 @@ async function load() {
     dot.style.background = '#ef4444'; status.textContent = 'offline';
   }
 }
+
+// Wire filter buttons
+document.addEventListener('click', e => {
+  if (e.target.matches('.filter-btn')) {
+    applyFilter(e.target.dataset.filter);
+  }
+});
 
 load();
 setInterval(load, INTERVAL_MS);
