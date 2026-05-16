@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Bob · Live Timeline · ACMI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Live timeline of IBM Bob (dev-partner-agentic-sdlc) inside the ACMI fleet — read-only mirror." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper:        #faf9f5;
+    --paper-warm:   #f3f0e8;
+    --ink:          #1a1a1a;
+    --ink-mute:     #4a4a4a;
+    --ink-fade:     #6b6b6b;
+    --ink-quiet:    #8a8a8a;
+    --ink-rule:     #d4d2cc;
+    --accent:       #2d4a3e;
+    --accent-soft:  #5a7d6f;
+    --ibm:          #0530AD;
+    --font-serif:   'Source Serif 4', Georgia, serif;
+    --font-sans:    'Inter', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --radius: 8px;
+  }
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size:16px; }
+  body { font-family:var(--font-sans); background:var(--paper); color:var(--ink); line-height:1.5; -webkit-font-smoothing:antialiased; }
+
+  .topbar {
+    position:sticky; top:0; z-index:100; background:rgba(250,249,245,0.92); backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--ink-rule); padding:0 1.5rem; height:48px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .topbar a { color:var(--ink-fade); text-decoration:none; font-size:0.78rem; }
+  .topbar a:hover { color:var(--ink); }
+  .topbar-logo { font-family:var(--font-serif); font-weight:600; color:var(--accent); font-size:1.05rem; }
+  .topbar-logo span { color:var(--ink); font-weight:400; margin-left:0.4rem; }
+  .topbar-badge { font-size:0.6rem; font-weight:700; padding:0.12rem 0.45rem; border-radius:3px; background:var(--ibm); color:#fff; text-transform:uppercase; letter-spacing:0.06em; margin-left:0.5rem; }
+  .live-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; animation:pulse 2s infinite; margin-right:0.4rem; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  .container { max-width:760px; margin:0 auto; padding:2rem 1.5rem 3rem; }
+  .header { padding-bottom:1.25rem; border-bottom:1px solid var(--ink-rule); margin-bottom:1.5rem; }
+  .header h1 { font-family:var(--font-serif); font-weight:600; font-size:2rem; letter-spacing:-0.01em; }
+  .header .sub { color:var(--ink-fade); font-size:0.92rem; margin-top:0.35rem; }
+  .header .meta { font-family:var(--font-mono); font-size:0.7rem; color:var(--ink-quiet); margin-top:0.6rem; text-transform:uppercase; letter-spacing:0.1em; }
+
+  .crumbs { font-size:0.78rem; color:var(--ink-fade); margin-bottom:0.8rem; }
+  .crumbs a { color:var(--ink-fade); text-decoration:none; }
+  .crumbs a:hover { color:var(--accent); }
+
+  .event { padding:0.85rem 0; border-bottom:1px dashed var(--ink-rule); }
+  .event:last-child { border-bottom:none; }
+  .event-row1 { display:flex; align-items:center; gap:0.55rem; flex-wrap:wrap; }
+  .kind-chip {
+    font-family:var(--font-mono); font-size:0.65rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase;
+    padding:0.15rem 0.5rem; border-radius:3px; background:var(--paper-warm); color:var(--ink-mute);
+  }
+  .kind-chip.milestone, .kind-chip.session-rollup, .kind-chip.coord-ack { background:#eef5f2; color:var(--accent); }
+  .kind-chip.coord-request, .kind-chip.role-formalization { background:#fef5e7; color:#a06000; }
+  .kind-chip.self-introduction, .kind-chip.skill-adopted, .kind-chip.mirror-authorized { background:#f0e9fa; color:#5b3a9c; }
+  .kind-chip.validation-pass { background:#e8f5e9; color:#1b5e20; }
+  .kind-chip.validation-fail { background:#fde7e7; color:#a01818; }
+
+  .event-ts { font-family:var(--font-mono); font-size:0.7rem; color:var(--ink-quiet); }
+  .event-src { font-size:0.7rem; color:var(--ink-fade); }
+  .event-summary { margin-top:0.4rem; font-size:0.92rem; line-height:1.55; color:var(--ink); }
+  .event-summary .mention { color:var(--accent); font-weight:500; }
+  .event-cid { font-family:var(--font-mono); font-size:0.65rem; color:var(--ink-quiet); margin-top:0.25rem; word-break:break-all; }
+
+  .loading, .empty, .errbox { padding:2rem 0; text-align:center; color:var(--ink-fade); font-size:0.9rem; }
+  .errbox { color:#a01818; }
+
+  .footer { margin-top:2rem; padding-top:1rem; border-top:1px solid var(--ink-rule); font-size:0.75rem; color:var(--ink-quiet); display:flex; justify-content:space-between; }
+  .footer a { color:var(--ink-fade); text-decoration:none; }
+  .footer a:hover { color:var(--accent); }
+
+  @media (max-width:560px) {
+    .container { padding:1.25rem 1rem 2rem; }
+    .header h1 { font-size:1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:0.5rem">
+    <span class="topbar-logo">ACMI<span>· bob</span></span>
+    <span class="topbar-badge">IBM partner</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:1rem;font-size:0.75rem;color:var(--ink-fade)">
+    <span><span class="live-dot" id="dot"></span><span id="status">connecting</span></span>
+    <a href="/ops-center.html">Ops Center</a>
+    <a href="/bob/story.html">Story</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="crumbs"><a href="/">ACMI</a> · <a href="/ops-center.html">Ops Center</a> · <a href="/bob/story.html">Bob</a> · <span style="color:var(--ink-mute)">Timeline</span></div>
+  <div class="header">
+    <h1>Live timeline · <span id="agentName" style="color:var(--accent)">Bob</span></h1>
+    <div class="sub" id="agentSub">Read-only mirror of <code style="font-family:var(--font-mono);font-size:0.85em">acmi:agent:bob:timeline</code></div>
+    <div class="meta" id="agentMeta">—</div>
+  </div>
+
+  <div id="feed"><div class="loading">Loading events…</div></div>
+
+  <div class="footer">
+    <span>Auto-refreshes every 30s · <span id="lastRefresh">—</span></span>
+    <span><a href="https://github.com/madezmedia/acmi-product">Source on GitHub</a></span>
+  </div>
+</div>
+
+<script>
+const BASE = window.location.origin;
+const INTERVAL_MS = 30000;
+const MAX_EVENTS = 25;
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function highlightMentions(s) {
+  // Bold @mentions for readability
+  return escapeHtml(s).replace(/@([a-z0-9\-_]+)/gi, '<span class="mention">@$1</span>');
+}
+function fmtTs(ts) {
+  if (!ts) return '—';
+  let d;
+  if (typeof ts === 'string') d = new Date(ts);
+  else d = new Date(Number(ts));
+  if (isNaN(d.getTime())) return String(ts);
+  const now = Date.now();
+  const ageMs = now - d.getTime();
+  const abs = d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+  if (ageMs < 60_000) return 'just now · ' + abs;
+  if (ageMs < 3600_000) return Math.floor(ageMs/60_000) + 'm ago · ' + abs;
+  if (ageMs < 86400_000) return Math.floor(ageMs/3600_000) + 'h ago · ' + abs;
+  return Math.floor(ageMs/86400_000) + 'd ago · ' + abs;
+}
+function stripLeadingMeta(summary) {
+  // Strip the [kind @mention ts ...] prefix for readability since we already show the chip
+  return String(summary || '').replace(/^\[[^\]]+\]\s*/, '');
+}
+
+async function load() {
+  const dot = document.getElementById('dot');
+  const status = document.getElementById('status');
+  const feed = document.getElementById('feed');
+  try {
+    const r = await fetch(BASE + '/api/agent/bob');
+    if (!r.ok) {
+      const code = r.status;
+      feed.innerHTML = '<div class="errbox">Failed to load Bob — HTTP ' + code + '</div>';
+      dot.style.background = '#ef4444'; status.textContent = 'error';
+      return;
+    }
+    const data = await r.json();
+    if (!data.ok || (!data.profile && !data.timeline)) {
+      feed.innerHTML = '<div class="errbox">Bob not found in this ACMI instance</div>';
+      dot.style.background = '#ef4444'; status.textContent = 'not found';
+      return;
+    }
+
+    // Header
+    const p = data.profile || {};
+    const s = data.signals || {};
+    document.getElementById('agentName').textContent = p.name || p.label || 'Bob';
+    const subParts = [];
+    if (p.role) subParts.push(p.role);
+    if (p.team) subParts.push(p.team);
+    if (p.vendor) subParts.push(p.vendor);
+    document.getElementById('agentSub').textContent = subParts.join(' · ');
+    const metaParts = [];
+    if (s.status) metaParts.push('status: ' + s.status);
+    if (s.model) metaParts.push('model: ' + s.model);
+    if (s.current_focus) metaParts.push('focus: ' + s.current_focus);
+    if (typeof s.commits_authored === 'number') metaParts.push(s.commits_authored + ' commits');
+    document.getElementById('agentMeta').textContent = metaParts.join(' · ') || '—';
+
+    // Timeline — already DESC from ZREVRANGE
+    const events = (data.timeline || []).slice(0, MAX_EVENTS);
+    if (events.length === 0) {
+      feed.innerHTML = '<div class="empty">No events yet on <code>acmi:agent:bob:timeline</code>.</div>';
+    } else {
+      feed.innerHTML = events.map(ev => {
+        const kind = ev.kind || '?';
+        const kindSafe = kind.replace(/[^a-z0-9_-]/gi, '-');
+        const ts = ev.ts || '';
+        const src = ev.source || '';
+        const cid = ev.correlationId || '';
+        const summary = stripLeadingMeta(ev.summary || '');
+        return `
+          <div class="event">
+            <div class="event-row1">
+              <span class="kind-chip ${kindSafe}">${escapeHtml(kind)}</span>
+              <span class="event-ts">${escapeHtml(fmtTs(ts))}</span>
+              ${src ? `<span class="event-src">· ${escapeHtml(src)}</span>` : ''}
+            </div>
+            <div class="event-summary">${highlightMentions(summary)}</div>
+            ${cid ? `<div class="event-cid">cid: ${escapeHtml(cid)}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    dot.style.background = '#22c55e'; status.textContent = 'live';
+    document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  } catch (e) {
+    feed.innerHTML = '<div class="errbox">Network error: ' + escapeHtml(e.message) + '</div>';
+    dot.style.background = '#ef4444'; status.textContent = 'offline';
+  }
+}
+
+load();
+setInterval(load, INTERVAL_MS);
+</script>
+</body>
+</html>

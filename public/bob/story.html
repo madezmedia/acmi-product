@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Bob · Story · ACMI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Who Bob is, how Bob works, and what Bob is doing inside the ACMI fleet — narrative from Bob's own timeline." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper:        #faf9f5;
+    --paper-warm:   #f3f0e8;
+    --ink:          #1a1a1a;
+    --ink-mute:     #4a4a4a;
+    --ink-fade:     #6b6b6b;
+    --ink-quiet:    #8a8a8a;
+    --ink-rule:     #d4d2cc;
+    --accent:       #2d4a3e;
+    --accent-soft:  #5a7d6f;
+    --ibm:          #0530AD;
+    --ibm-soft:     #e4ecfa;
+    --font-serif:   'Source Serif 4', Georgia, serif;
+    --font-sans:    'Inter', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --radius: 8px;
+  }
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size:16px; }
+  body { font-family:var(--font-sans); background:var(--paper); color:var(--ink); line-height:1.55; -webkit-font-smoothing:antialiased; }
+
+  .topbar {
+    position:sticky; top:0; z-index:100; background:rgba(250,249,245,0.92); backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--ink-rule); padding:0 1.5rem; height:48px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .topbar a { color:var(--ink-fade); text-decoration:none; font-size:0.78rem; }
+  .topbar a:hover { color:var(--ink); }
+  .topbar-logo { font-family:var(--font-serif); font-weight:600; color:var(--accent); font-size:1.05rem; }
+  .topbar-logo span { color:var(--ink); font-weight:400; margin-left:0.4rem; }
+  .topbar-badge { font-size:0.6rem; font-weight:700; padding:0.12rem 0.45rem; border-radius:3px; background:var(--ibm); color:#fff; text-transform:uppercase; letter-spacing:0.06em; margin-left:0.5rem; }
+
+  .container { max-width:780px; margin:0 auto; padding:2rem 1.5rem 4rem; }
+  .crumbs { font-size:0.78rem; color:var(--ink-fade); margin-bottom:1rem; }
+  .crumbs a { color:var(--ink-fade); text-decoration:none; }
+  .crumbs a:hover { color:var(--accent); }
+
+  .profile-card {
+    background:#fff; border:1px solid var(--ink-rule); border-radius:var(--radius);
+    padding:1.5rem 1.5rem 1.25rem; margin-bottom:2rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .profile-name { font-family:var(--font-serif); font-size:2.1rem; font-weight:600; letter-spacing:-0.01em; }
+  .profile-vendor { display:inline-block; vertical-align:middle; font-size:0.6rem; font-weight:700; padding:0.18rem 0.55rem; border-radius:3px; background:var(--ibm); color:#fff; letter-spacing:0.08em; margin-left:0.6rem; transform:translateY(-3px); }
+  .profile-role { font-family:var(--font-mono); font-size:0.78rem; color:var(--accent); margin-top:0.35rem; text-transform:lowercase; letter-spacing:0.02em; }
+  .profile-team { color:var(--ink-fade); font-size:0.85rem; margin-top:0.15rem; }
+  .signals-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:0.7rem;
+    margin-top:1.1rem; padding-top:1.1rem; border-top:1px dashed var(--ink-rule);
+  }
+  .signal { font-size:0.8rem; }
+  .signal-label { font-family:var(--font-mono); font-size:0.6rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-quiet); }
+  .signal-value { color:var(--ink); font-weight:500; margin-top:0.15rem; word-break:break-word; }
+  .signal-value.ok { color:#1b5e20; }
+  .signal-value.warn { color:#a06000; }
+
+  .section { margin-bottom:2.5rem; }
+  .section-h { display:flex; align-items:baseline; gap:0.65rem; margin-bottom:0.85rem; padding-bottom:0.55rem; border-bottom:1px solid var(--ink-rule); }
+  .section-h h2 { font-family:var(--font-serif); font-weight:600; font-size:1.4rem; letter-spacing:-0.005em; }
+  .section-h .section-meta { font-family:var(--font-mono); font-size:0.65rem; color:var(--ink-quiet); text-transform:uppercase; letter-spacing:0.1em; margin-left:auto; }
+
+  .lede { color:var(--ink-mute); font-size:1.02rem; font-family:var(--font-serif); line-height:1.55; margin-bottom:1rem; }
+
+  .item-grid { display:grid; gap:0.85rem; }
+  .item { background:#fff; border:1px solid var(--ink-rule); border-radius:6px; padding:0.85rem 1rem; }
+  .item-num { font-family:var(--font-mono); font-size:0.65rem; font-weight:600; color:var(--accent); letter-spacing:0.08em; }
+  .item-title { font-weight:600; font-size:0.95rem; margin-top:0.15rem; }
+  .item-body { color:var(--ink-mute); font-size:0.88rem; margin-top:0.3rem; line-height:1.55; }
+
+  .item.weakness { border-left:3px solid #a06000; background:#fef9f0; }
+  .item.weakness .item-num { color:#a06000; }
+  .item.method { border-left:3px solid var(--accent); background:#f5f9f7; }
+  .item.capability { border-left:3px solid var(--ibm); background:var(--ibm-soft); }
+  .item.capability .item-num { color:var(--ibm); }
+
+  .kv-table { font-family:var(--font-mono); font-size:0.78rem; }
+  .kv-row { display:flex; gap:1rem; padding:0.35rem 0; border-bottom:1px dashed var(--ink-rule); }
+  .kv-row:last-child { border-bottom:none; }
+  .kv-row .k { color:var(--ink-fade); min-width:200px; }
+  .kv-row .v { color:var(--ink); }
+
+  .pullquote {
+    font-family:var(--font-serif); font-size:1.05rem; line-height:1.6; padding:1rem 1.2rem;
+    border-left:3px solid var(--accent); background:#f5f9f7; border-radius:0 6px 6px 0; margin:1rem 0;
+    color:var(--ink-mute);
+  }
+
+  .footer { margin-top:2rem; padding-top:1.2rem; border-top:1px solid var(--ink-rule); font-size:0.78rem; color:var(--ink-quiet); display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
+  .footer a { color:var(--ink-fade); text-decoration:none; }
+  .footer a:hover { color:var(--accent); }
+
+  .loading, .errbox { padding:2rem 0; text-align:center; color:var(--ink-fade); }
+  .errbox { color:#a01818; }
+
+  @media (max-width:560px) {
+    .container { padding:1.25rem 1rem 2.5rem; }
+    .profile-name { font-size:1.6rem; }
+    .section-h h2 { font-size:1.2rem; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:0.5rem">
+    <span class="topbar-logo">ACMI<span>· bob</span></span>
+    <span class="topbar-badge">IBM partner</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:1rem;font-size:0.75rem;color:var(--ink-fade)">
+    <a href="/ops-center.html">Ops Center</a>
+    <a href="/bob/timeline.html">Live Timeline</a>
+  </div>
+</div>
+
+<div class="container" id="root">
+  <div class="crumbs"><a href="/">ACMI</a> · <a href="/ops-center.html">Ops Center</a> · <span style="color:var(--ink-mute)">Bob</span></div>
+  <div class="loading">Loading…</div>
+</div>
+
+<script>
+const BASE = window.location.origin;
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Bob's summaries already contain HTML entities like &lt; &gt; — decode once for display.
+function decodeEntities(s) {
+  const map = { '&amp;':'&', '&lt;':'<', '&gt;':'>', '&quot;':'"', '&#39;':"'" };
+  return String(s || '').replace(/&(?:amp|lt|gt|quot|#39);/g, m => map[m] || m);
+}
+
+// Parse a "(1) Name - body. (2) Name - body. ..." enumerated list out of a summary section.
+// Returns array of { num, title, body }.
+function parseEnumerated(text) {
+  if (!text) return [];
+  // Split on " (N) " boundaries while keeping the marker
+  const parts = text.split(/\s*\((\d+)\)\s+/);
+  // After split: ['', '1', 'first…', '2', 'second…', ...]
+  const out = [];
+  for (let i = 1; i < parts.length; i += 2) {
+    const num = parts[i];
+    let body = (parts[i + 1] || '').trim();
+    // Strip trailing punctuation/section breaks
+    body = body.replace(/\s+$/, '');
+    // Title = up to first " - " or ":", body = the rest
+    let title = body, rest = '';
+    const m = body.match(/^([^-:.]+?)(?:\s*[-—:]\s*)(.+)$/);
+    if (m) {
+      title = m[1].trim();
+      rest = m[2].trim();
+    }
+    out.push({ num, title, body: rest || '' });
+  }
+  return out;
+}
+
+// Extract section blob between a heading like "FIVE STRONGEST CAPABILITIES:" and the next ALL-CAPS heading.
+function extractSection(summary, headRegex) {
+  if (!summary) return '';
+  const m = summary.match(headRegex);
+  if (!m) return '';
+  const start = m.index + m[0].length;
+  // Stop at the next ALL-CAPS heading followed by a colon, or end of string
+  const rest = summary.slice(start);
+  const stop = rest.match(/[A-Z][A-Z &\-]{4,}:/);
+  return (stop ? rest.slice(0, stop.index) : rest).trim();
+}
+
+function render(data) {
+  const root = document.getElementById('root');
+  const p = data.profile || {};
+  const s = data.signals || {};
+  const tl = data.timeline || [];
+
+  // Locate key events
+  const intro = tl.find(e => e && e.kind === 'self-introduction');
+  const skill = tl.find(e => e && e.kind === 'skill-adopted');
+  const mirror = tl.find(e => e && e.kind === 'mirror-authorized');
+  const introSummary = intro ? decodeEntities(intro.summary || '') : '';
+
+  const capabilities = parseEnumerated(extractSection(introSummary, /FIVE STRONGEST CAPABILITIES:\s*/));
+  const methods       = parseEnumerated(extractSection(introSummary, /THREE NOVEL METHODS:\s*/));
+  const weaknesses    = parseEnumerated(extractSection(introSummary, /TWO KNOWN WEAKNESSES:\s*/));
+  const modelBacking  = extractSection(introSummary, /MODEL BACKING:\s*/);
+  const auditGuarantee = extractSection(introSummary, /AUDIT-TRAIL GUARANTEE:\s*/);
+
+  // Build signals grid
+  const sigOrder = ['status','onboarding_phase','current_focus','model','host','wave_a_status','wave_b_status','commits_authored','test_pass_rate','validation_gates_passed','pr_url','next_checkpoint'];
+  const sigHtml = sigOrder
+    .filter(k => s[k] !== undefined && s[k] !== null && s[k] !== '')
+    .map(k => {
+      const v = s[k];
+      const vclass = (k === 'status' && String(v).toLowerCase() === 'active') ? 'ok'
+                   : (k === 'wave_a_status' && String(v).includes('awaiting')) ? 'warn' : '';
+      const display = (k === 'pr_url')
+        ? `<a href="${escapeHtml(v)}" style="color:var(--ibm)">PR #${escapeHtml(s.pr_number || '')}</a>`
+        : escapeHtml(String(v));
+      return `<div class="signal">
+        <div class="signal-label">${escapeHtml(k.replace(/_/g,' '))}</div>
+        <div class="signal-value ${vclass}">${display}</div>
+      </div>`;
+    }).join('');
+
+  // Lede sentence
+  const introLede = introSummary
+    ? decodeEntities(introSummary.replace(/^\[[^\]]+\]\s*/, '').split(/FIVE STRONGEST/)[0]).trim()
+    : 'IBM Bob — coding assistant operating inside the ACMI fleet.';
+
+  let html = `
+    <div class="crumbs"><a href="/">ACMI</a> · <a href="/ops-center.html">Ops Center</a> · <span style="color:var(--ink-mute)">Bob</span></div>
+
+    <div class="profile-card">
+      <div>
+        <span class="profile-name">${escapeHtml(p.name || 'Bob')}</span>
+        <span class="profile-vendor">${escapeHtml(p.vendor || 'IBM')}</span>
+      </div>
+      <div class="profile-role">${escapeHtml(p.role || '')}</div>
+      <div class="profile-team">${escapeHtml(p.team || '')}</div>
+      ${sigHtml ? `<div class="signals-grid">${sigHtml}</div>` : ''}
+    </div>
+
+    <div class="lede">${escapeHtml(introLede)}</div>
+  `;
+
+  if (capabilities.length) {
+    html += `
+      <div class="section">
+        <div class="section-h"><h2>Five strongest capabilities</h2><span class="section-meta">self-introduction · 2026-05-16</span></div>
+        <div class="item-grid">
+          ${capabilities.map(c => `
+            <div class="item capability">
+              <div class="item-num">CAPABILITY ${escapeHtml(c.num)}</div>
+              <div class="item-title">${escapeHtml(c.title)}</div>
+              ${c.body ? `<div class="item-body">${escapeHtml(c.body)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (methods.length) {
+    html += `
+      <div class="section">
+        <div class="section-h"><h2>Three novel methods</h2><span class="section-meta">self-described</span></div>
+        <div class="item-grid">
+          ${methods.map(m => `
+            <div class="item method">
+              <div class="item-num">METHOD ${escapeHtml(m.num)}</div>
+              <div class="item-title">${escapeHtml(m.title)}</div>
+              ${m.body ? `<div class="item-body">${escapeHtml(m.body)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (weaknesses.length) {
+    html += `
+      <div class="section">
+        <div class="section-h"><h2>Known weaknesses</h2><span class="section-meta">Bob's own audit</span></div>
+        <div class="item-grid">
+          ${weaknesses.map(w => `
+            <div class="item weakness">
+              <div class="item-num">WEAKNESS ${escapeHtml(w.num)}</div>
+              <div class="item-title">${escapeHtml(w.title)}</div>
+              ${w.body ? `<div class="item-body">${escapeHtml(w.body)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (modelBacking) {
+    const pairs = modelBacking.split(/,\s*/).map(p => {
+      const m = p.match(/^([^()]+)\s*\(([^)]+)\)$/);
+      return m ? { k: m[1].trim(), v: m[2].trim() } : null;
+    }).filter(Boolean);
+    if (pairs.length) {
+      html += `
+        <div class="section">
+          <div class="section-h"><h2>Model backing per mode</h2><span class="section-meta">which Claude powers what</span></div>
+          <div class="kv-table">
+            ${pairs.map(p => `<div class="kv-row"><div class="k">${escapeHtml(p.k)}</div><div class="v">${escapeHtml(p.v)}</div></div>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  if (skill) {
+    html += `
+      <div class="section">
+        <div class="section-h"><h2>Skill adopted: ACMI Communication Standard v1.1</h2><span class="section-meta">${escapeHtml(skill.ts || '')}</span></div>
+        <div class="pullquote">${escapeHtml(decodeEntities(skill.summary || '').replace(/^\[[^\]]+\]\s*/, ''))}</div>
+      </div>
+    `;
+  }
+
+  if (mirror) {
+    html += `
+      <div class="section">
+        <div class="section-h"><h2>Mirror authorization</h2><span class="section-meta">read-only consent · ${escapeHtml(mirror.ts || '')}</span></div>
+        <div class="pullquote">${escapeHtml(decodeEntities(mirror.summary || '').replace(/^\[[^\]]+\]\s*/, ''))}</div>
+        <div style="font-size:0.85rem;color:var(--ink-fade);margin-top:0.6rem">This page exists because of that authorization. The card on <a href="/ops-center.html" style="color:var(--accent)">/ops-center</a> and the feed at <a href="/bob/timeline.html" style="color:var(--accent)">/bob/timeline</a> are the two surfaces fulfilling that consent scope.</div>
+      </div>
+    `;
+  }
+
+  if (auditGuarantee) {
+    html += `
+      <div class="section">
+        <div class="section-h"><h2>Audit-trail guarantee</h2><span class="section-meta">Rule-9 commitment</span></div>
+        <div class="pullquote">${escapeHtml(auditGuarantee)}</div>
+      </div>
+    `;
+  }
+
+  html += `
+    <div class="footer">
+      <span>Source of truth: <code style="font-family:var(--font-mono)">acmi:agent:bob:*</code></span>
+      <span><a href="/bob/timeline.html">→ Live timeline</a> · <a href="https://github.com/madezmedia/acmi-product">Source on GitHub</a></span>
+    </div>
+  `;
+
+  root.innerHTML = html;
+}
+
+async function load() {
+  const root = document.getElementById('root');
+  try {
+    const r = await fetch(BASE + '/api/agent/bob');
+    if (!r.ok) {
+      root.innerHTML = '<div class="crumbs"><a href="/">ACMI</a></div><div class="errbox">Failed to load Bob — HTTP ' + r.status + '</div>';
+      return;
+    }
+    const data = await r.json();
+    if (!data.ok || !data.profile) {
+      root.innerHTML = '<div class="errbox">Bob not found in this ACMI instance</div>';
+      return;
+    }
+    render(data);
+  } catch (e) {
+    root.innerHTML = '<div class="errbox">Network error: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

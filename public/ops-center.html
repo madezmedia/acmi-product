@@ -316,6 +316,11 @@
   <!-- SIDEBAR: Fleet -->
   <div class="sidebar">
     <div class="sidebar-title"><span class="meta">Fleet · <span id="agentCount">—</span> agents</span></div>
+    <div id="partnersGroup" class="partners-group" hidden>
+      <div class="agent-group" style="padding-top:0.45rem"><span class="agent-toggle">▾</span> External Partners</div>
+      <div id="partnersList"></div>
+      <hr class="rule dotted" style="margin:0.45rem 0.85rem 0.55rem">
+    </div>
     <div id="fleetTree"><div class="loading">Loading…</div></div>
     <div class="sidebar-footer">
       <div class="legend-row"><span class="dot ok"></span> active</div>
@@ -968,6 +973,42 @@ function renderGPU() {
   el.innerHTML = html;
 }
 
+// ─── Partners (Bob) — read-only mirror per mirror-authorized event 2026-05-16T03:51Z ───
+async function loadPartners() {
+  const group = document.getElementById('partnersGroup');
+  const list = document.getElementById('partnersList');
+  try {
+    const r = await fetch(BASE + '/api/agent/bob');
+    if (!r.ok) return;
+    const a = await r.json();
+    if (!a.ok || !a.profile) return;
+    const p = a.profile;
+    const s = a.signals || {};
+    const last = a.timeline && a.timeline[0];
+    const lastSummary = last ? (last.summary || '').replace(/^\[[^\]]*\]\s*/, '').slice(0, 90) : '';
+    const statusClass = s.status === 'active' ? 'ok' : (s.status === 'idle' ? 'idle' : 'warn');
+    list.innerHTML = `
+      <a href="/bob/story.html" class="agent-item" style="text-decoration:none;color:inherit">
+        <span class="dot ${statusClass}"></span>
+        <span class="agent-label">${p.name || p.label || 'bob'}</span>
+        <span class="agent-fw" style="background:#0530AD;color:#fff;letter-spacing:0.05em">IBM</span>
+      </a>
+      <div style="padding:0 0.85rem 0.4rem;font-size:0.68rem;color:var(--ink-quiet);line-height:1.35">
+        <div>${p.role || ''} · ${p.team || ''}</div>
+        ${lastSummary ? `<div style="margin-top:0.25rem;font-style:italic">${lastSummary}…</div>` : ''}
+        <div style="margin-top:0.3rem">
+          <a href="/bob/timeline.html" style="color:var(--accent);text-decoration:none">timeline →</a>
+          <span style="margin:0 0.4rem;color:var(--ink-rule)">·</span>
+          <a href="/bob/story.html" style="color:var(--accent);text-decoration:none">story →</a>
+        </div>
+      </div>
+    `;
+    group.hidden = false;
+  } catch (e) {
+    // Silent fail — partner card is non-critical
+  }
+}
+
 // ─── Fetch All ───
 async function fetchAll() {
   const [fleet, hitl, events, comms, mcp, work, chains, gpu] = await Promise.all([
@@ -1023,8 +1064,10 @@ function tick() {
 
 // ─── Init ───
 fetchAll();
+loadPartners();
 tick();
 setInterval(fetchAll, INTERVAL);
+setInterval(loadPartners, INTERVAL);
 </script>
 </body>
 </html>
