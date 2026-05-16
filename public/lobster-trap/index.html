@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>IBM Bob Hackathon — Submission Assets</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght,ital@8..60,400..700,0;8..60,400..700,1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #faf9f5;
+    --paper-warm: #f4f2eb;
+    --ink: #1a1a1a;
+    --ink-soft: #2c2c2a;
+    --ink-mute: #4a4a48;
+    --ink-fade: #7a7a76;
+    --ink-rule: #d4d2cc;
+    --accent: #2d4a3e;
+    --pink: #E5007D;
+    --ok: #4a7c59;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans:  'Inter', system-ui, sans-serif;
+    --mono:  'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); }
+  body {
+    font-family: var(--sans); color: var(--ink);
+    min-height: 100vh;
+    padding: 60px 80px 120px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  header {
+    display: flex; align-items: center; gap: 24px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--ink-rule);
+    margin-bottom: 56px;
+  }
+  header img { width: 80px; height: 80px; object-fit: contain; }
+  header .meta {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-fade);
+    font-weight: 600;
+  }
+  header h1 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 44px;
+    margin: 6px 0 0;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+  }
+  header h1 .accent { color: var(--accent); font-style: italic; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  h2 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 28px;
+    margin: 0 0 6px;
+    letter-spacing: -0.02em;
+  }
+  .lede {
+    font-family: var(--serif);
+    font-size: 19px; line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 760px;
+    margin: 0 0 48px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+  .card {
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-radius: 10px;
+    padding: 28px 30px;
+    display: flex; flex-direction: column; gap: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 200ms cubic-bezier(0.16,1,0.3,1);
+    position: relative;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+  }
+  .card .num {
+    position: absolute; top: 22px; right: 28px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-fade);
+    letter-spacing: 0.16em;
+    font-weight: 700;
+  }
+  .card .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .card h3 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 26px;
+    margin: 2px 0;
+    letter-spacing: -0.018em;
+  }
+  .card .desc {
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink-mute);
+  }
+  .card .spec {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--ink-rule);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-fade);
+    letter-spacing: 0.04em;
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .card .spec b { color: var(--ink); font-weight: 600; }
+  .card .arrow {
+    margin-top: auto;
+    align-self: flex-end;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Section */
+  .section + .section { margin-top: 64px; }
+  .section h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 22px;
+    margin: 0 0 14px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ink-rule);
+  }
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex; flex-direction: column; gap: 10px;
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 16px;
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-radius: 6px;
+  }
+  .checklist li::before {
+    content: '✓';
+    color: var(--ok);
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .checklist li b { color: var(--ink); font-weight: 600; }
+  .checklist .mono { font-family: var(--mono); font-size: 13px; color: var(--accent); background: rgba(45,74,62,0.08); padding: 2px 8px; border-radius: 3px; }
+
+  footer {
+    margin-top: 80px;
+    padding-top: 28px;
+    border-top: 1px solid var(--ink-rule);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-fade);
+    letter-spacing: 0.06em;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <img src="assets/madez-splatter.png" alt="Mad EZ Media" />
+  <div>
+    <div class="meta">Submission package · 4 deliverables · v1.0</div>
+    <h1>Lobster Trap <span class="accent">+ Crypt Keeper</span></h1>
+    <div class="meta" style="margin-top:8px;color:var(--accent);">IBM Bob Hackathon · May 15–17 2026 · Mad EZ Media</div>
+  </div>
+</header>
+
+<div class="eyebrow"><span class="dot"></span>READY FOR SUBMISSION</div>
+<p class="lede">Four hand-crafted assets, one editorial visual system, one narrative — Two-Routers-Compose Guardian Controller, authored by Bob, audited by ACMI. All sized exactly to lablab.ai spec.</p>
+
+<div class="grid">
+
+  <a class="card" href="cover.html" target="_blank">
+    <span class="num">01</span>
+    <span class="tag">COVER IMAGE · lablab.ai thumbnail</span>
+    <h3>Cover</h3>
+    <p class="desc">1280×720 — splatter lockup, Two-Routers diagram preview, stats strip. The first thing judges see in the project list.</p>
+    <div class="spec"><span><b>1280×720</b></span><span><b>PNG</b> export-ready</span><span>HTML source</span></div>
+    <span class="arrow">cover.html ↗</span>
+  </a>
+
+  <a class="card" href="pitch-deck.html" target="_blank">
+    <span class="num">02</span>
+    <span class="tag">PITCH DECK · 10 slides · 16:9</span>
+    <h3>Pitch Deck</h3>
+    <p class="desc">Title → Problem → Twist → Pattern → Bob in Action → Lobster Trap → Crypt Keeper → Live Case Study → Meta-Recursive Proof → Try It.</p>
+    <div class="spec"><span><b>1920×1080</b></span><span><b>10</b> slides</span><span>Print → Save as PDF</span></div>
+    <span class="arrow">pitch-deck.html ↗</span>
+  </a>
+
+  <a class="card" href="sizzle.html" target="_blank">
+    <span class="num">03</span>
+    <span class="tag">SIZZLE VIDEO · 45s vertical</span>
+    <h3>Sizzle (TikTok / Reels)</h3>
+    <p class="desc">High-energy 45s beat-driven montage. Cold open → "We said no" → 5-cut montage → diagram → npm → signoff. Screen-record for MP4.</p>
+    <div class="spec"><span><b>1080×1920</b></span><span><b>45s</b></span><span>9:16 vertical</span></div>
+    <span class="arrow">sizzle.html ↗</span>
+  </a>
+
+  <a class="card" href="slideshow-demo.html" target="_blank">
+    <span class="num">04</span>
+    <span class="tag">SLIDESHOW VIDEO · 4:50 demo</span>
+    <h3>Slideshow Demo</h3>
+    <p class="desc">Full 4-act walkthrough with burned-in VO captions matching Mikey's script. Press ▶ — visuals auto-advance, record voice on top, export MP4.</p>
+    <div class="spec"><span><b>1920×1080</b></span><span><b>4:50</b></span><span>VO captions burned-in</span></div>
+    <span class="arrow">slideshow-demo.html ↗</span>
+  </a>
+
+</div>
+
+<div class="section" style="margin-top:80px;">
+  <h2>Recording workflow (for the two video deliverables)</h2>
+  <ul class="checklist">
+    <li><b>Sizzle:</b> Open <span class="mono">sizzle.html</span>, hide playback bar via CSS or fullscreen, hit ▶, screen-record at 1080×1920. Auto-loops; one clean pass is the export.</li>
+    <li><b>Slideshow demo:</b> Open <span class="mono">slideshow-demo.html</span>, fullscreen, hit ▶. The VO captions are burned-in at the bottom-third — Mikey reads them in time as you screen-record. 4:50 total, fits the ≤5min cap with buffer.</li>
+    <li><b>Cover image:</b> Open <span class="mono">cover.html</span>, use the browser's "Capture screenshot" devtool (or any 1280×720 viewport capture) to export PNG.</li>
+    <li><b>Pitch deck PDF:</b> Open <span class="mono">pitch-deck.html</span>, press <span class="mono">Cmd/Ctrl+P</span> → Save as PDF (landscape, 0 margins). Deck-stage handles one-page-per-slide automatically.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>Visual system — at a glance</h2>
+  <ul class="checklist" style="grid-template-columns: 1fr 1fr; display: grid; gap: 10px;">
+    <li><b>Palette:</b> paper #faf9f5 · forest-green accent #2d4a3e · matches ops-center.html for judge continuity</li>
+    <li><b>Type:</b> Source Serif 4 (headlines) · Inter (UI) · JetBrains Mono (data, code, ACMI events)</li>
+    <li><b>Logomark:</b> Mad EZ Media splatter (pink/blue/yellow/purple) — used sparingly as a stamp</li>
+    <li><b>Stat anchors:</b> 104 tests · 12 commits · 85 min wall · 5 providers · 4 modes</li>
+  </ul>
+</div>
+
+<footer>
+  <span>Mad EZ Media · IBM Bob Hackathon 2026 · MIT</span>
+  <span>Submission url: <a href="https://acmi-product.vercel.app/lobster-trap.html">acmi-product.vercel.app/lobster-trap.html</a></span>
+</footer>
+
+</body>
+</html>

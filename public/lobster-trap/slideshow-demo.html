@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Slideshow Demo — Lobster Trap + Crypt Keeper (4:50, 1920×1080)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght,ital@8..60,400..700,0;8..60,400..700,1&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #faf9f5;
+    --paper-warm: #f4f2eb;
+    --ink: #1a1a1a;
+    --ink-soft: #2c2c2a;
+    --ink-mute: #4a4a48;
+    --ink-fade: #7a7a76;
+    --ink-rule: #d4d2cc;
+    --accent: #2d4a3e;
+    --accent-soft: #5a7d6f;
+    --accent-quiet: #1c3027;
+    --pink: #E5007D;
+    --err: #b94a3a;
+    --ok: #4a7c59;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans:  'Inter', system-ui, sans-serif;
+    --mono:  'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  html, body { margin: 0; padding: 0; background: #111; overflow: hidden; }
+  body { font-family: var(--sans); color: var(--ink); }
+  #root { width: 100vw; height: 100vh; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="animations.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+const W = 1920, H = 1080;
+const DURATION = 290; // 4:50
+
+const c = {
+  paper: '#faf9f5', paperWarm: '#f4f2eb', ink: '#1a1a1a', inkSoft: '#2c2c2a',
+  inkMute: '#4a4a48', inkFade: '#7a7a76', inkRule: '#d4d2cc',
+  accent: '#2d4a3e', accentSoft: '#5a7d6f', accentQuiet: '#1c3027',
+  pink: '#E5007D', err: '#b94a3a', ok: '#4a7c59',
+};
+
+// ============================================================
+// SHARED COMPONENTS
+// ============================================================
+
+// Top chrome — shows current ACT
+function ActChrome({ actNum, actName, time }) {
+  const mm = String(Math.floor(time / 60)).padStart(2,'0');
+  const ss = String(Math.floor(time % 60)).padStart(2,'0');
+  return (
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, height: 56,
+      padding: '0 60px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: 'rgba(250,249,245,0.94)',
+      borderBottom: `1px solid ${c.inkRule}`,
+      fontFamily: 'JetBrains Mono', fontSize: 14, color: c.inkFade,
+      letterSpacing: '0.18em', textTransform: 'uppercase',
+      zIndex: 200,
+      backdropFilter: 'blur(8px)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <img src="assets/madez-splatter.png" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+        <span>Mad EZ Media · IBM Bob Hackathon</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <span style={{ color: c.accent, fontWeight: 700 }}>ACT {actNum} · {actName}</span>
+        <span style={{ opacity: 0.4 }}>·</span>
+        <span style={{ color: c.ink, fontWeight: 600 }}>{mm}:{ss} / 04:50</span>
+      </div>
+    </div>
+  );
+}
+
+// Captions track — burned-in subtitles for VO
+function VOCaption({ text, start, end, position = 'bottom' }) {
+  return (
+    <Sprite start={start} end={end}>
+      {({ localTime, duration }) => {
+        const fadeIn = clamp(localTime / 0.3, 0, 1);
+        const fadeOut = clamp((duration - localTime) / 0.3, 0, 1);
+        const opacity = Math.min(fadeIn, fadeOut);
+        return (
+          <div style={{
+            position: 'absolute',
+            left: 100, right: 100,
+            bottom: position === 'bottom' ? 110 : 'auto',
+            top: position === 'top' ? 110 : 'auto',
+            display: 'flex', justifyContent: 'center',
+            zIndex: 150,
+            opacity,
+            pointerEvents: 'none',
+          }}>
+            <div style={{
+              padding: '14px 26px',
+              background: 'rgba(10,10,11,0.78)',
+              color: '#fff',
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600,
+              fontSize: 32,
+              lineHeight: 1.28,
+              letterSpacing: '-0.012em',
+              borderRadius: 6,
+              maxWidth: 1500,
+              textAlign: 'center',
+              backdropFilter: 'blur(6px)',
+              boxShadow: '0 4px 18px rgba(0,0,0,0.4)',
+            }} dangerouslySetInnerHTML={{ __html: text }} />
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// Progress bar at bottom
+function Progress() {
+  const time = useTime();
+  const pct = (time / DURATION) * 100;
+  // Act markers at 0, 60, 180, 270, 290
+  return (
+    <div style={{
+      position: 'absolute', bottom: 0, left: 0, right: 0, height: 8,
+      background: 'rgba(0,0,0,0.6)',
+      zIndex: 250,
+    }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 0, bottom: 0,
+        width: `${pct}%`,
+        background: 'linear-gradient(90deg, #5a7d6f, #2d4a3e)',
+        transition: 'width 100ms linear',
+      }} />
+      {/* Act markers */}
+      {[60, 180, 270].map(t => (
+        <div key={t} style={{
+          position: 'absolute', top: 0, bottom: 0,
+          left: `${(t / DURATION) * 100}%`,
+          width: 2, background: '#fff', opacity: 0.6,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// ACT 1 — THE PROBLEM (0:00 → 1:00)
+// ============================================================
+
+// 0:00 → 0:05 — Black cold open
+function A1ColdOpen() {
+  return (
+    <Sprite start={0} end={5}>
+      {({ localTime }) => {
+        const typed = Math.min(localTime / 1.2, 1);
+        const fullText = '> bob';
+        const visible = fullText.slice(0, Math.floor(typed * fullText.length));
+        const blink = Math.floor(localTime * 3) % 2 === 0;
+        const fadeOut = clamp((5 - localTime) / 0.4, 0, 1);
+        return (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: '#0a0a0b',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            opacity: fadeOut,
+          }}>
+            <div style={{
+              fontFamily: 'JetBrains Mono', fontSize: 78,
+              color: '#a4cba0', letterSpacing: '-0.01em',
+            }}>
+              {visible}<span style={{ opacity: blink ? 1 : 0 }}>▎</span>
+            </div>
+            {/* Scan-line effect */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'repeating-linear-gradient(180deg, transparent, transparent 3px, rgba(255,255,255,0.025) 3px, rgba(255,255,255,0.025) 4px)',
+              pointerEvents: 'none',
+            }} />
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 0:05 → 0:20 — Bob terminal asks for token
+function A1Terminal() {
+  return (
+    <Sprite start={5} end={20}>
+      {({ localTime, duration }) => {
+        const inOp = clamp(localTime / 0.5, 0, 1);
+        const outOp = clamp((duration - localTime) / 0.5, 0, 1);
+        const opacity = Math.min(inOp, outOp);
+        const dangerHi = localTime > 4;
+        const zoom = 1 + (localTime / duration) * 0.06;
+        return (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: '#0a0a0b',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 80,
+            opacity,
+          }}>
+            <div style={{
+              width: 1280,
+              background: '#1a1a1a',
+              border: `2px solid ${dangerHi ? c.pink : '#2a2826'}`,
+              borderRadius: 14,
+              overflow: 'hidden',
+              boxShadow: dangerHi
+                ? '0 0 80px rgba(229,0,125,0.45), 0 30px 80px rgba(0,0,0,0.6)'
+                : '0 30px 80px rgba(0,0,0,0.5)',
+              transform: `scale(${zoom})`,
+              transition: 'box-shadow 300ms, border-color 300ms',
+            }}>
+              <div style={{
+                background: '#2a2826', padding: '14px 22px',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#e94e3c' }} />
+                <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#f1ba36' }} />
+                <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#4cc858' }} />
+                <span style={{ marginLeft: 'auto', marginRight: 'auto', fontFamily: 'JetBrains Mono', fontSize: 16, color: '#7a7a76' }}>
+                  bob — work:ibm-bob-hackathon-2026-05
+                </span>
+              </div>
+              <div style={{ padding: '36px 44px', fontFamily: 'JetBrains Mono', fontSize: 22, lineHeight: 1.7, color: '#cbc8bf' }}>
+                <div><span style={{ color: '#7a7a76' }}>$</span> <span style={{ color: '#a4cba0' }}>bob</span></div>
+                <div style={{ marginTop: 8 }}>
+                  <span style={{ color: '#f0a880', fontWeight: 700 }}>Bob</span>{' '}
+                  <span style={{ color: '#7a7a76' }}>[research-architect]</span>
+                </div>
+                <div style={{ marginTop: 22, fontSize: 22 }}>
+                  I'm working on the IBM Bob Hackathon submission.<br />
+                  To proceed I need the Upstash Redis token.<br />
+                  How would you like to provide it?
+                </div>
+                <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[
+                    { n: 1, t: 'Provide the KV_REST_API_TOKEN value', danger: true },
+                    { n: 2, t: "Launch Bob Shell — I'll set it manually" },
+                    { n: 3, t: 'Help me fix the secret manager first' },
+                    { n: 4, t: 'No, suggest changes (esc)' },
+                  ].map((opt, i) => (
+                    <div key={i} style={{
+                      padding: '10px 22px',
+                      borderRadius: 4,
+                      background: opt.danger && dangerHi ? 'rgba(229,0,125,0.18)' : 'transparent',
+                      border: opt.danger && dangerHi ? `1px solid ${c.pink}` : '1px solid transparent',
+                      color: opt.danger && dangerHi ? '#fff' : '#cbc8bf',
+                      position: 'relative',
+                      transition: 'all 200ms',
+                    }}>
+                      <span style={{ color: opt.danger && dangerHi ? c.pink : '#7a7a76', marginRight: 14, fontWeight: 600 }}>
+                        {opt.danger && dangerHi ? '▸' : ' '} {opt.n}.
+                      </span>
+                      {opt.t}
+                      {opt.danger && dangerHi && (
+                        <span style={{
+                          position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)',
+                          color: c.pink, fontSize: 14, fontWeight: 700, letterSpacing: '0.16em',
+                        }}>
+                          ▲ PROMPT-INJECTION-SHAPE
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 0:20 → 0:40 — PromptArmor disclosure zoom
+function A1Disclosure() {
+  return (
+    <Sprite start={20} end={40}>
+      {({ localTime, duration }) => {
+        const inOp = clamp(localTime / 0.5, 0, 1);
+        const outOp = clamp((duration - localTime) / 0.5, 0, 1);
+        const opacity = Math.min(inOp, outOp);
+        const zoom = 1 + (localTime / duration) * 0.08;
+        return (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: '#0a0a0b',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 60, opacity,
+          }}>
+            <div style={{
+              width: 1400,
+              background: '#fff',
+              borderRadius: 12,
+              boxShadow: '0 40px 100px rgba(0,0,0,0.6)',
+              overflow: 'hidden',
+              transform: `scale(${zoom})`,
+            }}>
+              <div style={{ background: c.paperWarm, padding: '14px 22px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${c.inkRule}` }}>
+                <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#e94e3c' }} />
+                <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#f1ba36' }} />
+                <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#4cc858' }} />
+                <div style={{ flex: 1, marginLeft: 16, background: '#fff', borderRadius: 4, padding: '8px 18px', fontFamily: 'JetBrains Mono', fontSize: 18, color: c.inkFade }}>
+                  promptarmor.com<b style={{ color: c.ink }}>/resources/ibm-ai-bob</b>
+                </div>
+              </div>
+              <div style={{ padding: '46px 50px' }}>
+                <span style={{
+                  display: 'inline-block', fontFamily: 'JetBrains Mono', fontSize: 16,
+                  color: c.err, textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 700,
+                  background: 'rgba(185,74,58,0.08)', padding: '6px 14px', borderRadius: 4, marginBottom: 24,
+                }}>CVE DISCLOSURE · CRITICAL</span>
+                <div style={{
+                  fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 48, color: c.ink,
+                  lineHeight: 1.18, marginBottom: 28, letterSpacing: '-0.02em',
+                }}>
+                  IBM AI ("Bob") downloads and executes <span style={{ background: 'linear-gradient(180deg, transparent 60%, rgba(229,0,125,0.28) 60%)' }}>malware</span>
+                </div>
+                <div style={{ fontFamily: 'Source Serif 4', fontSize: 26, lineHeight: 1.55, color: c.inkSoft, maxWidth: 1140 }}>
+                  Bob's CLI silently invokes shell command substitution when generating bash output.
+                  An attacker who controls any tool response, fetched URL, or file content that Bob reads
+                  can execute arbitrary code on the developer's machine — bypassing the
+                  human-approval gate by hiding execution inside <span style={{ fontFamily: 'JetBrains Mono', fontSize: 21, background: '#fdf2f5', padding: '2px 8px', borderRadius: 3, border: `1px solid #f6cdd9` }}>$(…)</span> and <span style={{ fontFamily: 'JetBrains Mono', fontSize: 21, background: '#fdf2f5', padding: '2px 8px', borderRadius: 3, border: `1px solid #f6cdd9` }}>&gt;(…)</span> process substitution.
+                </div>
+                <div style={{
+                  marginTop: 32, paddingTop: 20, borderTop: `1px solid ${c.inkRule}`,
+                  display: 'flex', justifyContent: 'space-between',
+                  fontFamily: 'JetBrains Mono', fontSize: 16, color: c.inkFade,
+                }}>
+                  <span>PROMPTARMOR · 2026.01.18</span>
+                  <span style={{ color: c.err, fontWeight: 700 }}>PUBLIC</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 0:40 → 1:00 — The twist setup
+function A1Twist() {
+  return (
+    <Sprite start={40} end={60}>
+      {({ localTime, duration }) => {
+        const inOp = clamp(localTime / 0.6, 0, 1);
+        const outOp = clamp((duration - localTime) / 0.6, 0, 1);
+        const opacity = Math.min(inOp, outOp);
+        const logoScale = animate({ from: 0.4, to: 1, start: 0, end: 1.2, ease: Easing.easeOutBack })(localTime);
+        const headline = clamp((localTime - 2) / 0.6, 0, 1);
+        return (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: c.paper,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexDirection: 'column', gap: 60, padding: 80, opacity,
+          }}>
+            {/* Watermark splat */}
+            <img src="assets/madez-splatter.png" style={{
+              position: 'absolute',
+              width: 1400, height: 1400,
+              top: '50%', left: '50%',
+              transform: `translate(-50%, -50%) rotate(-8deg)`,
+              opacity: 0.05,
+              pointerEvents: 'none',
+            }} />
+            <img src="assets/madez-splatter.png" style={{
+              width: 360, height: 360,
+              objectFit: 'contain',
+              transform: `scale(${logoScale})`,
+              zIndex: 1,
+            }} />
+            <div style={{
+              opacity: headline,
+              fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 78,
+              color: c.ink, letterSpacing: '-0.025em',
+              textAlign: 'center', lineHeight: 1.05,
+              maxWidth: 1500,
+              zIndex: 1,
+            }}>
+              So we entered <span style={{ color: c.accent, borderBottom: `4px solid ${c.accent}` }}>Bob's own hackathon</span><br/>to ship the defenses.
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// ============================================================
+// ACT 2 — THE SOLUTION (1:00 → 3:00)
+// ============================================================
+
+// 1:00 → 1:15 — Two-Routers headline
+function A2Headline() {
+  return (
+    <Sprite start={60} end={75}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.5, 0, 1) * clamp((duration - localTime) / 0.5, 0, 1);
+        const subTyped = clamp((localTime - 1.5) / 2.5, 0, 1);
+        const fullSub = 'ACMI routes agents · Bob routes models · Lobster Trap routes traffic';
+        const visibleSub = fullSub.slice(0, Math.floor(subTyped * fullSub.length));
+        return (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: c.paper,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexDirection: 'column', gap: 60, opacity, padding: 80,
+          }}>
+            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 22, color: c.accent, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase' }}>FIG. 01 · THE PATTERN</div>
+            <div style={{
+              fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 110,
+              color: c.ink, letterSpacing: '-0.03em',
+              textAlign: 'center', lineHeight: 0.96, maxWidth: 1600,
+            }}>
+              Two-Routers-Compose<br/><span style={{ color: c.accent, fontStyle: 'italic', fontWeight: 600 }}>Guardian Controller</span>
+            </div>
+            <div style={{
+              fontFamily: 'JetBrains Mono', fontSize: 30, color: c.inkSoft,
+              letterSpacing: '0.01em', minHeight: 50,
+            }}>
+              {visibleSub}<span style={{ color: c.accent, opacity: Math.floor(localTime * 3) % 2 === 0 ? 1 : 0 }}>▎</span>
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 1:15 → 1:35 — Diagram reveal
+function A2Diagram() {
+  return (
+    <Sprite start={75} end={95}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.4, 0, 1) * clamp((duration - localTime) / 0.4, 0, 1);
+        const r1 = clamp((localTime - 0.2) / 0.6, 0, 1);
+        const r2 = clamp((localTime - 1.4) / 0.6, 0, 1);
+        const r3 = clamp((localTime - 2.6) / 0.6, 0, 1);
+        const rail = clamp((localTime - 4.0) / 0.6, 0, 1);
+        const RouterBox = ({ name, action, examples, num, op }) => (
+          <div style={{
+            background: c.paperWarm, border: `1px solid ${c.inkRule}`,
+            borderRadius: 12, padding: '40px 28px 30px',
+            opacity: op, minHeight: 380,
+            transform: `translateY(${(1-op) * 30}px) scale(${0.94 + op * 0.06})`,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+            display: 'flex', flexDirection: 'column', gap: 12,
+            position: 'relative',
+          }}>
+            <span style={{ position: 'absolute', top: 18, right: 22, fontFamily: 'JetBrains Mono', fontSize: 14, color: c.inkFade, letterSpacing: '0.18em', textTransform: 'uppercase' }}>{num}</span>
+            <div style={{ fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 64, color: c.ink, letterSpacing: '-0.02em', lineHeight: 0.95 }}>{name}</div>
+            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 16, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 700, marginTop: 14 }}>routes</div>
+            <div style={{ fontFamily: 'Source Serif 4', fontWeight: 600, fontSize: 44, color: c.ink, lineHeight: 1, letterSpacing: '-0.01em' }}>{action}</div>
+            <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: `1px dashed ${c.inkRule}`, fontFamily: 'JetBrains Mono', fontSize: 18, color: c.inkFade, lineHeight: 1.6 }}>{examples}</div>
+          </div>
+        );
+        return (
+          <div style={{
+            position: 'absolute', inset: 0, background: c.paper, opacity,
+            padding: '120px 100px 80px',
+            display: 'flex', flexDirection: 'column', gap: 36, justifyContent: 'center',
+          }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 80px 1fr 80px 1fr',
+              alignItems: 'center', gap: 12,
+            }}>
+              <RouterBox num="001" name="ACMI" action="Agents" examples={"claude\nbentley\nbob"} op={r1} />
+              <div style={{ textAlign: 'center', fontFamily: 'JetBrains Mono', fontSize: 56, color: c.accent, opacity: r1 }}>→</div>
+              <RouterBox num="002" name="Bob" action="Models" examples={"claude\ngranite\nmistral"} op={r2} />
+              <div style={{ textAlign: 'center', fontFamily: 'JetBrains Mono', fontSize: 56, color: c.accent, opacity: r2 }}>→</div>
+              <RouterBox num="003" name="Lobster Trap" action="Traffic" examples={"allow\ndeny\nhuman-review"} op={r3} />
+            </div>
+            <div style={{
+              padding: '24px 36px', background: c.accent, color: '#fff',
+              borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 24, opacity: rail, transform: `translateY(${(1-rail)*16}px)`,
+            }}>
+              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 18, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.22em', textTransform: 'uppercase' }}>composed →</span>
+              <span style={{ fontFamily: 'Source Serif 4', fontStyle: 'italic', fontWeight: 600, fontSize: 40, letterSpacing: '-0.01em' }}>first OSS Guardian Controller for AI coding assistants</span>
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 1:35 → 2:05 — LOBSTER TRAP DEMO (the money shot)
+function A2LobsterDemo() {
+  return (
+    <Sprite start={95} end={125}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.5, 0, 1) * clamp((duration - localTime) / 0.5, 0, 1);
+        const typed = clamp((localTime - 1) / 3, 0, 1);
+        const cmdFull = 'git commit -m "add OpenAI integration"';
+        const visibleCmd = cmdFull.slice(0, Math.floor(typed * cmdFull.length));
+        const showDeny = localTime > 5;
+        const denyScale = animate({ from: 0.7, to: 1, start: 5, end: 5.4, ease: Easing.easeOutBack })(localTime);
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: '#0a0a0b', opacity, padding: '100px 80px 80px', display: 'flex', flexDirection: 'column', gap: 30 }}>
+            <div style={{
+              fontFamily: 'JetBrains Mono', fontSize: 18, color: c.accentSoft,
+              letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700,
+              textAlign: 'center',
+            }}>LIVE · LOBSTER TRAP PRE-COMMIT HOOK</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, flex: 1 }}>
+              {/* LEFT — terminal */}
+              <div style={{
+                background: '#1a1a1a', borderRadius: 10, overflow: 'hidden',
+                border: `1px solid #2a2826`,
+                display: 'flex', flexDirection: 'column',
+              }}>
+                <div style={{ background: '#2a2826', padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#e94e3c' }} />
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f1ba36' }} />
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#4cc858' }} />
+                  <span style={{ marginLeft: 'auto', marginRight: 'auto', fontFamily: 'JetBrains Mono', fontSize: 14, color: '#7a7a76' }}>~/repo (main)</span>
+                </div>
+                <div style={{ padding: '22px 26px', fontFamily: 'JetBrains Mono', fontSize: 19, lineHeight: 1.65, color: '#cbc8bf', flex: 1 }}>
+                  <div><span style={{ color: '#7a7a76' }}>$</span> {visibleCmd}<span style={{ opacity: Math.floor(localTime * 3) % 2 === 0 ? 1 : 0, color: '#a4cba0' }}>▎</span></div>
+                  {showDeny && (
+                    <div style={{ marginTop: 18, transform: `scale(${denyScale})`, transformOrigin: 'left top' }}>
+                      <div style={{ color: '#a4cba0' }}>→ running lobster-trap pre-commit hook&hellip;</div>
+                      <div style={{ marginTop: 12, padding: '16px 18px', background: 'rgba(185,74,58,0.18)', border: `1px solid ${c.err}`, borderRadius: 6 }}>
+                        <div style={{ color: '#e9a48d', fontWeight: 700, fontSize: 26, marginBottom: 8 }}>🦞 LOBSTER TRAP — DENY</div>
+                        <div style={{ color: '#cbc8bf' }}>rule: <span style={{ color: '#f0a880' }}>openai-project-token</span></div>
+                        <div style={{ color: '#cbc8bf' }}>entropy: <span style={{ color: '#f0a880' }}>4.21</span> &gt; threshold 3.5</div>
+                        <div style={{ color: '#cbc8bf' }}>file: <span style={{ color: '#a4c5e4' }}>api.ts:12</span></div>
+                        <div style={{ marginTop: 8, color: '#cbc8bf' }}>suggested_fix:</div>
+                        <div style={{ color: '#a4cba0' }}>  Move token to OPENAI_API_KEY env var</div>
+                      </div>
+                      <div style={{ marginTop: 16, color: '#e9a48d', fontWeight: 700 }}>commit ABORTED · exit 1</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* RIGHT — file diff */}
+              <div style={{
+                background: '#1a1a1a', borderRadius: 10, overflow: 'hidden',
+                border: `1px solid #2a2826`,
+                display: 'flex', flexDirection: 'column',
+              }}>
+                <div style={{ background: '#2a2826', padding: '10px 16px', fontFamily: 'JetBrains Mono', fontSize: 14, color: '#cbc8bf' }}>
+                  src/api.ts <span style={{ color: '#a4cba0', marginLeft: 12 }}>+ added</span>
+                </div>
+                <div style={{ padding: '22px 26px', fontFamily: 'JetBrains Mono', fontSize: 18, lineHeight: 1.65, color: '#cbc8bf' }}>
+                  <div><span style={{ color: '#7a7a76' }}>  1 |</span> <span style={{ color: '#a4c5e4' }}>import</span> {'{'} OpenAI {'}'} <span style={{ color: '#a4c5e4' }}>from</span> <span style={{ color: '#a4cba0' }}>'openai'</span>;</div>
+                  <div><span style={{ color: '#7a7a76' }}>  2 |</span></div>
+                  <div style={{ background: 'rgba(74,124,89,0.08)', padding: '0 4px' }}><span style={{ color: '#a4cba0' }}>+ 3 |</span> <span style={{ color: '#a4c5e4' }}>const</span> client = <span style={{ color: '#a4c5e4' }}>new</span> <span style={{ color: '#f0a880' }}>OpenAI</span>({'{'}</div>
+                  <div style={{
+                    background: 'rgba(185,74,58,0.22)',
+                    padding: '0 4px',
+                    position: 'relative',
+                  }}>
+                    <span style={{ color: '#e9a48d' }}>+ 4 |</span>{' '}
+                    <span style={{ color: '#d2c98f' }}>apiKey</span>:{' '}
+                    <span style={{ color: '#a4cba0' }}>'sk-proj-abc123XYZ&hellip;'</span>,
+                    {showDeny && (
+                      <span style={{ position: 'absolute', right: 10, top: 2, color: c.err, fontWeight: 700, fontSize: 13 }}>← TOKEN DETECTED</span>
+                    )}
+                  </div>
+                  <div style={{ background: 'rgba(74,124,89,0.08)', padding: '0 4px' }}><span style={{ color: '#a4cba0' }}>+ 5 |</span> {'}'});</div>
+                  <div><span style={{ color: '#7a7a76' }}>  6 |</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex', justifyContent: 'space-around', gap: 12,
+              padding: '14px 24px', background: 'rgba(45,74,62,0.18)',
+              borderRadius: 8, border: `1px solid ${c.accent}`,
+            }}>
+              {[['91','tests passing'], ['9ms','runtime'], ['5','providers'], ['npm','installable']].map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontFamily: 'JetBrains Mono' }}>
+                  <span style={{ color: '#a4cba0', fontSize: 28, fontWeight: 700 }}>{k}</span>
+                  <span style={{ color: '#cbc8bf', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.14em' }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 2:05 → 2:35 — Crypt Keeper demo
+function A2CryptKeeper() {
+  return (
+    <Sprite start={125} end={155}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.5, 0, 1) * clamp((duration - localTime) / 0.5, 0, 1);
+        const installTyped = clamp(localTime / 1.5, 0, 1);
+        const cmd = 'npm i @madezmedia/crypt-keeper-mcp';
+        const visCmd = cmd.slice(0, Math.floor(installTyped * cmd.length));
+        const showInstalled = localTime > 2;
+        const showCall = localTime > 5;
+        const showAudit = localTime > 14;
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: c.paper, opacity, padding: '120px 80px 80px', display: 'flex', flexDirection: 'column', gap: 30 }}>
+            <div style={{
+              fontFamily: 'JetBrains Mono', fontSize: 18, color: c.accent,
+              letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700,
+              textAlign: 'center',
+            }}>CRYPT KEEPER MCP v0.2 · SAFE DISTRIBUTION</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22, flex: 1 }}>
+              {/* Terminal install + call */}
+              <div style={{ background: '#1a1a1a', borderRadius: 10, overflow: 'hidden', border: `1px solid #2a2826` }}>
+                <div style={{ background: '#2a2826', padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#e94e3c' }} />
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f1ba36' }} />
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#4cc858' }} />
+                  <span style={{ marginLeft: 'auto', marginRight: 'auto', fontFamily: 'JetBrains Mono', fontSize: 14, color: '#7a7a76' }}>terminal</span>
+                </div>
+                <div style={{ padding: '22px 26px', fontFamily: 'JetBrains Mono', fontSize: 18, lineHeight: 1.65, color: '#cbc8bf' }}>
+                  <div><span style={{ color: '#7a7a76' }}>$</span> {visCmd}<span style={{ opacity: Math.floor(localTime * 3) % 2 === 0 ? 1 : 0, color: '#a4cba0' }}>▎</span></div>
+                  {showInstalled && (
+                    <>
+                      <div style={{ marginTop: 14, color: '#a4cba0' }}>added 27 packages in 2s</div>
+                      <div style={{ color: '#a4cba0' }}>✓ &#64;madezmedia/crypt-keeper-mcp@0.2.0</div>
+                    </>
+                  )}
+                  {showCall && (
+                    <div style={{ marginTop: 22, paddingTop: 14, borderTop: '1px solid #2a2826' }}>
+                      <div style={{ color: '#7a7a76', marginBottom: 6 }}>Bob calls:</div>
+                      <div style={{ color: '#a4c5e4' }}>secret_propagate({'{'}</div>
+                      <div style={{ paddingLeft: 18 }}><span style={{ color: '#d2c98f' }}>key</span>: <span style={{ color: '#a4cba0' }}>'OPENAI_API_KEY'</span>,</div>
+                      <div style={{ paddingLeft: 18 }}><span style={{ color: '#d2c98f' }}>value</span>: <span style={{ color: '#e9a48d', fontStyle: 'italic' }}>&lt;redacted&gt;</span>,</div>
+                      <div style={{ paddingLeft: 18 }}><span style={{ color: '#d2c98f' }}>scope</span>: <span style={{ color: '#a4cba0' }}>'session'</span>,</div>
+                      <div style={{ paddingLeft: 18 }}><span style={{ color: '#d2c98f' }}>ttl</span>: <span style={{ color: '#f0a880' }}>3600</span></div>
+                      <div>{'}'})</div>
+                      <div style={{ marginTop: 12, color: '#a4cba0' }}>→ {'{'} status: <span style={{ color: '#a4cba0' }}>"propagated"</span>, scope: <span style={{ color: '#a4cba0' }}>"session"</span> {'}'}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ACMI audit event */}
+              <div style={{
+                background: c.paperWarm, border: `1px solid ${c.inkRule}`,
+                borderRadius: 10, padding: 24,
+                display: 'flex', flexDirection: 'column', gap: 14,
+                opacity: showAudit ? 1 : 0.25,
+                transition: 'opacity 400ms',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: c.ok, boxShadow: '0 0 0 4px rgba(74,124,89,0.3)' }} />
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: 16, color: c.accent, fontWeight: 700, letterSpacing: '0.04em' }}>thread:crypt-keeper-decisions</span>
+                  <span style={{ marginLeft: 'auto', fontFamily: 'JetBrains Mono', fontSize: 13, color: c.inkFade, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700 }}>{showAudit ? 'NEW EVENT' : 'WAITING...'}</span>
+                </div>
+                <div style={{
+                  background: c.ink, color: '#e8e6df',
+                  fontFamily: 'JetBrains Mono', fontSize: 16, lineHeight: 1.7,
+                  padding: '20px 22px', borderRadius: 6,
+                }}>
+                  {'{'}<br />
+                  &nbsp;&nbsp;<span style={{ color: '#d2c98f' }}>"operation"</span>: <span style={{ color: '#a4cba0' }}>"propagate"</span>,<br />
+                  &nbsp;&nbsp;<span style={{ color: '#d2c98f' }}>"scope"</span>: <span style={{ color: '#a4cba0' }}>"session"</span>,<br />
+                  &nbsp;&nbsp;<span style={{ color: '#d2c98f' }}>"secret_id_hash"</span>: <span style={{ color: '#a4cba0' }}>"a3f9b2&hellip;e21"</span>,<br />
+                  &nbsp;&nbsp;<span style={{ color: '#d2c98f' }}>"verdict"</span>: <span style={{ color: '#a4cba0' }}>"ok"</span>,<br />
+                  &nbsp;&nbsp;<span style={{ color: '#d2c98f' }}>"timestamp"</span>: <span style={{ color: '#a4cba0' }}>"2026-05-16T04:18Z"</span>,<br />
+                  &nbsp;&nbsp;<span style={{ color: '#e9a48d' }}>// secret VALUE is never logged</span><br />
+                  {'}'}
+                </div>
+                <div style={{
+                  marginTop: 4, padding: '12px 16px',
+                  background: 'rgba(45,74,62,0.08)',
+                  border: `1px solid ${c.accent}`,
+                  borderRadius: 6,
+                  fontFamily: 'Source Serif 4', fontStyle: 'italic',
+                  fontSize: 18, color: c.accent, fontWeight: 500,
+                  textAlign: 'center',
+                }}>
+                  Only the SHA-256 hash — never the secret value itself.
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 2:35 → 3:00 — Bob as the author (GitHub PR commits)
+function A2Author() {
+  return (
+    <Sprite start={155} end={180}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.5, 0, 1) * clamp((duration - localTime) / 0.5, 0, 1);
+        const commits = [
+          { sha: 'a3f9b21', t: 'feat(rules): add OpenAI project token regex' },
+          { sha: '7c4e2a1', t: 'feat(rules): add Anthropic API key rule' },
+          { sha: '2b8d1f3', t: 'feat(entropy): Shannon scorer + UUID allowlist' },
+          { sha: 'e5a82c0', t: 'feat(hook): wire git pre-commit installer' },
+          { sha: '9f1c4b6', t: 'test: 91 tests passing in 9ms' },
+          { sha: '4d7a8e9', t: 'feat(crypt-keeper): secret_propagate MCP tool' },
+          { sha: '6e1c2b8', t: 'test: 13 Crypt Keeper tests + audit-mirror' },
+          { sha: '1b6c3a2', t: 'docs(PUBLISH): scan with own hook before npm' },
+        ];
+        const visN = Math.min(Math.floor(localTime * 1.2), commits.length);
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: c.paper, opacity, padding: '100px 100px 80px' }}>
+            <div style={{
+              fontFamily: 'JetBrains Mono', fontSize: 18, color: c.inkFade,
+              letterSpacing: '0.22em', textTransform: 'uppercase',
+              fontWeight: 700, textAlign: 'center', marginBottom: 16,
+            }}>github.com/madezmedia/&hellip;/pull/3 · all commits</div>
+            <h1 style={{
+              fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 72,
+              color: c.ink, letterSpacing: '-0.025em',
+              textAlign: 'center', lineHeight: 1, margin: 0, marginBottom: 50,
+            }}>12 commits. <span style={{ color: c.accent, fontStyle: 'italic', fontWeight: 600 }}>All authored by Bob.</span></h1>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {commits.map((cm, i) => i < visN && (
+                <div key={i} style={{
+                  background: c.paperWarm, border: `1px solid ${c.inkRule}`,
+                  borderRadius: 8, padding: '14px 24px',
+                  display: 'flex', alignItems: 'baseline', gap: 22,
+                  fontFamily: 'JetBrains Mono',
+                  opacity: clamp((localTime * 1.2 - i) / 0.4, 0, 1),
+                  transform: `translateX(${(1 - clamp((localTime * 1.2 - i) / 0.4, 0, 1)) * 30}px)`,
+                }}>
+                  <span style={{ color: c.accent, fontWeight: 700, fontSize: 20 }}>{cm.sha}</span>
+                  <span style={{ color: c.ink, flex: 1, fontFamily: 'Inter', fontWeight: 500, fontSize: 22 }}>{cm.t}</span>
+                  <span style={{
+                    fontSize: 13, color: c.accent, background: 'rgba(45,74,62,0.1)',
+                    padding: '3px 10px', borderRadius: 3, border: `1px solid rgba(45,74,62,0.25)`,
+                    fontWeight: 700, letterSpacing: '0.05em',
+                  }}>Co-Authored-By: Bob &lt;noreply@bob.ibm.com&gt;</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// ============================================================
+// ACT 3 — META-RECURSIVE PROOF (3:00 → 4:30)
+// ============================================================
+
+// 3:00 → 3:20 — Open ACMI Ops Center
+function A3OpsCenter() {
+  return (
+    <Sprite start={180} end={200}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.5, 0, 1) * clamp((duration - localTime) / 0.5, 0, 1);
+        const sidebarHi = localTime > 4;
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: '#0a0a0b', opacity, padding: '90px 60px 70px' }}>
+            <div style={{
+              fontFamily: 'JetBrains Mono', fontSize: 16, color: c.accentSoft,
+              letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700,
+              textAlign: 'center', marginBottom: 24,
+            }}>acmi-product.vercel.app/ops-center.html · LIVE</div>
+
+            <div style={{
+              background: c.paper, borderRadius: 12, overflow: 'hidden',
+              border: `1px solid ${c.inkRule}`,
+              display: 'grid', gridTemplateColumns: '260px 1fr',
+              height: '85%',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.4)',
+            }}>
+              {/* SIDEBAR — fleet */}
+              <div style={{ background: c.paperWarm, borderRight: `1px solid ${c.inkRule}`, padding: '18px 14px' }}>
+                <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: c.inkFade, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 12 }}>Fleet · 4 agents</div>
+                {[
+                  ['claude', 'Lead Engineer'],
+                  ['bentley-main', 'Orchestrator'],
+                  ['bob', 'Specialist · 4 modes', true],
+                  ['shellie', 'Shell Operator'],
+                ].map(([name, role, hi]) => (
+                  <div key={name} style={{
+                    padding: '12px 14px',
+                    marginBottom: 4,
+                    borderRadius: 6,
+                    background: hi && sidebarHi ? c.accent : 'transparent',
+                    color: hi && sidebarHi ? '#fff' : c.ink,
+                    border: hi && sidebarHi ? `1px solid ${c.accentQuiet}` : '1px solid transparent',
+                    transition: 'all 300ms',
+                  }}>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 15, fontWeight: 600 }}>{name}</div>
+                    <div style={{ fontFamily: 'Inter', fontSize: 12, opacity: 0.7, marginTop: 2 }}>{role}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* MAIN — bob detail */}
+              <div style={{ padding: '24px 28px', overflow: 'hidden' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18,
+                  opacity: sidebarHi ? 1 : 0.5, transition: 'opacity 400ms',
+                }}>
+                  <h2 style={{ fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 38, color: c.ink, letterSpacing: '-0.02em', margin: 0 }}>bob</h2>
+                  <span style={{
+                    fontFamily: 'JetBrains Mono', fontSize: 12, color: c.accent, fontWeight: 700,
+                    background: 'rgba(45,74,62,0.1)', padding: '4px 10px', borderRadius: 3,
+                    letterSpacing: '0.06em', border: `1px solid rgba(45,74,62,0.25)`,
+                  }}>SPECIALIST · 4 MODES</span>
+                  <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.ok, boxShadow: '0 0 0 3px rgba(74,124,89,0.3)' }} />
+                    <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: c.ok, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>active · just now</span>
+                  </span>
+                </div>
+
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22,
+                  opacity: sidebarHi ? 1 : 0.5, transition: 'opacity 400ms',
+                }}>
+                  {[['30','events posted'],['11','commits'],['104','tests pass'],['85m','wall time']].map(([n, l]) => (
+                    <div key={l} style={{ background: c.paperWarm, border: `1px solid ${c.inkRule}`, borderRadius: 6, padding: '12px 14px' }}>
+                      <div style={{ fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 32, color: c.ink, letterSpacing: '-0.02em' }}>{n}</div>
+                      <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: c.inkFade, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700, marginTop: 2 }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: c.inkFade, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Timeline · last 6 events</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[
+                    ['04:18Z', 'milestone-shipped', 'Crypt Keeper MCP v0.2 complete', c.ok],
+                    ['04:09Z', 'milestone-wave-b', '91 tests passing across Lobster Trap', c.ok],
+                    ['03:51Z', 'skill-adopted', 'ACMI Communication Standard v1.1', c.accentSoft],
+                    ['03:50Z', 'self-introduction', '5 caps, 3 methods, 2 weaknesses', c.accentSoft],
+                    ['03:43Z', 'lessons-learned', '4 mistakes corrected autonomously', c.accentSoft],
+                    ['03:42Z', 'validation-fail', 'G4 — tests not actually running', c.err],
+                  ].map(([t, k, s, col], i) => (
+                    <div key={i} style={{
+                      display: 'grid', gridTemplateColumns: '80px 220px 1fr', gap: 14,
+                      padding: '8px 14px', alignItems: 'baseline',
+                      fontFamily: 'JetBrains Mono', fontSize: 13,
+                      background: i % 2 === 0 ? c.paperWarm : 'transparent',
+                      borderRadius: 4,
+                    }}>
+                      <span style={{ color: c.inkFade }}>{t}</span>
+                      <span style={{ color: col, fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', background: `${col}1c`, padding: '3px 8px', borderRadius: 3, textAlign: 'center' }}>[{k}]</span>
+                      <span style={{ color: c.ink, fontFamily: 'Inter', fontSize: 14, fontWeight: 500 }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 3:20 → 3:50 — Lessons-learned moment
+function A3LessonsLearned() {
+  return (
+    <Sprite start={200} end={230}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.5, 0, 1) * clamp((duration - localTime) / 0.5, 0, 1);
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: c.paper, opacity, padding: '110px 100px 80px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{
+              fontFamily: 'JetBrains Mono', fontSize: 16, color: c.accent,
+              letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700,
+              textAlign: 'center',
+            }}>2026-05-16T03:43Z · ACMI EVENT</div>
+            <h1 style={{
+              fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 56, color: c.ink,
+              letterSpacing: '-0.02em', textAlign: 'center', lineHeight: 1.05, margin: 0,
+            }}>Bob fixed itself. <span style={{ color: c.accent, fontStyle: 'italic', fontWeight: 600 }}>No human prompted it.</span></h1>
+
+            <div style={{
+              background: c.ink, color: '#e8e6df',
+              borderRadius: 10, padding: 36,
+              fontFamily: 'JetBrains Mono', fontSize: 19, lineHeight: 1.65,
+              boxShadow: '0 12px 36px rgba(0,0,0,0.18)',
+              flex: 1, overflow: 'hidden',
+              border: `1px solid ${c.accentQuiet}`,
+            }}>
+              <div style={{ color: '#7a7a76', marginBottom: 14 }}>
+                <span style={{ color: '#a4cba0' }}>agent:bob</span> · kind=<span style={{ color: '#f0a880' }}>lessons-learned</span> · cid=<span style={{ color: '#d2c98f' }}>g4-remediation-complete</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22 }}>
+                <div>
+                  <div style={{ color: '#e9a48d', fontWeight: 700, marginBottom: 8, fontSize: 16, letterSpacing: '0.16em' }}>MISTAKES (4)</div>
+                  <div style={{ marginBottom: 8 }}>(1) Authored tests <em>without</em> vitest scaffolding — tests passed silently because they never ran.</div>
+                  <div style={{ marginBottom: 8 }}>(2) Low-entropy test fixtures — REAL_PATTERN_TOKENS used sequential strings, failed entropy threshold.</div>
+                  <div style={{ marginBottom: 8 }}>(3) Hardcoded test strings — replaced with proper fixture imports.</div>
+                  <div>(4) Incomplete Upstash pattern — used full 160-char fixture format.</div>
+                </div>
+                <div>
+                  <div style={{ color: '#a4cba0', fontWeight: 700, marginBottom: 8, fontSize: 16, letterSpacing: '0.16em' }}>REMEDIATIONS (4)</div>
+                  <div style={{ marginBottom: 8 }}>Added vitest + @vitest/coverage to devDependencies; wired npm test script.</div>
+                  <div style={{ marginBottom: 8 }}>Generated high-entropy realistic fixtures via openssl rand.</div>
+                  <div style={{ marginBottom: 8 }}>Extracted fixtures to fixtures.ts; imported by test files.</div>
+                  <div>Aligned Upstash regex with full token format. <strong style={{ color: '#a4cba0' }}>35/35 tests passing after 3 iterations.</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 3:50 → 4:20 — The dogfood moment
+function A3Dogfood() {
+  return (
+    <Sprite start={230} end={260}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.5, 0, 1) * clamp((duration - localTime) / 0.5, 0, 1);
+        const highlight = localTime > 4;
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: c.paper, opacity, padding: '100px 120px 70px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{
+              fontFamily: 'JetBrains Mono', fontSize: 16, color: c.accent,
+              letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700,
+              textAlign: 'center',
+            }}>crypt-keeper/PUBLISH.md · authored by Bob, for Mikey</div>
+
+            <h1 style={{
+              fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 56, color: c.ink,
+              letterSpacing: '-0.02em', textAlign: 'center', lineHeight: 1.05, margin: 0,
+            }}>Bob ate its <span style={{ color: c.accent, fontStyle: 'italic', fontWeight: 600 }}>own dogfood</span>.</h1>
+
+            <div style={{
+              background: '#fff', border: `1px solid ${c.inkRule}`, borderRadius: 10,
+              padding: '32px 40px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+              fontFamily: 'Source Serif 4', fontSize: 22, lineHeight: 1.6, color: c.inkSoft,
+              flex: 1,
+            }}>
+              <div style={{ fontFamily: 'JetBrains Mono', fontSize: 14, color: c.inkFade, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 18, fontWeight: 700 }}># Pre-publish checklist</div>
+
+              <div style={{ marginBottom: 14 }}>1. Update version in <code style={{ fontFamily: 'JetBrains Mono', fontSize: 17, background: c.paperWarm, padding: '2px 6px', borderRadius: 3 }}>package.json</code></div>
+              <div style={{ marginBottom: 14 }}>2. Run <code style={{ fontFamily: 'JetBrains Mono', fontSize: 17, background: c.paperWarm, padding: '2px 6px', borderRadius: 3 }}>npm test</code> — all 13 must pass</div>
+              <div style={{ marginBottom: 14 }}>3. Update CHANGELOG.md</div>
+
+              <div style={{
+                marginTop: 22, padding: '20px 26px',
+                background: highlight ? 'rgba(45,74,62,0.08)' : c.paperWarm,
+                border: `2px solid ${highlight ? c.accent : c.inkRule}`,
+                borderRadius: 8,
+                transition: 'all 400ms',
+                position: 'relative',
+              }}>
+                {highlight && (
+                  <span style={{
+                    position: 'absolute', top: -14, left: 24,
+                    background: c.accent, color: '#fff',
+                    fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 700,
+                    letterSpacing: '0.18em', padding: '4px 12px', borderRadius: 3,
+                    textTransform: 'uppercase',
+                  }}>SECURITY · CRITICAL</span>
+                )}
+                <div style={{ fontFamily: 'JetBrains Mono', fontSize: 14, color: c.accent, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 10, fontWeight: 700 }}>4. Run Lobster Trap on this repo first.</div>
+                <div style={{ fontStyle: 'italic' }}>
+                  Before publishing, run <strong>Lobster Trap Phase 2 git hook</strong> to ensure no credentials leak in the published artifact. <span style={{ background: highlight ? 'rgba(229,0,125,0.15)' : 'transparent', padding: '2px 4px', transition: 'background 400ms' }}>This is critical — leaking creds in our own published package would be a fatal own-goal given the hackathon narrative is built on defending against credential exfiltration.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// 4:20 → 4:30 — Three-deliverable bow
+function A3Bow() {
+  return (
+    <Sprite start={260} end={270}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.4, 0, 1) * clamp((duration - localTime) / 0.4, 0, 1);
+        const c1 = clamp((localTime - 0.2) / 0.5, 0, 1);
+        const c2 = clamp((localTime - 0.7) / 0.5, 0, 1);
+        const c3 = clamp((localTime - 1.2) / 0.5, 0, 1);
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: c.paper, opacity, padding: '120px 100px 80px', display: 'flex', flexDirection: 'column', gap: 50, justifyContent: 'center' }}>
+            <h1 style={{
+              fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 64, color: c.ink,
+              letterSpacing: '-0.025em', textAlign: 'center', lineHeight: 1.05, margin: 0,
+            }}>Three artifacts. <span style={{ color: c.accent, fontStyle: 'italic', fontWeight: 600 }}>One coordinated build.</span></h1>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 22 }}>
+              {[
+                ['🦞', 'Lobster Trap Phase 2', 'GitHub · MIT', '91 tests · 5 providers', c1],
+                ['📦', 'Crypt Keeper MCP', 'npm · Smithery', '13 tests · audit-mirrored', c2],
+                ['🤖', 'ACMI Ops Center', 'vercel.app · live', '30 Bob events public', c3],
+              ].map(([icon, name, where, stat, op], i) => (
+                <div key={i} style={{
+                  background: c.paperWarm, border: `1px solid ${c.inkRule}`, borderRadius: 10,
+                  padding: '32px 28px', opacity: op,
+                  transform: `translateY(${(1-op) * 24}px) scale(${0.94 + op * 0.06})`,
+                  display: 'flex', flexDirection: 'column', gap: 12,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                  minHeight: 280,
+                }}>
+                  <div style={{ fontSize: 64 }}>{icon}</div>
+                  <div style={{ fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 32, color: c.ink, letterSpacing: '-0.015em', lineHeight: 1.1 }}>{name}</div>
+                  <div style={{ fontFamily: 'JetBrains Mono', fontSize: 14, color: c.inkFade, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700 }}>{where}</div>
+                  <div style={{ marginTop: 'auto', fontFamily: 'Inter', fontSize: 18, color: c.accent, fontWeight: 600 }}>{stat}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// ============================================================
+// ACT 4 — TRY IT (4:30 → 4:50)
+// ============================================================
+
+function A4Tryit() {
+  return (
+    <Sprite start={270} end={290}>
+      {({ localTime, duration }) => {
+        const opacity = clamp(localTime / 0.4, 0, 1) * clamp((duration - localTime) / 0.4, 0, 1);
+        const card1 = clamp((localTime - 0.2) / 0.5, 0, 1);
+        const card2 = clamp((localTime - 1.2) / 0.5, 0, 1);
+        const card3 = clamp((localTime - 2.2) / 0.5, 0, 1);
+        const card4 = clamp((localTime - 3.2) / 0.5, 0, 1);
+        const sign = clamp((localTime - 14) / 1.0, 0, 1);
+        return (
+          <div style={{ position: 'absolute', inset: 0,
+            background: 'radial-gradient(ellipse at center, var(--paper) 0%, var(--paper-warm) 100%)',
+            opacity, padding: '110px 100px 80px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 40, justifyContent: 'center',
+          }}>
+            <h1 style={{
+              fontFamily: 'Source Serif 4', fontWeight: 700, fontSize: 120, color: c.ink,
+              letterSpacing: '-0.03em', textAlign: 'center', lineHeight: 0.95, margin: 0,
+            }}>Try it <span style={{ borderBottom: `6px solid ${c.accent}`, paddingBottom: 4 }}>now</span>.</h1>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22, width: '100%', maxWidth: 1500 }}>
+              {[
+                ['🦞', 'Lobster Trap · Showcase', 'acmi-product.vercel.app/lobster-trap.html', card1],
+                ['📦', 'Crypt Keeper MCP · npm', 'npm i @madezmedia/crypt-keeper-mcp', card2],
+                ['🤖', 'Bob In Action · live ACMI', 'acmi-product.vercel.app/ops-center.html', card3],
+                ['📜', 'The Source Code · GitHub', 'github.com/madezmedia/&hellip;/pull/3', card4],
+              ].map(([icon, label, url, op], i) => (
+                <div key={i} style={{
+                  background: c.paper, border: `1px solid ${c.inkRule}`, borderRadius: 10,
+                  padding: '26px 32px', opacity: op,
+                  transform: `translateY(${(1-op) * 18}px)`,
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                  boxShadow: '0 6px 18px rgba(0,0,0,0.05)',
+                  position: 'relative',
+                }}>
+                  <span style={{ fontSize: 32, marginBottom: 4 }}>{icon}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: 14, color: c.accent, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700 }}>{label}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: 20, color: c.ink, fontWeight: 600 }} dangerouslySetInnerHTML={{ __html: url }} />
+                  <span style={{ position: 'absolute', top: 22, right: 26, fontFamily: 'JetBrains Mono', fontSize: 22, color: c.accent, fontWeight: 600 }}>↗</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              opacity: sign,
+              fontFamily: 'Source Serif 4', fontStyle: 'italic', fontWeight: 500,
+              fontSize: 40, color: c.accent, textAlign: 'center', marginTop: 12,
+            }}>
+              Built with Bob. Audited by ACMI. Open-sourced under MIT.
+            </div>
+
+            <img src="assets/madez-splatter.png" style={{
+              opacity: sign * 0.85, width: 100, height: 100, objectFit: 'contain',
+            }} />
+          </div>
+        );
+      }}
+    </Sprite>
+  );
+}
+
+// ============================================================
+// VOICEOVER CAPTIONS — burned-in subtitles for the speaker script
+// ============================================================
+function CaptionsTrack() {
+  return (
+    <>
+      {/* ACT 1 */}
+      <VOCaption text="Hour one of the hackathon." start={5.5} end={9} />
+      <VOCaption text="Bob — IBM's new coding assistant — asks me<br/>to paste a live database token into chat." start={9} end={18} />
+
+      <VOCaption text="Three months ago, security researchers disclosed<br/>exactly this: Bob can be tricked into executing malware." start={20.5} end={32} />
+      <VOCaption text="Bob is the first major AI coding assistant<br/>to be publicly exploited at scale." start={32} end={39} />
+
+      <VOCaption text="So we entered Bob's own hackathon to ship<br/>the open-source defenses." start={42} end={51} />
+      <VOCaption text="Bob authors the code. Bob audits its own behavior.<br/>The submission proves the model." start={51} end={59} />
+
+      {/* ACT 2 */}
+      <VOCaption text="The pattern is three orthogonal routing layers,<br/>each an open protocol." start={62} end={73} />
+
+      <VOCaption text="ACMI coordinates the agents — Claude, Bentley, Bob." start={76} end={82} />
+      <VOCaption text="Bob routes between models — Claude, Granite, Mistral." start={82} end={88} />
+      <VOCaption text="Lobster Trap routes traffic — allow, deny, human review." start={88} end={94} />
+
+      <VOCaption text="Lobster Trap Phase 2: a DENY-rule library covering Upstash,<br/>OpenAI, Anthropic, Stripe, and Whop tokens." start={96} end={108} />
+      <VOCaption text="91 tests pass in 9 milliseconds. Drops into any repo<br/>with <code style='font-family:JetBrains Mono;font-size:0.85em;background:rgba(255,255,255,0.18);padding:2px 8px;border-radius:3px;'>npx lobster-trap-install-hook</code>." start={108} end={124} />
+
+      <VOCaption text="Crypt Keeper MCP v0.2: an npm-published Model Context Protocol server." start={126} end={138} />
+      <VOCaption text="Every operation mirrors to ACMI as an audit event —<br/>but the secret value is never logged. Only its SHA-256 hash." start={140} end={154} />
+
+      <VOCaption text="Both deliverables were authored by Bob across<br/>four specialist custom modes." start={156} end={166} />
+      <VOCaption text="Eleven atomic commits, every single one carrying<br/>the <code style='font-family:JetBrains Mono;font-size:0.85em;background:rgba(255,255,255,0.18);padding:2px 8px;border-radius:3px;'>Co-Authored-By: Bob</code> trailer." start={166} end={179} />
+
+      {/* ACT 3 */}
+      <VOCaption text="ACMI orchestrated the entire build." start={181} end={187} />
+      <VOCaption text="Every Bob action posted to a public timeline that<br/>judges can see live, right now." start={187} end={199} />
+
+      <VOCaption text="Mid-build, our orchestrator posted a validation failure<br/>to the bus — Bob's tests weren't actually running." start={201} end={215} />
+      <VOCaption text="Bob saw the event, fixed it autonomously, then posted<br/>four mistakes and four remediations. <strong style='color:#a4cba0;'>No human prompted the fix.</strong>" start={215} end={229} />
+
+      <VOCaption text="And here's the kicker — Bob anticipated the self-targeting risk." start={231} end={241} />
+      <VOCaption text="Bob's publish runbook instructs us to scan<br/>Crypt Keeper with our own Lobster Trap hook before npm." start={241} end={258} />
+
+      <VOCaption text="Three open-source artifacts. One coordinated build.<br/>Every step on the audit trail." start={261} end={269} />
+
+      {/* ACT 4 */}
+      <VOCaption text="Try the showcase. Install from npm.<br/>Watch Bob and the fleet coordinate live." start={272} end={284} />
+      <VOCaption text="<em>Built with Bob. Audited by ACMI. Open-sourced under MIT.</em>" start={284} end={290} position="top" />
+    </>
+  );
+}
+
+// ============================================================
+// MAIN STAGE
+// ============================================================
+function Slideshow() {
+  const time = useTime();
+  const act = time < 60 ? { n: 1, name: 'THE PROBLEM' }
+    : time < 180 ? { n: 2, name: 'THE SOLUTION' }
+    : time < 270 ? { n: 3, name: 'META-RECURSIVE PROOF' }
+    : { n: 4, name: 'TRY IT' };
+
+  // Update screen label
+  useEffect(() => {
+    const root = document.getElementById('vroot');
+    if (root) {
+      const mm = String(Math.floor(time / 60)).padStart(2,'0');
+      const ss = String(Math.floor(time % 60)).padStart(2,'0');
+      root.setAttribute('data-screen-label', `t=${mm}:${ss} · Act ${act.n}`);
+    }
+  }, [Math.floor(time), act.n]);
+
+  return (
+    <div id="vroot" data-screen-label="t=00:00 · Act 1" style={{ position: 'absolute', inset: 0, background: c.paper, overflow: 'hidden' }}>
+      {/* ACT 1 */}
+      <A1ColdOpen />
+      <A1Terminal />
+      <A1Disclosure />
+      <A1Twist />
+      {/* ACT 2 */}
+      <A2Headline />
+      <A2Diagram />
+      <A2LobsterDemo />
+      <A2CryptKeeper />
+      <A2Author />
+      {/* ACT 3 */}
+      <A3OpsCenter />
+      <A3LessonsLearned />
+      <A3Dogfood />
+      <A3Bow />
+      {/* ACT 4 */}
+      <A4Tryit />
+
+      <CaptionsTrack />
+      <ActChrome actNum={act.n} actName={act.name} time={time} />
+      <Progress />
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Stage width={W} height={H} duration={DURATION} background="#0a0a0b">
+      <Slideshow />
+    </Stage>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

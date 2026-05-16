@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Cover — Lobster Trap + Crypt Keeper</title>
+<link rel="stylesheet" href="brand-tokens.css" />
+<style>
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #2a2a2a;
+    font-family: var(--sans);
+    color: var(--ink);
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+  }
+  .cover {
+    width: 1280px;
+    height: 720px;
+    background: var(--paper);
+    position: relative;
+    overflow: hidden;
+    /* paper texture */
+    background-image:
+      radial-gradient(ellipse at top right, rgba(45,74,62,0.04), transparent 60%),
+      radial-gradient(ellipse at bottom left, rgba(45,74,62,0.03), transparent 50%);
+  }
+
+  .grain {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0.12 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity: 0.6;
+    mix-blend-mode: multiply;
+  }
+
+  /* Header strip */
+  .header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    padding: 0 60px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--ink-rule);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-fade);
+  }
+  .header .left { display: flex; align-items: center; gap: 14px; }
+  .splatter-mini {
+    width: 28px; height: 28px;
+    object-fit: contain;
+  }
+  .header .right { display: flex; align-items: center; gap: 18px; }
+  .header .right .live::before {
+    content: ""; display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ok); margin-right: 6px;
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px rgba(74,124,89,0.18);
+  }
+
+  /* Main grid */
+  .body {
+    position: absolute;
+    inset: 56px 0 56px 0;
+    padding: 56px 60px 0;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 40px;
+  }
+
+  /* LEFT — title block */
+  .left-col {
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    font-weight: 600;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow .dot {
+    display: inline-block; width: 7px; height: 7px;
+    background: var(--accent); border-radius: 50%;
+  }
+  .title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 78px;
+    line-height: 0.96;
+    letter-spacing: -0.028em;
+    color: var(--ink);
+    margin: 24px 0 0;
+  }
+  .title .plus {
+    color: var(--accent);
+    font-weight: 400;
+    font-style: italic;
+    font-size: 0.78em;
+    vertical-align: 0.05em;
+    padding: 0 4px;
+  }
+  .rule {
+    width: 220px; height: 0;
+    border-top: 2px solid var(--accent);
+    margin: 28px 0 24px;
+  }
+  .subtitle {
+    font-family: var(--serif);
+    font-size: 22px;
+    line-height: 1.32;
+    color: var(--ink-soft);
+    max-width: 520px;
+    font-weight: 400;
+  }
+  .subtitle em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  /* Bottom meta strip on left */
+  .meta-block {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .meta-row {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-fade);
+    letter-spacing: 0.04em;
+  }
+  .meta-row strong { color: var(--ink); font-weight: 600; }
+
+  /* RIGHT — Two-routers-compose diagram card */
+  .diagram-card {
+    position: relative;
+    background: var(--paper-warm);
+    border: 1px solid var(--ink-rule);
+    border-radius: 8px;
+    padding: 30px 28px 24px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+    display: flex; flex-direction: column;
+    align-self: center;
+  }
+  .diagram-card .card-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ink-fade);
+    margin-bottom: 4px;
+  }
+  .diagram-card .card-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 19px;
+    color: var(--ink);
+    margin-bottom: 22px;
+    letter-spacing: -0.01em;
+  }
+  .diagram-card .card-title u {
+    text-decoration: none;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 1px;
+  }
+
+  .routers {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    position: relative;
+  }
+  .router {
+    background: var(--paper);
+    border: 1px solid var(--ink-rule);
+    border-radius: 6px;
+    padding: 14px 12px 12px;
+    display: flex; flex-direction: column; gap: 6px;
+    min-height: 130px;
+  }
+  .router .r-name {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .router .r-action {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-mute);
+    line-height: 1.35;
+  }
+  .router .r-action b {
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    display: inline-block;
+    margin-right: 3px;
+  }
+  .router .r-examples {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--ink-fade);
+    line-height: 1.45;
+    margin-top: auto;
+    letter-spacing: 0.01em;
+  }
+
+  /* Arrow chevrons between routers */
+  .routers::before,
+  .routers::after {
+    content: "→";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 18px;
+    z-index: 2;
+    background: var(--paper-warm);
+    padding: 0 2px;
+  }
+  .routers::before { left: 33.33%; transform: translate(-50%, -50%); }
+  .routers::after  { left: 66.66%; transform: translate(-50%, -50%); }
+
+  .guardian-band {
+    margin-top: 18px;
+    padding: 11px 14px;
+    background: var(--paper);
+    border: 1px solid var(--ink-rule);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px;
+  }
+  .guardian-band .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-fade);
+  }
+  .guardian-band .pattern {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--accent);
+  }
+
+  /* Stats strip below diagram */
+  .stats {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .stat {
+    text-align: left;
+  }
+  .stat .n {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .stat .n .unit { font-size: 14px; color: var(--ink-fade); margin-left: 2px; font-weight: 500; }
+  .stat .lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-fade);
+    margin-top: 4px;
+  }
+
+  /* Footer strip */
+  .footer {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    padding: 0 60px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--ink-rule);
+    background: linear-gradient(180deg, transparent, rgba(45,74,62,0.025));
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--ink-fade);
+  }
+  .footer .url { color: var(--accent); font-weight: 600; }
+  .footer .url::before { content: "↗ "; opacity: 0.7; }
+
+  /* Decorative side rule */
+  .side-rule {
+    position: absolute;
+    left: 60px; right: 60px;
+    top: 50%; transform: translateY(-50%);
+    height: 0; border-top: 1px dashed var(--ink-rule);
+    opacity: 0;
+  }
+
+</style>
+</head>
+<body>
+  <div class="cover">
+    <div class="grain"></div>
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="left">
+        <img src="assets/madez-splatter.png" alt="" class="splatter-mini" />
+        <span>Mad EZ Media</span>
+        <span style="opacity:.4">·</span>
+        <span>IBM Bob Hackathon</span>
+      </div>
+      <div class="right">
+        <span class="live">audit trail live</span>
+        <span style="opacity:.5">·</span>
+        <span>v1.0 · 2026.05.16</span>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="body">
+      <!-- LEFT -->
+      <div class="left-col">
+        <div>
+          <div class="eyebrow"><span class="dot"></span> OPEN SOURCE · MIT · BUILT WITH BOB</div>
+          <h1 class="title">Lobster&nbsp;Trap<br /><span class="plus">+</span>Crypt&nbsp;Keeper</h1>
+          <div class="rule"></div>
+          <p class="subtitle">
+            OSS defenses against <em>PromptArmor-class</em> vulnerabilities in AI coding assistants &mdash; authored by Bob, audited by ACMI.
+          </p>
+        </div>
+
+        <div class="meta-block">
+          <div class="meta-row"><strong>github.com</strong>/madezmedia/acmi-multi-agent-coordination-protocol</div>
+          <div class="meta-row"><strong>npm</strong> i @madezmedia/crypt-keeper-mcp · MIT · v0.2.0</div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="right-col" style="display:flex;flex-direction:column;justify-content:center;gap:0;">
+        <div class="diagram-card">
+          <div class="card-eyebrow">FIG. 01 — COMPOSITION</div>
+          <div class="card-title">The Two-Routers-Compose <u>Guardian Controller</u> pattern</div>
+
+          <div class="routers">
+            <div class="router">
+              <div class="r-name">ACMI</div>
+              <div class="r-action"><b>Routes</b><br/>Agents</div>
+              <div class="r-examples">claude<br/>bentley<br/>bob</div>
+            </div>
+            <div class="router">
+              <div class="r-name">Bob</div>
+              <div class="r-action"><b>Routes</b><br/>Models</div>
+              <div class="r-examples">claude<br/>granite<br/>mistral</div>
+            </div>
+            <div class="router">
+              <div class="r-name">Lobster<br/>Trap</div>
+              <div class="r-action"><b>Routes</b><br/>Traffic</div>
+              <div class="r-examples">allow<br/>deny<br/>review</div>
+            </div>
+          </div>
+
+          <div class="guardian-band">
+            <span class="label">Composed →</span>
+            <span class="pattern">first OSS Guardian Controller</span>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="n">104</div><div class="lbl">Tests passing</div></div>
+          <div class="stat"><div class="n">12</div><div class="lbl">Atomic commits</div></div>
+          <div class="stat"><div class="n">85<span class="unit">min</span></div><div class="lbl">Wall time</div></div>
+          <div class="stat"><div class="n">5</div><div class="lbl">Providers</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <span>IBM BOB HACKATHON 2026 · MAD EZ MEDIA · MIT LICENSE</span>
+      <span class="url">acmi-product.vercel.app/lobster-trap.html</span>
+    </div>
+  </div>
+</body>
+</html>
