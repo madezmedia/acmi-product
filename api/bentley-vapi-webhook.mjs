@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       {
         method: 'POST',
         headers: {
+          'Accept': 'application/json, text/event-stream',
           'Content-Type': 'application/json',
           'x-api-key': COMPOSIO_API_KEY,
         },
