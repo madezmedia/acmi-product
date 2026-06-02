@@ -33,12 +33,23 @@ async function callComposio(toolSlug, toolArgs) {
       try {
         const sse = JSON.parse(line.slice(6));
         const inner = sse?.result?.content?.[0]?.text;
-        if (inner) return JSON.parse(inner); // parse the inner JSON
+        if (inner) {
+          const data = JSON.parse(inner);
+          // Extract human-readable summary for voice
+          const msgs = data?.data?.results?.[0]?.response?.data?.messages;
+          if (msgs && Array.isArray(msgs)) {
+            return msgs.map(m => `${m.sender || '?'}: ${(m.subject || m.preview?.subject || 'no subject')}`).join('\n');
+          }
+          const answer = data?.data?.results?.[0]?.response?.data?.answer;
+          if (answer) return answer;
+          // Fallback: strip to essentials
+          return inner.slice(0, 2000);
+        }
         if (sse?.error) return `Error: ${sse.error.message || sse.error}`;
       } catch {}
     }
   }
-  return { result: 'Done.' };
+  return 'Done.';
 }
 
 export default async function handler(req, res) {
