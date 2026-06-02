@@ -71,12 +71,13 @@ export default async function handler(req, res) {
 
         const toolDef = TOOL_MAP[toolName];
         if (!toolDef) {
-          results.push({ toolCallId, result: { content: [{ type: 'text', text: `Unknown tool: ${toolName}` }] } });
+          results.push({ toolCallId, result: `Unknown tool: ${toolName}` });
           continue;
         }
 
         const resultText = await callComposio(toolDef.slug, toolDef.transform(toolArgs));
-        results.push({ toolCallId, result: { content: [{ type: 'text', text: JSON.stringify(resultText) }] } });
+const fl = typeof resultText === 'string' ? resultText : JSON.stringify(resultText);
+results.push({ toolCallId, result: fl.length > 3000 ? fl.slice(0, 3000) + '...' : fl });
       }
     } else {
       // Direct format fallback
@@ -88,20 +89,23 @@ export default async function handler(req, res) {
         const toolDef = TOOL_MAP[toolName];
         if (toolDef) {
           const resultText = await callComposio(toolDef.slug, toolDef.transform(toolArgs));
-          results.push({ toolCallId, result: { content: [{ type: 'text', text: JSON.stringify(resultText) }] } });
+        const flat = typeof resultText === 'string' ? resultText : JSON.stringify(resultText);
+        results.push({ toolCallId, result: flat.length > 3000 ? flat.slice(0, 3000) + '...' : flat });
         } else {
-          results.push({ toolCallId, result: { content: [{ type: 'text', text: `Unknown tool: ${toolName}` }] } });
+          results.push({ toolCallId, result: `Unknown tool: ${toolName}` });
         }
       }
     }
 
     // VAPI expects response per tool call
     if (results.length === 1) {
-      return res.status(200).json(results[0]);
+      // VAPI expects flat result string, not {content: [...]}
+      const single = results[0];
+      return res.status(200).json({ toolCallId: single.toolCallId, result: single.result || '' });
     }
-    return res.status(200).json({ results });
+    return res.status(200).json({ results: results.map(r => ({ toolCallId: r.toolCallId, result: r.result || '' })) });
   } catch (error) {
     console.error('[Bentley Tools] Fatal:', error.message);
-    return res.status(200).json({ toolCallId: 'error', result: { content: [{ type: 'text', text: `Error: ${error.message}` }] } });
+    return res.status(200).json({ toolCallId: 'error', result: `Error: ${error.message}` });
   }
 }
