@@ -44,6 +44,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ results: [{ toolCallId, result: `Unknown tool: ${toolName}` }] });
     }
 
+    // Add default task list ID for tasks
+    if (slug === 'GOOGLETASKS_INSERT_TASK') {
+      args.tasklist_id = args.tasklist_id || 'MTMwNTE3Mzk3OTE0NTA5MTI1NTI6MDow';
+    }
+
     // Call Composio
     const resp = await fetch(COMPOSIO_BASE, {
       method: 'POST',
