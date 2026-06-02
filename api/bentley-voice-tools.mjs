@@ -110,9 +110,8 @@ results.push({ toolCallId, result: fl.length > 3000 ? fl.slice(0, 3000) + '...' 
 
     // VAPI expects response per tool call
     if (results.length === 1) {
-      // VAPI expects flat result string, not {content: [...]}
       const single = results[0];
-      return res.status(200).json({ toolCallId: single.toolCallId, result: single.result || '' });
+      return res.status(200).json({ results: [{ toolCallId: single.toolCallId, result: single.result || '' }] });
     }
     return res.status(200).json({ results: results.map(r => ({ toolCallId: r.toolCallId, result: r.result || '' })) });
   } catch (error) {
