@@ -6,7 +6,7 @@
  * Accepts both VAPI format ({name, arguments, toolCallId}) and direct format ({tool, args}).
  */
 
-const COMPOSIO_API_KEY = process.env.COMPOSIO_API_KEY || 'ak_vaOPvXoztdPG9km0Oe4p';
+const COMPOSIO_API_KEY = process.env.COMPOSIO_API_KEY || 'ak_xHrrW-9SrFPEC1LPv6eJ';
 const COMPOSIO_SESSION = 'trs_LuHTrrdOQdEp';
 const COMPOSIO_BASE = `https://backend.composio.dev/tool_router/${COMPOSIO_SESSION}/mcp`;
 
@@ -51,6 +51,7 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
+    console.log(`[Bentley Tools] Received body:`, JSON.stringify(body).slice(0, 500));
     // Support both VAPI format {name, arguments, toolCallId} and direct {tool, args}
     const toolCallId = body.toolCallId || body.id || 'unknown';
     let toolName = body.name || body.tool;
