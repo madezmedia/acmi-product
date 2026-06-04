@@ -103,7 +103,7 @@ async function handleCallStarted(call, ts) {
     },
   });
 
-  return postEvent(ev, [TIMELINE_VAPI, TIMELINE_BENTLEY]);
+  return postEvent(ev, [TIMELINE_VAPI, TIMELINE_BENTLEY, "acmi:bus:relay:events"]);
 }
 
 async function handleCallEnded(call, ts) {
@@ -139,7 +139,7 @@ async function handleCallEnded(call, ts) {
     },
   });
 
-  return postEvent(ev, [TIMELINE_VAPI, TIMELINE_BENTLEY]);
+  return postEvent(ev, [TIMELINE_VAPI, TIMELINE_BENTLEY, "acmi:bus:relay:events"]);
 }
 
 async function handleMessage(payload, ts) {
@@ -165,7 +165,7 @@ async function handleMessage(payload, ts) {
     },
   });
 
-  return postEvent(ev, [TIMELINE_VAPI]); // messages don't broadcast to bentley to avoid noise
+  return postEvent(ev, [TIMELINE_VAPI, "acmi:bus:relay:events"]); // messages don't broadcast to bentley to avoid noise
 }
 
 async function handleStatusUpdate(call, ts) {
@@ -180,7 +180,7 @@ async function handleStatusUpdate(call, ts) {
     summary: summarize(`[vapi-status ${sessionId}] ${status}`),
     payload: { sessionId, status, ts_iso: new Date(ts).toISOString() },
   });
-  return postEvent(ev, [TIMELINE_VAPI]);
+  return postEvent(ev, [TIMELINE_VAPI, "acmi:bus:relay:events"]);
 }
 
 // ───── Main ─────
@@ -199,7 +199,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       service: "vapi-acmi-bridge",
-      target_timelines: [TIMELINE_VAPI, TIMELINE_BENTLEY],
+      target_timelines: [TIMELINE_VAPI, TIMELINE_BENTLEY, "acmi:bus:relay:events"],
       signature_required: !!VAPI_WEBHOOK_SECRET,
       ts: Date.now(),
     });
