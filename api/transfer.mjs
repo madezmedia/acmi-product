@@ -25,6 +25,7 @@
  *   4. Target ACKs via ACMI event: [file-transfer-ack @source] received
  */
 
+import Busboy from "@fastify/busboy";
 import { put } from "@vercel/blob";
 import { createHash } from "node:crypto";
 
@@ -54,49 +55,68 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "multipart/form-data required" });
     }
 
-    // Read the raw body chunks
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
+    const busboy = new Busboy({
+      headers: req.headers,
+      limits: {
+        fileSize: 50 * 1024 * 1024,
+        files: 1,
+      },
+    });
 
-    // Parse boundary from content-type
-    const boundary = contentType.split("boundary=")[1];
-    if (!boundary) {
-      return res.status(400).json({ error: "No boundary in content-type" });
-    }
-
-    // Simple multipart parser for the file field
-    const parts = buffer.toString("latin1").split(`--${boundary}`);
+    const fileChunks = [];
     let fileBuffer = null;
     let fileName = "transfer.bin";
     let target = "unknown";
     let description = "";
+    let sawFile = false;
+    let fileTooLarge = false;
 
-    for (const part of parts) {
-      if (part.includes('name="file"')) {
-        // Extract filename from Content-Disposition
-        const dispMatch = part.match(/filename="([^"]+)"/);
-        if (dispMatch) fileName = dispMatch[1];
+    await new Promise((resolve, reject) => {
+      busboy.on("file", (fieldname, file, filename) => {
+        if (fieldname !== "file") {
+          file.resume();
+          return;
+        }
 
-        // Extract file content (after double newline, before trailing --)
-        const contentStart = part.indexOf("\r\n\r\n") + 4;
-        const contentEnd = part.lastIndexOf("\r\n");
-        const rawContent = part.slice(contentStart, contentEnd < contentStart ? undefined : contentEnd);
-        fileBuffer = Buffer.from(rawContent, "latin1");
-      } else if (part.includes('name="target"')) {
-        const m = part.match(/\r\n\r\n(.+)/);
-        if (m) target = m[1].trim();
-      } else if (part.includes('name="description"')) {
-        const m = part.match(/\r\n\r\n(.+)/);
-        if (m) description = m[1].trim();
-      }
+        sawFile = true;
+        if (typeof filename === "string" && filename.trim()) {
+          fileName = filename;
+        }
+
+        file.on("data", (chunk) => {
+          fileChunks.push(chunk);
+        });
+
+        file.on("limit", () => {
+          fileTooLarge = true;
+          file.resume();
+        });
+
+        file.on("error", reject);
+      });
+
+      busboy.on("field", (fieldname, value) => {
+        if (fieldname === "target") {
+          target = value.trim();
+        } else if (fieldname === "description") {
+          description = value.trim();
+        }
+      });
+
+      busboy.on("error", reject);
+      busboy.on("finish", resolve);
+      req.pipe(busboy);
+    });
+
+    if (fileTooLarge) {
+      return res.status(413).json({ error: "file too large" });
     }
 
-    if (!fileBuffer) {
+    if (!sawFile) {
       return res.status(400).json({ error: "No file field in upload" });
     }
+
+    fileBuffer = Buffer.concat(fileChunks);
 
     // Generate a path: fleet-transfers/<target>/<date>/<filename>-<hash>
     const hash = createHash("sha256").update(fileBuffer).digest("hex").slice(0, 12);

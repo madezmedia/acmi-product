@@ -9,6 +9,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@fastify/busboy": "^2.1.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@upstash/vector": "^1.2.3",
     "@vercel/blob": "^1.1.1",

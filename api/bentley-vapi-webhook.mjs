@@ -6,7 +6,7 @@
  * Parses SSE responses correctly (Composio tool_router uses SSE transport)
  */
 
-const COMPOSIO_API_KEY = process.env.COMPOSIO_API_KEY || 'ak_vaOPvXoztdPG9km0Oe4p';
+const COMPOSIO_API_KEY = process.env.COMPOSIO_API_KEY || 'ak_xHrrW-9SrFPEC1LPv6eJ';
 const COMPOSIO_SESSION = 'trs_LuHTrrdOQdEp';
 const COMPOSIO_BASE = `https://backend.composio.dev/tool_router/${COMPOSIO_SESSION}/mcp`;
 
