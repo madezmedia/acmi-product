@@ -42,6 +42,9 @@ button:hover{background:var(--accent)}
 .err{padding:10px 12px;background:#fdeae6;border-left:3px solid var(--accent);color:var(--accent);font-size:13px;margin-bottom:14px;border-radius:3px}
 .foot{font-size:11px;color:var(--mut);margin-top:18px;border-top:1px solid var(--bord);padding-top:14px}
 .scope{display:inline-block;padding:2px 8px;background:#f5f1e6;border-radius:10px;font-size:11px;font-family:monospace;margin-right:4px}
+.backends{display:flex;gap:16px;margin-top:2px}
+.radio{display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink);margin:0}
+.hint{font-size:11px;color:var(--mut);margin-top:4px}
 </style>
 </head>
 <body>
@@ -55,18 +58,45 @@ button:hover{background:var(--accent)}
     <span class="scope">redirect: ${htmlEscape(new URL(params.redirect_uri).host)}</span>
   </div>
 
-  <label for="upstash_url">Upstash REST URL</label>
-  <input type="text" id="upstash_url" name="upstash_url" required placeholder="https://your-instance.upstash.io" pattern="https://.+\\.upstash\\.io/?" value="${htmlEscape(params.upstash_url_prefill || "")}">
+  <label>Redis backend</label>
+  <div class="backends">
+    <label class="radio"><input type="radio" name="backend" value="upstash" ${params.backend === "redis" ? "" : "checked"}> Upstash REST</label>
+    <label class="radio"><input type="radio" name="backend" value="redis" ${params.backend === "redis" ? "checked" : ""}> Self-hosted Redis</label>
+  </div>
 
-  <label for="upstash_token">Upstash REST Token</label>
-  <input type="password" id="upstash_token" name="upstash_token" required placeholder="Bearer token from Upstash console">
+  <div id="fields-upstash">
+    <label for="upstash_url">Upstash REST URL</label>
+    <input type="text" id="upstash_url" name="upstash_url" placeholder="https://your-instance.upstash.io" pattern="https://.+\\.upstash\\.io/?" value="${htmlEscape(params.upstash_url_prefill || "")}">
+
+    <label for="upstash_token">Upstash REST Token</label>
+    <input type="password" id="upstash_token" name="upstash_token" placeholder="Bearer token from Upstash console">
+  </div>
+
+  <div id="fields-redis" style="display:none">
+    <label for="redis_uri">Redis URI</label>
+    <input type="password" id="redis_uri" name="redis_uri" placeholder="rediss://:password@host:6379/0" value="${htmlEscape(params.redis_uri_prefill || "")}">
+    <div class="hint">redis:// or rediss:// — include the password in the URI. The server must be reachable from the public internet.</div>
+  </div>
 
   ${["client_id","redirect_uri","code_challenge","code_challenge_method","state","scope","response_type"].map(k=>`<input type="hidden" name="${k}" value="${htmlEscape(params[k]||"")}">`).join("")}
+
+  <script>
+  (function(){
+    var up=document.getElementById("fields-upstash"),rd=document.getElementById("fields-redis");
+    function sync(){
+      var v=document.querySelector('input[name="backend"]:checked').value;
+      up.style.display=v==="upstash"?"":"none";
+      rd.style.display=v==="redis"?"":"none";
+    }
+    document.querySelectorAll('input[name="backend"]').forEach(function(r){r.addEventListener("change",sync)});
+    sync();
+  })();
+  </script>
 
   <button type="submit" name="action" value="approve">Authorize</button>
   <button type="submit" name="action" value="deny" class="deny">Deny</button>
 
-  <div class="foot">Your Upstash credentials are stored encrypted-at-rest, scoped to this access token, and revoked when the token expires. Revoke any time in your Upstash console.</div>
+  <div class="foot">Your Redis credentials are stored encrypted-at-rest, scoped to this access token, and revoked when the token expires. Rotate your Redis password or Upstash token any time to revoke out-of-band.</div>
 </form>
 </body>
 </html>`;
@@ -133,33 +163,61 @@ export default async function handler(req, res) {
       return redirectError(res, body.redirect_uri, "access_denied", "user denied consent", body.state);
     }
 
-    const upstash_url = String(body.upstash_url || "").trim();
-    const upstash_token = String(body.upstash_token || "").trim();
-    if (!upstash_url || !upstash_token) {
-      const params = { ...body, client_name: v.client.client_name, upstash_url_prefill: upstash_url };
-      res.status(400).setHeader("Content-Type", "text/html; charset=utf-8").end(renderConsent({ params, error: "Both Upstash URL and token are required." }));
-      return;
-    }
+    const backendKind = body.backend === "redis" ? "redis" : "upstash";
+    const fail = (error, extra = {}) => {
+      const params = { ...body, client_name: v.client.client_name, ...extra };
+      res.status(400).setHeader("Content-Type", "text/html; charset=utf-8").end(renderConsent({ params, error }));
+    };
 
-    if (!/^https:\/\/[^\s/]+\.upstash\.io\/?$/.test(upstash_url)) {
-      const params = { ...body, client_name: v.client.client_name, upstash_url_prefill: upstash_url };
-      res.status(400).setHeader("Content-Type", "text/html; charset=utf-8").end(renderConsent({ params, error: "Upstash URL must look like https://<instance>.upstash.io" }));
-      return;
-    }
+    let backend;
+    let sub;
+    let upstash_url = null;
+    let upstash_token = null;
 
-    // Probe creds before issuing code so user gets immediate feedback on bad token.
-    try {
-      const probe = await fetch(upstash_url.replace(/\/$/, "") + "/", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${upstash_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(["PING"]),
-      });
-      const j = await probe.json();
-      if (j.error || j.result !== "PONG") throw new Error(j.error || "PING did not return PONG");
-    } catch (e) {
-      const params = { ...body, client_name: v.client.client_name, upstash_url_prefill: upstash_url };
-      res.status(400).setHeader("Content-Type", "text/html; charset=utf-8").end(renderConsent({ params, error: `Could not authenticate to Upstash: ${e.message}` }));
-      return;
+    if (backendKind === "redis") {
+      const redis_uri = String(body.redis_uri || "").trim();
+      if (!redis_uri) return fail("Redis URI is required.");
+      if (!/^rediss?:\/\/\S+$/i.test(redis_uri)) {
+        return fail("Redis URI must start with redis:// or rediss://");
+      }
+      let host;
+      try {
+        host = new URL(redis_uri).hostname;
+      } catch {
+        return fail("Redis URI is not a valid URI.");
+      }
+      // Probe before issuing code so user gets immediate feedback.
+      try {
+        const { probeNativeRedis } = await import("../_lib/redis-native.mjs");
+        await probeNativeRedis(redis_uri);
+      } catch (e) {
+        return fail(`Could not connect to Redis: ${e.message}`);
+      }
+      backend = { kind: "redis", uri: redis_uri };
+      sub = `redis:${host}`;
+    } else {
+      upstash_url = String(body.upstash_url || "").trim();
+      upstash_token = String(body.upstash_token || "").trim();
+      if (!upstash_url || !upstash_token) {
+        return fail("Both Upstash URL and token are required.", { upstash_url_prefill: upstash_url });
+      }
+      if (!/^https:\/\/[^\s/]+\.upstash\.io\/?$/.test(upstash_url)) {
+        return fail("Upstash URL must look like https://<instance>.upstash.io", { upstash_url_prefill: upstash_url });
+      }
+      // Probe creds before issuing code so user gets immediate feedback on bad token.
+      try {
+        const probe = await fetch(upstash_url.replace(/\/$/, "") + "/", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${upstash_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(["PING"]),
+        });
+        const j = await probe.json();
+        if (j.error || j.result !== "PONG") throw new Error(j.error || "PING did not return PONG");
+      } catch (e) {
+        return fail(`Could not authenticate to Upstash: ${e.message}`, { upstash_url_prefill: upstash_url });
+      }
+      backend = { kind: "upstash", url: upstash_url, token: upstash_token };
+      sub = `upstash:${new URL(upstash_url).hostname}`;
     }
 
     const code = await saveAuthCode({
@@ -170,7 +228,8 @@ export default async function handler(req, res) {
       scope: body.scope || "mcp",
       upstash_url,
       upstash_token,
-      sub: `upstash:${new URL(upstash_url).hostname}`,
+      backend,
+      sub,
     });
 
     const u = new URL(body.redirect_uri);

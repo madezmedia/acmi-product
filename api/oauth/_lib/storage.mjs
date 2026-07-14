@@ -23,7 +23,7 @@ const KEY = {
 
 const TTL = {
   code: 600,        // 10 min
-  access: 3600,     // 1 hr
+  access: 60 * 60 * 12, // 12 hr — 1 hr caused re-auth churn when clients missed a refresh
   refresh: 60 * 60 * 24 * 30, // 30 d
 };
 
@@ -103,14 +103,17 @@ export async function consumeAuthCode(code) {
 
 // ───── Access + refresh tokens ─────
 
-export async function mintTokens({ client_id, scope, upstash_url, upstash_token, sub }) {
+export async function mintTokens({ client_id, scope, upstash_url, upstash_token, backend, sub }) {
   const r = deployRedis();
   const access = randomToken(32);
   const refresh = randomToken(32);
   const issued_at = Math.floor(Date.now() / 1000);
 
-  const accessRecord = { client_id, scope, sub, upstash_url, upstash_token, issued_at, expires_at: issued_at + TTL.access };
-  const refreshRecord = { client_id, scope, sub, upstash_url, upstash_token, issued_at };
+  // `backend` is the generic credential blob ({kind:'upstash',url,token} or
+  // {kind:'redis',uri}); upstash_url/_token stay populated for the upstash
+  // kind so tokens minted here remain readable by pre-refactor code.
+  const accessRecord = { client_id, scope, sub, upstash_url, upstash_token, backend, issued_at, expires_at: issued_at + TTL.access };
+  const refreshRecord = { client_id, scope, sub, upstash_url, upstash_token, backend, issued_at };
 
   await r("SET", KEY.token(access), JSON.stringify(accessRecord), "EX", String(TTL.access));
   await r("SET", KEY.refresh(refresh), JSON.stringify(refreshRecord), "EX", String(TTL.refresh));

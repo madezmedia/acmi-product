@@ -11,11 +11,13 @@
 //      curl probes) get a hand-rolled JSON-RPC dispatcher returning plain
 //      application/json.
 //
-// Credential resolution:
-//   - Smithery: ?config=<base64> with upstashRedisRestUrl + upstashRedisRestToken
-//   - Direct (Claude Web): falls back to server env UPSTASH_REDIS_REST_URL /
-//     UPSTASH_REDIS_REST_TOKEN (deploy owner's tenant — same creds the
-//     read-only api/* edge endpoints already use)
+// Credential resolution (dual-backend: Upstash REST or self-hosted Redis):
+//   - Smithery: ?config=<base64> with upstashRedisRestUrl + upstashRedisRestToken,
+//     or redisUri for a self-hosted redis://... backend
+//   - Headers: x-upstash-url/x-upstash-token, or x-redis-uri
+//   - OAuth 2.1: consent form binds either backend to the access token
+//   - Break-glass: MCP_DIRECT_AUTH_TOKEN bearer + server env (ACMI_REDIS_URI
+//     preferred, else UPSTASH_REDIS_REST_URL/_TOKEN)
 //
 // Runtime: Node.js (the SDK needs Node http types).
 
@@ -31,7 +33,7 @@ export const config = {
   maxDuration: 60,
 };
 
-const SERVER_INFO = { name: "acmi", version: "1.3.0" };
+const SERVER_INFO = { name: "acmi", version: "1.5.0" };
 const PROTOCOL_VERSION = "2024-11-05";
 
 function decodeSmitheryConfig(req) {
@@ -47,10 +49,18 @@ function decodeSmitheryConfig(req) {
 }
 
 async function extractCreds(cfg, req) {
+  // Every branch returns a backend descriptor consumable by createRedis():
+  //   {url, token, ...}          — Upstash REST
+  //   {kind:'redis', uri, ...}   — self-hosted Redis over TCP
+
   // Priority 1a: x-from headers (Smithery gateway forwarding per configSchema
   // x-from declarations in mcp-tool-defs.mjs). This is the multi-user
-  // one-URL path — Smithery's hosted form collects per-user Upstash creds
-  // and injects them as headers when proxying to us.
+  // one-URL path — Smithery's hosted form collects per-user creds and
+  // injects them as headers when proxying to us.
+  const headerRedisUri = req.headers["x-redis-uri"] || null;
+  if (headerRedisUri) {
+    return { kind: "redis", uri: headerRedisUri, source: "header" };
+  }
   const headerUrl = req.headers["x-upstash-url"] || null;
   const headerToken = req.headers["x-upstash-token"] || null;
   if (headerUrl && headerToken) {
@@ -60,6 +70,10 @@ async function extractCreds(cfg, req) {
   // Priority 1b: per-request config blob via ?config=<base64> (legacy /
   // direct-with-embedded-creds path). Still works for clients that paste
   // a URL with the config query param baked in.
+  const cfgRedisUri = cfg.redisUri || cfg.REDIS_URI || null;
+  if (cfgRedisUri) {
+    return { kind: "redis", uri: cfgRedisUri, source: "config" };
+  }
   const cfgUrl =
     cfg.upstashRedisRestUrl ||
     cfg.UPSTASH_REDIS_REST_URL ||
@@ -82,8 +96,13 @@ async function extractCreds(cfg, req) {
   if (bearer) {
     try {
       const tok = await lookupAccessToken(bearer);
-      if (tok && tok.upstash_url && tok.upstash_token && (tok.expires_at ?? 0) > Math.floor(Date.now() / 1000)) {
-        return { url: tok.upstash_url, token: tok.upstash_token, source: "oauth", sub: tok.sub };
+      if (tok && (tok.expires_at ?? 0) > Math.floor(Date.now() / 1000)) {
+        if (tok.backend?.kind === "redis" && tok.backend.uri) {
+          return { kind: "redis", uri: tok.backend.uri, source: "oauth", sub: tok.sub };
+        }
+        if (tok.upstash_url && tok.upstash_token) {
+          return { url: tok.upstash_url, token: tok.upstash_token, source: "oauth", sub: tok.sub };
+        }
       }
     } catch {
       // fall through to env-bearer / anon
@@ -97,6 +116,9 @@ async function extractCreds(cfg, req) {
   // disabled entirely.
   const requiredToken = process.env.MCP_DIRECT_AUTH_TOKEN || null;
   if (requiredToken && bearer && bearer === requiredToken) {
+    if (process.env.ACMI_REDIS_URI) {
+      return { kind: "redis", uri: process.env.ACMI_REDIS_URI, source: "env-authed" };
+    }
     return {
       url: process.env.UPSTASH_REDIS_REST_URL || null,
       token: process.env.UPSTASH_REDIS_REST_TOKEN || null,
@@ -226,10 +248,12 @@ export default async function handler(req, res) {
     const method = req.body && req.body.method;
     const requiresAuth = req.method === "POST" && !PUBLIC_METHODS.has(method);
 
-    const { url, token, source, sub } = await extractCreds(cfg, req);
+    const backend = await extractCreds(cfg, req);
+    const { url, token, kind, uri, source, sub } = backend;
+    const hasCreds = (kind === "redis" && uri) || (url && token);
     let redis;
-    if (url && token) {
-      redis = createRedis({ url, token });
+    if (hasCreds) {
+      redis = createRedis(backend);
       res.setHeader("X-MCP-Cred-Source", source);
       if (sub) res.setHeader("X-MCP-Sub", sub);
     } else if (requiresAuth) {
