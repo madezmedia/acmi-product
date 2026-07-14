@@ -24,6 +24,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createRedis } from "./_lib/redis.mjs";
+import { nativeRedisCall } from "./_lib/redis-native.mjs";
 import { registerAcmiTools } from "./_lib/mcp-tools.mjs";
 import { TOOL_DEFS } from "./_lib/mcp-tool-defs.mjs";
 import { lookupAccessToken } from "./oauth/_lib/storage.mjs";
@@ -253,7 +254,9 @@ export default async function handler(req, res) {
     const hasCreds = (kind === "redis" && uri) || (url && token);
     let redis;
     if (hasCreds) {
-      redis = createRedis(backend);
+      redis = kind === "redis"
+        ? (...cmd) => nativeRedisCall(uri, ...cmd)
+        : createRedis({ url, token });
       res.setHeader("X-MCP-Cred-Source", source);
       if (sub) res.setHeader("X-MCP-Sub", sub);
     } else if (requiresAuth) {

@@ -53,29 +53,21 @@ export async function redis(instance, ...cmd) {
 }
 
 /**
- * Factory for arbitrary-tenant Redis clients. Used by the HTTP MCP route
- * (api/mcp.mjs) which receives creds per-request (Smithery config, headers,
- * or OAuth-bound token record) rather than from server-side env vars.
+ * Factory for arbitrary-tenant Upstash clients. Used by the HTTP MCP route
+ * (api/mcp.mjs) which receives Upstash creds per-request via Smithery's
+ * base64 config rather than from server-side env vars.
  *
- * Two backend shapes:
- *   {url, token}              — Upstash REST
- *   {kind:'redis', uri}       — self-hosted Redis over TCP (redis:// or rediss://)
+ * This file is imported by Edge Functions, so it must stay free of Node-only
+ * modules — the self-hosted-Redis backend lives in redis-native.mjs and is
+ * wired up only from Node-runtime routes (api/mcp.mjs, oauth/authorize.mjs).
  *
- * Pattern: const r = createRedis(backend); await r('GET', 'acmi:agent:foo:profile')
+ * Pattern: const r = createRedis({url, token}); await r('GET', 'acmi:agent:foo:profile')
  *
  * NEVER pass process.env.UPSTASH_REDIS_REST_URL into this — that would leak
  * the Mikey-tenant to Smithery-hosted clients. The MCP route is for
  * customer-supplied tenant creds only.
  */
-export function createRedis(backend) {
-  const { url, token, kind, uri } = backend || {};
-  if (kind === "redis" || (uri && !url)) {
-    if (!uri) throw new Error("createRedis: uri required for redis backend");
-    return async function redisCall(...cmd) {
-      const { nativeRedisCall } = await import("./redis-native.mjs");
-      return await nativeRedisCall(uri, ...cmd);
-    };
-  }
+export function createRedis({ url, token }) {
   if (!url || !token) {
     throw new Error("createRedis: url and token required");
   }
