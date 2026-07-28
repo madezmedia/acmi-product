@@ -23,7 +23,7 @@ async function acmiEvent(id, summary, kind = 'avery-call') {
   const ts = Date.now();
   const ev = JSON.stringify({ ts, source: 'agent:avery', kind, correlationId: `avery-${ts}`, summary });
   await redis(['ZADD', 'acmi:thread:agent-coordination:timeline', String(ts), ev]);
-  await redis(['ZADD', 'acmi:bus:relay:events', String(ts), ev]);
+  await redis(['ZADD', 'acmi:madez:bus:events', String(ts), ev]);
   return 'Logged to ACMI.';
 }
 

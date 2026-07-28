@@ -1,58 +1,105 @@
 /**
- * VAPI → Composio + ACMI Webhook Handler — v5 (VM Redis)
- * Routes VAPI calls to Composio (Gmail/Calendar/Tasks) + ACMI tools via VM Redis
+ * VAPI → Composio + ACMI Webhook Handler — v7
+ * Deploy to: https://acmi-product.vercel.app/api/bentley-voice-tools
+ *
+ * Accepts BOTH VAPI payload shapes:
+ *   1. MESSAGE-WRAPPER (what VAPI live calls actually send):
+ *      { message: { type: "tool-calls", toolCallList: [ { id, function: { name, arguments } } ] } }
+ *   2. FLAT (legacy / manual test):
+ *      { name, arguments, toolCallId }
+ *
+ * ALWAYS returns the VAPI-required response shape:
+ *   { results: [ { toolCallId, result: "<string>" } ] }
+ *
+ * Routes to:
+ *   - ACMI fleet tools (Status, Timeline, Signals, Memory, Rollup) via VM Redis REST bridge
+ *   - Composio tools (Gmail, Calendar, Tasks, Web, Maps) via tool_router MCP
  */
-const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp/mcp';
-const COMPOSIO_API_KEY = typeof process !== 'undefined' && process.env.COMPOSIO_API_KEY || 'ak_xHrrW-9SrFPEC1LPv6eJ';
-const VM_REDIS = 'http://152.53.201.27:8081/exec';
 
+// ─── Composio ─────────────────────────────────────────────────────────────────
+const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp/mcp';
+const COMPOSIO_API_KEY = (typeof process !== 'undefined' && process.env.COMPOSIO_API_KEY) || 'ak_elk9P6oo1zQJ27848GK7';
+
+// ─── ACMI (Self-hosted VM Redis REST bridge) ────────────────────────────────────
+const VM_REDIS = 'http://152.53.201.27:8081/exec';
+const VM_AUTH = 'Bearer self-hosted';
+const ACMI_BUS = 'acmi:madez:bus:events'; // canonical SoT zset
+
+// ─── Tool Map: VAPI tool name → Composio tool slug ──────────────────────────────
 const COMPOSIO_MAP = {
-  composioSendEmail: 'send an email via gmail', send_email: 'send an email via gmail', sendEmail: 'send an email via gmail',
-  composioReadEmail: 'read emails from gmail', read_email: 'read emails from gmail', readEmail: 'read emails from gmail',
-  fetch_emails: 'read emails from gmail', fetchEmails: 'read emails from gmail',
-  composioListEmail: 'list email threads in gmail', list_email: 'list email threads in gmail', listEmail: 'list email threads in gmail',
-  composioCheckCalendar: 'check google calendar events', check_calendar: 'check google calendar events',
-  checkCalendar: 'check google calendar events', get_calendar: 'check google calendar events',
-  composioCreateEvent: 'create a google calendar event', create_calendar_event: 'create a google calendar event',
-  createCalendarEvent: 'create a google calendar event', create_event: 'create a google calendar event',
-  composioAddTask: 'add a google task', add_task: 'add a google task', addTask: 'add a google task',
-  composioWebSearch: 'search the web', web_search: 'search the web', webSearch: 'search the web', search: 'search the web',
-  composioMapsSearch: 'search google maps', google_maps_search: 'search google maps',
-  googleMapsSearch: 'search google maps', maps_search: 'search google maps', mapsSearch: 'search google maps',
+  // Gmail — send
+  composioSendEmail: 'GMAIL_SEND_EMAIL',
+  send_email: 'GMAIL_SEND_EMAIL',
+  sendEmail: 'GMAIL_SEND_EMAIL',
+  // Gmail — read
+  composioReadEmail: 'GMAIL_FETCH_EMAILS',
+  read_email: 'GMAIL_FETCH_EMAILS',
+  readEmail: 'GMAIL_FETCH_EMAILS',
+  fetch_emails: 'GMAIL_FETCH_EMAILS',
+  fetchEmails: 'GMAIL_FETCH_EMAILS',
+  // Gmail — list threads
+  composioListEmail: 'GMAIL_LIST_THREADS',
+  list_email: 'GMAIL_LIST_THREADS',
+  listEmail: 'GMAIL_LIST_THREADS',
+  // Calendar — list
+  composioCheckCalendar: 'GOOGLECALENDAR_EVENTS_LIST',
+  check_calendar: 'GOOGLECALENDAR_EVENTS_LIST',
+  checkCalendar: 'GOOGLECALENDAR_EVENTS_LIST',
+  get_calendar: 'GOOGLECALENDAR_EVENTS_LIST',
+  // Calendar — create
+  composioCreateEvent: 'GOOGLECALENDAR_CREATE_EVENT',
+  create_calendar_event: 'GOOGLECALENDAR_CREATE_EVENT',
+  createCalendarEvent: 'GOOGLECALENDAR_CREATE_EVENT',
+  create_event: 'GOOGLECALENDAR_CREATE_EVENT',
+  // Tasks
+  composioAddTask: 'GOOGLETASKS_INSERT_TASK',
+  add_task: 'GOOGLETASKS_INSERT_TASK',
+  addTask: 'GOOGLETASKS_INSERT_TASK',
+  // Web search
+  composioWebSearch: 'WEB_SEARCH',
+  web_search: 'WEB_SEARCH',
+  webSearch: 'WEB_SEARCH',
+  search: 'WEB_SEARCH',
+  // Maps
+  composioMapsSearch: 'GOOGLE_MAPS_SEARCH',
+  google_maps_search: 'GOOGLE_MAPS_SEARCH',
+  googleMapsSearch: 'GOOGLE_MAPS_SEARCH',
+  maps_search: 'GOOGLE_MAPS_SEARCH',
+  mapsSearch: 'GOOGLE_MAPS_SEARCH',
 };
 
+// ─── Redis via VM REST Bridge ───────────────────────────────────────────────────
 async function redisCmd(...args) {
   try {
     const r = await fetch(VM_REDIS, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: VM_AUTH },
       body: JSON.stringify(args),
     });
     const text = await r.text();
     if (!text) return null;
-    // Handle Upstash RESP wrapped format {result: value}
+    // Upstash-style wrapped format: {"result": value}
     if (text.includes('result')) {
       try {
         const parsed = JSON.parse(text);
-        if (parsed.result !== undefined) {
-          const v = parsed.result;
-          // Integer
-          if (typeof v === 'number') return v;
-          // Array (multi-bulk)
-          if (Array.isArray(v)) return v;
-          // String
-          return v;
-        }
+        if (parsed && parsed.result !== undefined) return parsed.result;
       } catch {}
     }
-    // Plain integer
     const trimmed = text.trim();
+    // RESP integer (":40649") or plain integer
+    if (trimmed.startsWith(':')) return parseInt(trimmed.slice(1), 10);
     if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
-    // JSON array
-    if (text.startsWith('[')) { try { return JSON.parse(text); } catch { return text; } }
-    // Raw string
+    // RESP simple string / error
+    if (trimmed.startsWith('+')) return trimmed.slice(1).trim();
+    if (trimmed.startsWith('-')) return 'Redis error: ' + trimmed.slice(1).trim();
+    // JSON array / object
+    if (trimmed.startsWith('[') || trimmed.startsWith('*')) {
+      try { return JSON.parse(text); } catch { return text; }
+    }
     try { return JSON.parse(text); } catch { return text; }
-  } catch (e) { return 'VM Redis error: ' + e.message; }
+  } catch (e) {
+    return 'VM Redis error: ' + e.message;
+  }
 }
 
 function parseTimeline(raw) {
@@ -69,6 +116,7 @@ function safeStr(v) {
   return String(v);
 }
 
+// ─── Composio result formatter ──────────────────────────────────────────────────
 function formatResult(data) {
   if (!data) return 'OK';
   if (typeof data === 'string') return data.slice(0, 500);
@@ -83,10 +131,11 @@ function formatResult(data) {
   return s.length > 500 ? s.slice(0, 500) + '...' : s;
 }
 
+// ─── ACMI Tool Handlers ─────────────────────────────────────────────────────────
 const ACMI = {
   async acmiStatus() {
     const [b, c] = await Promise.all([
-      redisCmd('ZCARD', 'acmi:bus:relay:events'),
+      redisCmd('ZCARD', ACMI_BUS),
       redisCmd('ZCARD', 'acmi:thread:agent-coordination:timeline'),
     ]);
     return 'ACMI Fleet — Bus: ' + safeStr(b) + ' events, Coordination: ' + safeStr(c) + ' events. All systems operational.';
@@ -94,7 +143,7 @@ const ACMI = {
   async acmiLogCall({ caller, summary }) {
     const ts = Date.now();
     const evt = JSON.stringify({ ts, source: 'agent:bentley-voice', kind: 'milestone-shipped', correlationId: 'voiceCall-' + ts, summary: '[phone-call @bentley] ' + caller + ': ' + summary });
-    await Promise.all([redisCmd('ZADD', 'acmi:bus:relay:events', ts, evt), redisCmd('ZADD', 'acmi:thread:agent-coordination:timeline', ts, evt)]);
+    await Promise.all([redisCmd('ZADD', ACMI_BUS, ts, evt), redisCmd('ZADD', 'acmi:thread:agent-coordination:timeline', ts, evt)]);
     return 'Call logged: ' + caller + ' — ' + summary;
   },
   async acmiWriteEvent({ id, kind, summary, namespace }) {
@@ -102,7 +151,7 @@ const ACMI = {
     const ts = Date.now();
     const evt = JSON.stringify({ ts, source: 'agent:bentley-voice', kind, correlationId: 'voiceEvent-' + ts, summary: '[' + kind + ' @bentley] ' + summary });
     const key = namespace === 'agent' ? 'acmi:agent:' + id + ':timeline' : 'acmi:thread:' + id + ':timeline';
-    await Promise.all([redisCmd('ZADD', key, ts, evt), redisCmd('ZADD', 'acmi:bus:relay:events', ts, evt)]);
+    await Promise.all([redisCmd('ZADD', key, ts, evt), redisCmd('ZADD', ACMI_BUS, ts, evt)]);
     return 'Event written to ' + namespace + ':' + id + ' — ' + safeStr(summary).slice(0, 80);
   },
   async acmiReadContext({ id, namespace }) {
@@ -145,10 +194,10 @@ const ACMI = {
   },
   async acmiMemorySearch({ query, limit }) {
     limit = parseInt(limit, 10) || 5;
-    const raw = await redisCmd('ZREVRANGE', 'acmi:bus:relay:events', '0', '499', 'WITHSCORES');
+    const raw = await redisCmd('ZREVRANGE', ACMI_BUS, '0', '499', 'WITHSCORES');
     const matches = [];
     if (Array.isArray(raw)) {
-      const ql = query.toLowerCase();
+      const ql = (query || '').toLowerCase();
       for (let i = 0; i < raw.length; i += 2) {
         try {
           const e = JSON.parse(raw[i]);
@@ -166,111 +215,185 @@ const ACMI = {
   },
 };
 
+// ─── Composio tool executor ─────────────────────────────────────────────────────
+async function runComposio(name, args) {
+  const toolSlug = COMPOSIO_MAP[name];
+  if (!toolSlug) {
+    return 'Unknown tool: ' + name + '. ACMI: ' + Object.keys(ACMI).join(', ') + '. Composio: ' + Object.keys(COMPOSIO_MAP).join(', ') + '.';
+  }
+
+  // Normalize arguments to each Composio tool's schema
+  const params = {};
+  if (toolSlug === 'GMAIL_SEND_EMAIL') {
+    params.to = args.receiverEmail || args.to;
+    if (args.subject) params.subject = args.subject;
+    if (args.body) params.body = args.body;
+    if (args.cc) params.cc = Array.isArray(args.cc) ? args.cc : [args.cc];
+    if (args.bcc) params.bcc = Array.isArray(args.bcc) ? args.bcc : [args.bcc];
+    if (args.isHtml || args.is_html) params.is_html = true;
+  } else if (toolSlug === 'GOOGLECALENDAR_EVENTS_LIST') {
+    if (args.timeMin || args.time_min) params.time_min = args.timeMin || args.time_min;
+    if (args.timeMax || args.time_max) params.time_max = args.timeMax || args.time_max;
+    if (args.maxResults || args.max_results) params.max_results = args.maxResults || args.max_results;
+  } else if (toolSlug === 'GOOGLECALENDAR_CREATE_EVENT') {
+    if (args.summary) params.summary = args.summary;
+    if (args.start) params.start = args.start;
+    if (args.end) params.end = args.end;
+    if (args.description) params.description = args.description;
+    if (args.attendees) params.attendees = Array.isArray(args.attendees) ? args.attendees : [args.attendees];
+  } else {
+    Object.assign(params, args);
+  }
+
+  // Execute via COMPOSIO_MULTI_EXECUTE_TOOL (tool_router accepts a known slug directly)
+  const execR = await fetch(COMPOSIO_BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', 'x-api-key': COMPOSIO_API_KEY },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: { name: 'COMPOSIO_MULTI_EXECUTE_TOOL', arguments: { tools: [{ tool_slug: toolSlug, arguments: params }], sync_response_to_workbench: false } },
+      id: 2,
+    }),
+  });
+  const execText = await execR.text();
+
+  let out = '';
+  // SSE (text/event-stream) response
+  if (execText.includes('data: ')) {
+    for (const line of execText.split('\n')) {
+      if (line.startsWith('data: ')) {
+        try {
+          const d = JSON.parse(line.slice(6));
+          if (d.result?.content?.[0]?.text) {
+            try { out = formatResult(JSON.parse(d.result.content[0].text)); } catch { out = safeStr(d.result.content[0].text).slice(0, 1000); }
+          } else if (d.result) out = formatResult(d.result);
+        } catch {}
+      }
+    }
+  } else {
+    // Plain JSON response
+    try {
+      const d = JSON.parse(execText);
+      if (d.result?.content?.[0]?.text) {
+        try { out = formatResult(JSON.parse(d.result.content[0].text)); } catch { out = safeStr(d.result.content[0].text).slice(0, 1000); }
+      } else if (d.result) out = formatResult(d.result);
+    } catch { out = safeStr(execText).slice(0, 500); }
+  }
+  return out || ('Tool ' + toolSlug + ' executed.');
+}
+
+// ─── Dispatch a single tool call → result string ────────────────────────────────
+async function dispatch(name, args) {
+  if (!name) return 'Missing tool name in request.';
+  args = args || {};
+  try {
+    if (name.startsWith('acmi')) {
+      const fn = ACMI[name];
+      if (!fn) return 'Unknown ACMI tool: ' + name + '. Available: ' + Object.keys(ACMI).join(', ');
+      const out = String(await fn(args));
+      return out && out !== 'null' && out !== 'undefined' ? out : 'Done.';
+    }
+    const out = await runComposio(name, args);
+    return out && out !== 'null' && out !== 'undefined' ? out : 'Done.';
+  } catch (e) {
+    return 'Error executing ' + name + ': ' + e.message;
+  }
+}
+
+function coerceArgs(a) {
+  if (typeof a === 'string') { try { return JSON.parse(a); } catch { return {}; } }
+  return a || {};
+}
+
+/**
+ * Extract a normalized list of tool calls from ANY VAPI payload shape.
+ * Returns [{ name, args, toolCallId }]
+ */
+function extractToolCalls(body) {
+  if (!body || typeof body !== 'object') return [];
+  const msg = body.message;
+
+  // 1. MESSAGE-WRAPPER with toolCallList (VAPI live "tool-calls" event)
+  if (msg && Array.isArray(msg.toolCallList) && msg.toolCallList.length) {
+    return msg.toolCallList.map(tc => ({
+      name: tc.function?.name || tc.name,
+      args: coerceArgs(tc.function?.arguments ?? tc.arguments),
+      toolCallId: tc.id || tc.toolCallId,
+    }));
+  }
+  // 1b. OpenAI-style toolCalls array
+  if (msg && Array.isArray(msg.toolCalls) && msg.toolCalls.length) {
+    return msg.toolCalls.map(tc => ({
+      name: tc.function?.name || tc.name,
+      args: coerceArgs(tc.function?.arguments ?? tc.arguments),
+      toolCallId: tc.id || tc.toolCallId,
+    }));
+  }
+  // 1c. Single tool_call inside message
+  if (msg && (msg.tool_call || msg.functionCall)) {
+    const tc = msg.tool_call || msg.functionCall;
+    return [{
+      name: tc.function?.name || tc.name,
+      args: coerceArgs(tc.function?.arguments ?? tc.arguments ?? tc.parameters),
+      toolCallId: body.toolCallId || tc.id || msg.id,
+    }];
+  }
+  // 1d. Message present but name lives directly on it
+  if (msg && (msg.name || msg.functionName)) {
+    return [{
+      name: msg.name || msg.functionName,
+      args: coerceArgs(msg.arguments ?? msg.parameters),
+      toolCallId: body.toolCallId || msg.id,
+    }];
+  }
+
+  // 2. FLAT format: { name, arguments, toolCallId }
+  if (body.name) {
+    return [{
+      name: body.name,
+      args: coerceArgs(body.arguments),
+      toolCallId: body.toolCallId,
+    }];
+  }
+  return [];
+}
+
+// ─── Main Handler ───────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, accept');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method === 'GET') return res.status(200).json({ ok: true, service: 'bentley-voice-tools v5', acmi_tools: Object.keys(ACMI).length });
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      ok: true,
+      service: 'bentley-voice-tools v7',
+      acmi_tools: Object.keys(ACMI).length,
+      composio_tools: Object.keys(COMPOSIO_MAP).length,
+    });
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
 
   try {
-    const { name, arguments: args = {}, toolCallId } = req.body;
-    console.log('[bentley-voice-tools v5] ' + name);
-    let out = '';
+    const calls = extractToolCalls(req.body);
+    console.log('[bentley-voice-tools v7] ' + calls.length + ' tool call(s): ' + calls.map(c => c.name).join(', '));
 
-    if (name.startsWith('acmi')) {
-      const fn = ACMI[name];
-      out = fn ? String(await fn(args)) : 'Unknown ACMI tool: ' + name + '. Available: ' + Object.keys(ACMI).join(', ');
-    } else {
-      const query = COMPOSIO_MAP[name];
-      if (!query) return res.status(200).json({ toolCallId, result: { content: [{ type: 'text', text: 'Unknown tool: ' + name + '. ACMI: acmiStatus, acmiTimelineRead, acmiSignalGet, acmiWriteEvent, acmiMemorySearch, acmiLogCall.' }] } });
-
-      // Step 1: Search for the right tool
-      const searchR = await fetch(COMPOSIO_BASE, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', 'x-api-key': COMPOSIO_API_KEY }, body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', params: { name: 'COMPOSIO_SEARCH_TOOLS', arguments: { query } }, id: 1 }) });
-      const searchText = await searchR.text();
-      // Extract tool names from search result text
-      const toolMatches = [];
-      try {
-        for (const line of searchText.split('\n')) {
-          if (line.startsWith('data: ')) {
-            const d = JSON.parse(line.slice(6));
-            const text = d.result?.content?.[0]?.text || '';
-            const matches = text.match(/[A-Z][A-Z0-9_]{2,}/g) || [];
-            for (const m of matches) toolMatches.push(m);
-          }
-        }
-      } catch {}
-
-      // Pick best match: prefer exact toolkit names
-      const preferred = ['GMAIL_SEND_EMAIL','GMAIL_FETCH_EMAILS','GMAIL_LIST_THREADS','GOOGLECALENDAR_EVENTS_LIST','GOOGLECALENDAR_CREATE_EVENT','GOOGLETASKS_INSERT_TASK','WEB_SEARCH','GOOGLE_MAPS_SEARCH'];
-      let toolName = preferred.find(p => toolMatches.includes(p)) || null;
-
-      // Fallback: direct execution for known tools
-      if (!toolName) {
-        const directMap = { composioSendEmail:'GMAIL_SEND_EMAIL', send_email:'GMAIL_SEND_EMAIL', sendEmail:'GMAIL_SEND_EMAIL',
-          composioReadEmail:'GMAIL_FETCH_EMAILS', read_email:'GMAIL_FETCH_EMAILS', readEmail:'GMAIL_FETCH_EMAILS',
-          fetch_emails:'GMAIL_FETCH_EMAILS', fetchEmails:'GMAIL_FETCH_EMAILS',
-          composioListEmail:'GMAIL_LIST_THREADS', list_email:'GMAIL_LIST_THREADS', listEmail:'GMAIL_LIST_THREADS',
-          composioCheckCalendar:'GOOGLECALENDAR_EVENTS_LIST', check_calendar:'GOOGLECALENDAR_EVENTS_LIST', checkCalendar:'GOOGLECALENDAR_EVENTS_LIST', get_calendar:'GOOGLECALENDAR_EVENTS_LIST',
-          composioCreateEvent:'GOOGLECALENDAR_CREATE_EVENT', create_calendar_event:'GOOGLECALENDAR_CREATE_EVENT', createCalendarEvent:'GOOGLECALENDAR_CREATE_EVENT', create_event:'GOOGLECALENDAR_CREATE_EVENT',
-          composioAddTask:'GOOGLETASKS_INSERT_TASK', add_task:'GOOGLETASKS_INSERT_TASK', addTask:'GOOGLETASKS_INSERT_TASK',
-          composioWebSearch:'WEB_SEARCH', web_search:'WEB_SEARCH', webSearch:'WEB_SEARCH', search:'WEB_SEARCH',
-          composioMapsSearch:'GOOGLE_MAPS_SEARCH', google_maps_search:'GOOGLE_MAPS_SEARCH', googleMapsSearch:'GOOGLE_MAPS_SEARCH', maps_search:'GOOGLE_MAPS_SEARCH', mapsSearch:'GOOGLE_MAPS_SEARCH' };
-        toolName = directMap[name] || null;
-      }
-
-      if (!toolName) { out = 'Tool not found for: ' + query + '. Try rephrasing.'; }
-      else {
-        // Build normalized params per Composio schema
-        const params = {};
-        if (toolName === 'GMAIL_SEND_EMAIL') {
-          if (args.receiverEmail) params.to = args.receiverEmail;
-          else if (args.to) params.to = args.to;
-          if (args.subject) params.subject = args.subject;
-          if (args.body) params.body = args.body;
-          if (args.cc) params.cc = Array.isArray(args.cc) ? args.cc : [args.cc];
-          if (args.bcc) params.bcc = Array.isArray(args.bcc) ? args.bcc : [args.bcc];
-          if (args.isHtml || args.is_html) params.is_html = true;
-        } else if (toolName === 'GOOGLECALENDAR_EVENTS_LIST') {
-          if (args.timeMin) params.time_min = args.timeMin;
-          else if (args.time_min) params.time_min = args.time_min;
-          if (args.timeMax) params.time_max = args.timeMax;
-          else if (args.time_max) params.time_max = args.time_max;
-          if (args.maxResults) params.max_results = args.maxResults;
-          else if (args.max_results) params.max_results = args.max_results;
-        } else if (toolName === 'GOOGLECALENDAR_CREATE_EVENT') {
-          if (args.summary) params.summary = args.summary;
-          if (args.start) params.start = args.start;
-          if (args.end) params.end = args.end;
-          if (args.description) params.description = args.description;
-          if (args.attendees) params.attendees = Array.isArray(args.attendees) ? args.attendees : [args.attendees];
-        } else {
-          // Pass through as-is for other tools
-          Object.assign(params, args);
-        }
-        // Step 2: Execute via COMPOSIO_MULTI_EXECUTE_TOOL
-        const execR = await fetch(COMPOSIO_BASE, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', 'x-api-key': COMPOSIO_API_KEY }, body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', params: { name: 'COMPOSIO_MULTI_EXECUTE_TOOL', arguments: { tools: [{ tool_slug: toolName, arguments: params }], sync_response_to_workbench: false } }, id: 2 }) });
-        const execText = await execR.text();
-        for (const line of execText.split('\n')) {
-          if (line.startsWith('data: ')) {
-            try {
-              const d = JSON.parse(line.slice(6));
-              if (d.result?.content?.[0]?.text) {
-                try { out = formatResult(JSON.parse(d.result.content[0].text)); } catch { out = safeStr(d.result.content[0].text).slice(0, 1000); }
-              } else if (d.result) out = formatResult(d.result);
-            } catch {}
-          }
-        }
-        if (!out) out = 'Tool ' + toolName + ' executed.';
-      }
+    if (!calls.length) {
+      return res.status(200).json({ results: [{ toolCallId: req.body?.toolCallId || 'unknown', result: 'No tool call found in request.' }] });
     }
 
-    if (!out || out === 'null' || out === 'undefined') out = 'Done.';
-    console.log('[bentley-voice-tools v5] -> ' + out.slice(0, 150));
-    return res.status(200).json({ toolCallId, result: { content: [{ type: 'text', text: out.slice(0, 500) }] } });
+    const results = await Promise.all(calls.map(async (c) => ({
+      toolCallId: c.toolCallId,
+      result: (await dispatch(c.name, c.args)).slice(0, 800),
+    })));
+
+    console.log('[bentley-voice-tools v7] → ' + results.map(r => (r.result || '').slice(0, 80)).join(' || '));
+    // VAPI-required response shape.
+    return res.status(200).json({ results });
   } catch (e) {
-    console.error('[bentley-voice-tools v5] Error:', e);
-    return res.status(200).json({ toolCallId: req.body?.toolCallId, result: { content: [{ type: 'text', text: 'Error: ' + e.message }] } });
+    console.error('[bentley-voice-tools v7] Error:', e);
+    const fallbackId = req.body?.message?.toolCallList?.[0]?.id || req.body?.toolCallId || 'unknown';
+    return res.status(200).json({ results: [{ toolCallId: fallbackId, result: 'Error: ' + e.message + '. Please try again.' }] });
   }
 }
