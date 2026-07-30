@@ -7,10 +7,10 @@
 // both for resilience).
 //
 // Every event lands as an ACMI Comms v1.1 entry on:
-//   acmi:vapi:cps-conference:timeline  (per-call activity stream)
-//   acmi:agent:bentley:timeline        (so the agent's primary timeline
-//                                       surfaces voice activity alongside
-//                                       its other work)
+//   acmi:madez:vapi:cps-conference:timeline  (per-call activity stream)
+//   acmi:madez:agent:bentley:timeline        (so the agent's primary timeline
+//                                             surfaces voice activity alongside
+//                                             its other work)
 //
 // Optional verification: if VAPI_WEBHOOK_SECRET is set, the handler
 // requires `x-vapi-signature` to match. Unset → permissive (matches the
@@ -26,28 +26,39 @@ export const config = {
   maxDuration: 30,
 };
 
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const REDIS_URL = process.env.ACMI_BRIDGE_URL || "http://152.53.201.27:8081/";
+const REDIS_TOKEN = process.env.ACMI_BRIDGE_TOKEN || "vm-local-bridge";
 
 const VAPI_WEBHOOK_SECRET = process.env.VAPI_WEBHOOK_SECRET || null;
 
-const TIMELINE_VAPI = "acmi:vapi:cps-conference:timeline";
-const TIMELINE_BENTLEY = "acmi:agent:bentley:timeline";
+const TIMELINE_VAPI = "acmi:madez:vapi:cps-conference:timeline";
+const TIMELINE_BENTLEY = "acmi:madez:agent:bentley:timeline";
+const TIMELINE_COORD = "acmi:madez:thread:agent-coordination:timeline";
+const ACMI_BUS = "acmi:madez:bus:events";
+const BENTLEY_SIGNALS = "acmi:madez:agent:bentley:signals";
+const BENTLEY_ROLLUP_LATEST = "acmi:madez:agent:bentley:rollup:latest";
+const STAMP = {
+  acmi_version: "1.5",
+  comms_protocol: "v1.5",
+  comms_alignment: "active",
+  actor_type: "agent",
+  tenant_id: "madez",
+};
 
 async function redisCmd(...cmd) {
-  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-    throw new Error("Upstash creds missing from deploy env");
+  if (!REDIS_URL || !REDIS_TOKEN) {
+    throw new Error("ACMI bridge creds missing from deploy env");
   }
-  const res = await fetch(UPSTASH_URL.replace(/\/$/, "") + "/", {
+  const res = await fetch(REDIS_URL.replace(/\/$/, "") + "/", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${UPSTASH_TOKEN}`,
+      Authorization: `Bearer ${REDIS_TOKEN}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(cmd),
   });
   const body = await res.json();
-  if (body.error) throw new Error(`Upstash: ${body.error}`);
+  if (body.error) throw new Error(`ACMI bridge: ${body.error}`);
   return body.result;
 }
 
@@ -62,6 +73,8 @@ function envelope({ ts, source, kind, correlationId, summary, payload, parentCor
     ...(parentCorrelationId ? { parentCorrelationId } : {}),
     summary,
     ...(payload ? { payload } : {}),
+    ...STAMP,
+    surface: "vapi",
     tags: ["vapi-bridge", "bentley-cps-conference", "post-call"],
   };
 }
@@ -74,6 +87,51 @@ async function postEvent(ev, targets) {
     out.push({ key: t, zadd: r });
   }
   return out;
+}
+
+function parseJson(raw, fallback = {}) {
+  if (!raw || typeof raw !== "string") return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function mergeBentleySignals(patch) {
+  const type = await redisCmd("TYPE", BENTLEY_SIGNALS);
+  let current = {};
+  if (type === "string") current = parseJson(await redisCmd("GET", BENTLEY_SIGNALS), {});
+  if (type === "hash") {
+    const raw = await redisCmd("HGETALL", BENTLEY_SIGNALS);
+    for (let i = 0; i < (raw || []).length; i += 2) current[raw[i]] = raw[i + 1];
+    const ts = Date.now();
+    await redisCmd("SET", `${BENTLEY_SIGNALS}:legacy-hash-backup:${ts}`, JSON.stringify(current));
+    await redisCmd("DEL", BENTLEY_SIGNALS);
+  }
+  await redisCmd("SET", BENTLEY_SIGNALS, JSON.stringify({
+    ...current,
+    ...patch,
+    ...STAMP,
+    updated_at: new Date().toISOString(),
+  }));
+}
+
+async function writeBentleyRollup(data) {
+  const ts = Date.now();
+  const payload = JSON.stringify({
+    ...data,
+    ...STAMP,
+    agent_id: "bentley",
+    source: "agent:bentley",
+    surface: "vapi",
+    updated_at: new Date(ts).toISOString(),
+  });
+  await Promise.all([
+    redisCmd("SET", BENTLEY_ROLLUP_LATEST, payload),
+    redisCmd("SET", `acmi:madez:agent:bentley:rollup:${ts}`, payload),
+  ]);
 }
 
 function summarize(s, n = 240) {
@@ -90,10 +148,10 @@ async function handleCallStarted(call, ts) {
 
   const ev = envelope({
     ts,
-    source: "vapi-bridge",
-    kind: "vapi-call-started",
+    source: "agent:bentley",
+    kind: "spawn",
     correlationId: `vapi-call-${sessionId}`,
-    summary: `[vapi-call-started] sessionId=${sessionId} phone=${phone}`,
+    summary: `[spawn @fleet] Bentley voice call started. sessionId=${sessionId} phone=${phone}`,
     payload: {
       sessionId,
       phone,
@@ -103,7 +161,15 @@ async function handleCallStarted(call, ts) {
     },
   });
 
-  return postEvent(ev, [TIMELINE_VAPI, TIMELINE_BENTLEY, "acmi:madez:bus:events"]);
+  await mergeBentleySignals({
+    status: "on-call",
+    current_surface: "vapi",
+    current_call_session_id: sessionId,
+    current_call_phone: phone,
+    last_call_started_at: new Date(ts).toISOString(),
+  });
+
+  return postEvent(ev, [TIMELINE_VAPI, TIMELINE_BENTLEY, TIMELINE_COORD, ACMI_BUS]);
 }
 
 async function handleCallEnded(call, ts) {
@@ -119,11 +185,11 @@ async function handleCallEnded(call, ts) {
 
   const ev = envelope({
     ts,
-    source: "vapi-bridge",
-    kind: "vapi-call-ended",
+    source: "agent:bentley",
+    kind: "call-summary",
     correlationId: `vapi-call-${sessionId}`,
     parentCorrelationId: `vapi-call-${sessionId}`,
-    summary: summarize(`[vapi-call-ended] ${sessionId} · ${duration ?? "?"}s · ${endedReason ?? "ok"} ${summary ? "· " + summary : ""}`, 480),
+    summary: summarize(`[call-summary @mikey] Bentley voice call ended. ${duration ?? "?"}s · ${endedReason ?? "ok"} ${summary ? "· " + summary : ""}`, 480),
     payload: {
       sessionId,
       phone,
@@ -139,7 +205,23 @@ async function handleCallEnded(call, ts) {
     },
   });
 
-  return postEvent(ev, [TIMELINE_VAPI, TIMELINE_BENTLEY, "acmi:madez:bus:events"]);
+  await mergeBentleySignals({
+    status: "available",
+    current_surface: "vapi",
+    current_call_session_id: "",
+    last_call_session_id: sessionId,
+    last_call_phone: phone,
+    last_call_ended_at: new Date(ts).toISOString(),
+  });
+  await writeBentleyRollup({
+    session_summary: summary || `Bentley voice call ended. duration=${duration ?? "unknown"}s reason=${endedReason ?? "ok"}`,
+    decisions_made: [],
+    open_blockers: [],
+    next_session_priorities: [],
+    key_correlation_ids: [`vapi-call-${sessionId}`],
+  });
+
+  return postEvent(ev, [TIMELINE_VAPI, TIMELINE_BENTLEY, TIMELINE_COORD, ACMI_BUS]);
 }
 
 async function handleMessage(payload, ts) {
@@ -153,7 +235,7 @@ async function handleMessage(payload, ts) {
 
   const ev = envelope({
     ts,
-    source: "vapi-bridge",
+    source: "agent:bentley",
     kind: "vapi-message",
     correlationId: `vapi-msg-${sessionId}-${ts}`,
     parentCorrelationId: `vapi-call-${sessionId}`,
@@ -165,7 +247,7 @@ async function handleMessage(payload, ts) {
     },
   });
 
-  return postEvent(ev, [TIMELINE_VAPI, "acmi:madez:bus:events"]); // messages don't broadcast to bentley to avoid noise
+  return postEvent(ev, [TIMELINE_VAPI, ACMI_BUS]); // messages don't broadcast to bentley to avoid noise
 }
 
 async function handleStatusUpdate(call, ts) {
@@ -173,14 +255,14 @@ async function handleStatusUpdate(call, ts) {
   const status = call?.status || "?";
   const ev = envelope({
     ts,
-    source: "vapi-bridge",
+    source: "agent:bentley",
     kind: "vapi-status-update",
     correlationId: `vapi-status-${sessionId}-${ts}`,
     parentCorrelationId: `vapi-call-${sessionId}`,
     summary: summarize(`[vapi-status ${sessionId}] ${status}`),
     payload: { sessionId, status, ts_iso: new Date(ts).toISOString() },
   });
-  return postEvent(ev, [TIMELINE_VAPI, "acmi:madez:bus:events"]);
+  return postEvent(ev, [TIMELINE_VAPI, ACMI_BUS]);
 }
 
 // ───── Main ─────
@@ -199,7 +281,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       service: "vapi-acmi-bridge",
-      target_timelines: [TIMELINE_VAPI, TIMELINE_BENTLEY, "acmi:madez:bus:events"],
+      target_timelines: [TIMELINE_VAPI, TIMELINE_BENTLEY, TIMELINE_COORD, ACMI_BUS],
+      acmi_bridge: REDIS_URL.replace(/\/$/, "") + "/",
       signature_required: !!VAPI_WEBHOOK_SECRET,
       ts: Date.now(),
     });
@@ -256,13 +339,13 @@ export default async function handler(req, res) {
         result = await postEvent(
           envelope({
             ts,
-            source: "vapi-bridge",
+            source: "agent:bentley",
             kind: "vapi-unhandled",
             correlationId: `vapi-unhandled-${ts}`,
             summary: summarize(`[vapi-unhandled] type=${type} keys=${Object.keys(evt).join(",")}`),
             payload: { type, body_keys: Object.keys(body), evt_keys: Object.keys(evt) },
           }),
-          [TIMELINE_VAPI]
+          [TIMELINE_VAPI, ACMI_BUS]
         );
     }
 

@@ -1,5 +1,5 @@
 /**
- * VAPI → Composio + ACMI Webhook Handler — v7
+ * VAPI → Composio + ACMI Webhook Handler — v8
  * Deploy to: https://acmi-product.vercel.app/api/bentley-voice-tools
  *
  * Accepts BOTH VAPI payload shapes:
@@ -21,9 +21,19 @@ const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp
 const COMPOSIO_API_KEY = (typeof process !== 'undefined' && process.env.COMPOSIO_API_KEY) || 'ak_elk9P6oo1zQJ27848GK7';
 
 // ─── ACMI (Self-hosted VM Redis REST bridge) ────────────────────────────────────
-const VM_REDIS = 'http://152.53.201.27:8081/exec';
-const VM_AUTH = 'Bearer self-hosted';
-const ACMI_BUS = 'acmi:madez:bus:events'; // canonical SoT zset
+const VM_REDIS = process.env.ACMI_BRIDGE_URL || 'http://152.53.201.27:8081/';
+const VM_AUTH = 'Bearer ' + (process.env.ACMI_BRIDGE_TOKEN || 'vm-local-bridge');
+const ACMI_BUS = 'acmi:madez:bus:events';
+const ACMI_COORD = 'acmi:madez:thread:agent-coordination:timeline';
+const BENTLEY_ID = 'bentley';
+const BENTLEY_SOURCE = 'agent:bentley';
+const STAMP = {
+  acmi_version: '1.5',
+  comms_protocol: 'v1.5',
+  comms_alignment: 'active',
+  actor_type: 'agent',
+  tenant_id: 'madez',
+};
 
 // ─── Tool Map: VAPI tool name → Composio tool slug ──────────────────────────────
 const COMPOSIO_MAP = {
@@ -71,7 +81,7 @@ const COMPOSIO_MAP = {
 // ─── Redis via VM REST Bridge ───────────────────────────────────────────────────
 async function redisCmd(...args) {
   try {
-    const r = await fetch(VM_REDIS, {
+    const r = await fetch(VM_REDIS.replace(/\/$/, '') + '/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: VM_AUTH },
       body: JSON.stringify(args),
@@ -116,6 +126,70 @@ function safeStr(v) {
   return String(v);
 }
 
+function safeJson(raw, fallback = {}) {
+  if (!raw || typeof raw !== 'string') return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function entityBase(namespace = 'agent', id = BENTLEY_ID) {
+  return 'acmi:madez:' + namespace + ':' + id;
+}
+
+function timelineKey(namespace = 'thread', id = 'agent-coordination') {
+  return entityBase(namespace, id) + ':timeline';
+}
+
+async function readJsonSlot(key) {
+  const type = await redisCmd('TYPE', key);
+  if (type === 'string') return safeJson(await redisCmd('GET', key), {});
+  if (type === 'hash') {
+    const raw = await redisCmd('HGETALL', key);
+    const obj = {};
+    if (Array.isArray(raw)) {
+      for (let i = 0; i < raw.length; i += 2) obj[raw[i]] = raw[i + 1];
+    }
+    return obj;
+  }
+  return {};
+}
+
+async function mergeJsonSlot(key, patch) {
+  const type = await redisCmd('TYPE', key);
+  const current = await readJsonSlot(key);
+  if (type === 'hash') {
+    const ts = Date.now();
+    await redisCmd('SET', key + ':legacy-hash-backup:' + ts, JSON.stringify(current));
+    await redisCmd('DEL', key);
+  }
+  const next = { ...current, ...patch, ...STAMP, updated_at: new Date().toISOString() };
+  await redisCmd('SET', key, JSON.stringify(next));
+  return next;
+}
+
+function envelope({ ts = Date.now(), kind = 'coord-note', summary, idPrefix = 'voiceEvent', payload, parentCorrelationId }) {
+  return {
+    ts,
+    source: BENTLEY_SOURCE,
+    kind,
+    correlationId: idPrefix + '-' + ts,
+    ...(parentCorrelationId ? { parentCorrelationId } : {}),
+    summary,
+    ...(payload ? { payload } : {}),
+    ...STAMP,
+    surface: 'vapi',
+  };
+}
+
+async function postEvent(event, keys) {
+  const evt = JSON.stringify(event);
+  await Promise.all([...new Set(keys)].map((key) => redisCmd('ZADD', key, String(event.ts), evt)));
+}
+
 // ─── Composio result formatter ──────────────────────────────────────────────────
 function formatResult(data) {
   if (!data) return 'OK';
@@ -133,63 +207,114 @@ function formatResult(data) {
 
 // ─── ACMI Tool Handlers ─────────────────────────────────────────────────────────
 const ACMI = {
+  async acmiBootstrap({ agentId }) {
+    agentId = agentId || BENTLEY_ID;
+    const base = entityBase('agent', agentId);
+    const [profile, signals, rollup, timeline, coord] = await Promise.all([
+      redisCmd('GET', base + ':profile'),
+      readJsonSlot(base + ':signals'),
+      redisCmd('GET', base + ':rollup:latest'),
+      redisCmd('ZREVRANGE', base + ':timeline', '0', '4', 'WITHSCORES'),
+      redisCmd('ZREVRANGE', ACMI_COORD, '0', '9', 'WITHSCORES'),
+    ]);
+    const ev = envelope({
+      kind: 'bootstrap',
+      idPrefix: 'voiceBootstrap',
+      summary: '[bootstrap @fleet] Bentley voice session bootstrapped, ACMI v1.5 aligned.',
+      payload: { agentId },
+    });
+    await postEvent(ev, [timelineKey('agent', agentId), ACMI_COORD, ACMI_BUS]);
+    await mergeJsonSlot(base + ':signals', {
+      status: 'on-call',
+      current_surface: 'vapi',
+      last_bootstrap_at: new Date(ev.ts).toISOString(),
+    });
+    const tEvents = parseTimeline(timeline).length;
+    const cEvents = parseTimeline(coord).length;
+    return 'Bootstrapped ' + agentId + '. Profile ' + (profile ? 'exists' : 'missing') + '. Signals ' + Object.keys(signals || {}).length + ' fields. Rollup ' + (rollup ? 'exists' : 'missing') + '. Recent events: ' + tEvents + ' agent, ' + cEvents + ' coordination.';
+  },
+  async acmiSpawn({ agentId, summary }) {
+    agentId = agentId || BENTLEY_ID;
+    const ts = Date.now();
+    const ev = envelope({
+      ts,
+      kind: 'spawn',
+      idPrefix: 'voiceSpawn',
+      summary: summary || '[spawn @fleet] Bentley voice session started, ACMI v1.5 aligned.',
+      payload: { agentId },
+    });
+    await postEvent(ev, [timelineKey('agent', agentId), ACMI_COORD, ACMI_BUS]);
+    await mergeJsonSlot(entityBase('agent', agentId) + ':signals', {
+      status: 'on-call',
+      current_surface: 'vapi',
+      last_spawn_at: new Date(ts).toISOString(),
+    });
+    return 'Spawn logged for ' + agentId + '.';
+  },
   async acmiStatus() {
     const [b, c] = await Promise.all([
       redisCmd('ZCARD', ACMI_BUS),
-      redisCmd('ZCARD', 'acmi:thread:agent-coordination:timeline'),
+      redisCmd('ZCARD', ACMI_COORD),
     ]);
     return 'ACMI Fleet — Bus: ' + safeStr(b) + ' events, Coordination: ' + safeStr(c) + ' events. All systems operational.';
   },
   async acmiLogCall({ caller, summary }) {
     const ts = Date.now();
-    const evt = JSON.stringify({ ts, source: 'agent:bentley-voice', kind: 'milestone-shipped', correlationId: 'voiceCall-' + ts, summary: '[phone-call @bentley] ' + caller + ': ' + summary });
-    await Promise.all([redisCmd('ZADD', ACMI_BUS, ts, evt), redisCmd('ZADD', 'acmi:thread:agent-coordination:timeline', ts, evt)]);
+    const ev = envelope({
+      ts,
+      kind: 'call-summary',
+      idPrefix: 'voiceCall',
+      summary: '[call-summary @mikey] ' + caller + ': ' + summary,
+      payload: { caller, summary },
+    });
+    await postEvent(ev, [ACMI_BUS, ACMI_COORD, timelineKey('agent', BENTLEY_ID)]);
     return 'Call logged: ' + caller + ' — ' + summary;
   },
   async acmiWriteEvent({ id, kind, summary, namespace }) {
-    kind = kind || 'coord-note'; namespace = namespace || 'thread';
+    kind = kind || 'coord-note'; namespace = namespace || 'thread'; id = id || (namespace === 'agent' ? BENTLEY_ID : 'agent-coordination');
     const ts = Date.now();
-    const evt = JSON.stringify({ ts, source: 'agent:bentley-voice', kind, correlationId: 'voiceEvent-' + ts, summary: '[' + kind + ' @bentley] ' + summary });
-    const key = namespace === 'agent' ? 'acmi:agent:' + id + ':timeline' : 'acmi:thread:' + id + ':timeline';
-    await Promise.all([redisCmd('ZADD', key, ts, evt), redisCmd('ZADD', ACMI_BUS, ts, evt)]);
+    const ev = envelope({ ts, kind, summary: '[' + kind + ' @bentley] ' + summary });
+    const key = timelineKey(namespace, id);
+    await postEvent(ev, [key, ACMI_BUS]);
     return 'Event written to ' + namespace + ':' + id + ' — ' + safeStr(summary).slice(0, 80);
   },
   async acmiReadContext({ id, namespace }) {
     namespace = namespace || 'agent';
-    const p = namespace === 'agent' ? 'acmi:agent:' + id : 'acmi:thread:' + id;
+    const p = entityBase(namespace, id);
     const [profile, signals, tl] = await Promise.all([
       redisCmd('GET', p + ':profile'),
-      redisCmd('HGETALL', p + ':signals'),
+      readJsonSlot(p + ':signals'),
       redisCmd('ZREVRANGE', p + ':timeline', '0', '9', 'WITHSCORES'),
     ]);
     const evts = parseTimeline(tl);
-    const sigs = Array.isArray(signals) ? signals.filter(Boolean).join(', ') : 'none';
+    const sigs = Object.keys(signals || {}).length ? JSON.stringify(signals).slice(0, 240) : 'none';
     return 'Context ' + namespace + ':' + id + ' — Timeline: ' + evts.length + ' events. Signals: ' + (sigs || 'none') + '. Profile: ' + (profile ? 'exists' : 'empty') + '.';
   },
   async acmiSignalGet({ agentId }) {
-    const v = await redisCmd('HGET', 'acmi:agent:' + agentId + ':signals', 'status');
-    return v == null || v === '' ? 'No signals for ' + agentId : safeStr(v);
+    const signals = await readJsonSlot(entityBase('agent', agentId) + ':signals');
+    return Object.keys(signals).length ? safeStr(signals).slice(0, 500) : 'No signals for ' + agentId;
   },
   async acmiSignalSet({ agentId, key, value }) {
-    await redisCmd('HSET', 'acmi:agent:' + agentId + ':signals', key, value);
+    await mergeJsonSlot(entityBase('agent', agentId) + ':signals', { [key]: value });
     return 'Signal set: ' + agentId + '.' + key + ' = ' + value;
   },
   async acmiTimelineRead({ id, limit, namespace }) {
     limit = parseInt(limit, 10) || 10; namespace = namespace || 'thread';
-    const key = namespace === 'agent' ? 'acmi:agent:' + id + ':timeline' : 'acmi:thread:' + id + ':timeline';
-    const raw = await redisCmd('ZREVRANGE', key, '0', String(limit - 1), 'WITHSCORES');
+    const raw = await redisCmd('ZREVRANGE', timelineKey(namespace, id), '0', String(limit - 1), 'WITHSCORES');
     const evts = parseTimeline(raw);
     if (!evts.length) return 'No events in ' + namespace + ':' + id;
     return evts.map(e => safeStr(e && e.summary || '').slice(0, 100)).filter(Boolean).join(' | ').slice(0, 500);
   },
   async acmiRollupGet({ agentId }) {
-    const r = await redisCmd('GET', 'acmi:agent:' + agentId + ':rollup:latest');
+    const r = await redisCmd('GET', entityBase('agent', agentId) + ':rollup:latest');
     return r ? 'Rollup for ' + agentId + ': ' + safeStr(r).slice(0, 200) : 'No rollup for ' + agentId;
   },
   async acmiRollupSet({ agentId, data }) {
     const ts = Date.now();
-    const payload = typeof data === 'string' ? data : JSON.stringify(data);
-    await Promise.all([redisCmd('SET', 'acmi:agent:' + agentId + ':rollup:latest', payload), redisCmd('SET', 'acmi:agent:' + agentId + ':rollup:' + ts, payload)]);
+    const parsed = typeof data === 'string' ? safeJson(data, { session_summary: data }) : (data || {});
+    const payload = JSON.stringify({ ...parsed, ...STAMP, agent_id: agentId, updated_at: new Date(ts).toISOString(), surface: 'vapi' });
+    const base = entityBase('agent', agentId);
+    await Promise.all([redisCmd('SET', base + ':rollup:latest', payload), redisCmd('SET', base + ':rollup:' + ts, payload)]);
     return 'Rollup saved for ' + agentId;
   },
   async acmiMemorySearch({ query, limit }) {
@@ -209,7 +334,7 @@ const ACMI = {
     return matches.length ? 'Found ' + matches.length + ' matches: ' + matches.join(' | ') : 'No memory matches for "' + query + '"';
   },
   async acmiProfileGet({ agentId }) {
-    const r = await redisCmd('GET', 'acmi:agent:' + agentId + ':profile');
+    const r = await redisCmd('GET', entityBase('agent', agentId) + ':profile');
     if (!r) return 'No profile for ' + agentId;
     try { const p = JSON.parse(r); return 'Profile for ' + agentId + ': ' + (p.name || agentId) + '. ' + (p.role || '') + ' ' + (p.status || ''); } catch { return 'Profile: ' + safeStr(r).slice(0, 200); }
   },
@@ -368,7 +493,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     return res.status(200).json({
       ok: true,
-      service: 'bentley-voice-tools v7',
+      service: 'bentley-voice-tools v8',
       acmi_tools: Object.keys(ACMI).length,
       composio_tools: Object.keys(COMPOSIO_MAP).length,
     });
@@ -377,7 +502,7 @@ export default async function handler(req, res) {
 
   try {
     const calls = extractToolCalls(req.body);
-    console.log('[bentley-voice-tools v7] ' + calls.length + ' tool call(s): ' + calls.map(c => c.name).join(', '));
+    console.log('[bentley-voice-tools v8] ' + calls.length + ' tool call(s): ' + calls.map(c => c.name).join(', '));
 
     if (!calls.length) {
       return res.status(200).json({ results: [{ toolCallId: req.body?.toolCallId || 'unknown', result: 'No tool call found in request.' }] });
@@ -388,11 +513,11 @@ export default async function handler(req, res) {
       result: (await dispatch(c.name, c.args)).slice(0, 800),
     })));
 
-    console.log('[bentley-voice-tools v7] → ' + results.map(r => (r.result || '').slice(0, 80)).join(' || '));
+    console.log('[bentley-voice-tools v8] → ' + results.map(r => (r.result || '').slice(0, 80)).join(' || '));
     // VAPI-required response shape.
     return res.status(200).json({ results });
   } catch (e) {
-    console.error('[bentley-voice-tools v7] Error:', e);
+    console.error('[bentley-voice-tools v8] Error:', e);
     const fallbackId = req.body?.message?.toolCallList?.[0]?.id || req.body?.toolCallId || 'unknown';
     return res.status(200).json({ results: [{ toolCallId: fallbackId, result: 'Error: ' + e.message + '. Please try again.' }] });
   }
