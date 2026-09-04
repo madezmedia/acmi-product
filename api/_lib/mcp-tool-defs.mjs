@@ -36,16 +36,29 @@ export const CONFIG_SCHEMA = {
   properties: {
     upstashRedisRestUrl: {
       type: "string",
-      title: "Upstash Redis REST URL",
-      description: "Your Upstash database REST endpoint (e.g. https://your-instance.upstash.io). Get from console.upstash.com → your database → REST API tab.",
+      title: "HTTP Redis REST URL",
+      description: "Polar HTTPS exec (canonical): https://acmi-redis-u70402.vm.elestio.app/bridge/exec — no trailing slash. Upstash Cloud REST URLs still work. Do not use native Redis :26379.",
       "x-from": { header: "x-upstash-url" },
     },
     upstashRedisRestToken: {
       type: "string",
-      title: "Upstash Redis REST Token",
-      description: "Read/write token from your Upstash database. Treat as a secret.",
+      title: "HTTP Redis REST token",
+      description: "Polar exec token (canonical: vm-local-bridge) or your Upstash REST token. Treat as a secret.",
       format: "password",
       "x-from": { header: "x-upstash-token" },
+    },
+    acmiBridgeUrl: {
+      type: "string",
+      title: "ACMI_BRIDGE_URL (optional alias)",
+      description: "Same as HTTP Redis REST URL. Use if your host prefers ACMI_BRIDGE_* names.",
+      "x-from": { header: "x-acmi-bridge-url" },
+    },
+    acmiBridgeToken: {
+      type: "string",
+      title: "ACMI_BRIDGE_TOKEN (optional alias)",
+      description: "Same as HTTP Redis REST token.",
+      format: "password",
+      "x-from": { header: "x-acmi-bridge-token" },
     },
   },
 };

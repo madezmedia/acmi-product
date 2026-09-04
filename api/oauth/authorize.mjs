@@ -9,6 +9,7 @@
 // PKCE is REQUIRED. We accept S256 only (per MCP spec). plain is rejected.
 
 import { getClient, saveAuthCode } from "./_lib/storage.mjs";
+import { restEndpoint } from "../_lib/redis.mjs";
 
 export const config = { runtime: "nodejs" };
 
@@ -60,16 +61,17 @@ button:hover{background:var(--accent)}
 
   <label>Redis backend</label>
   <div class="backends">
-    <label class="radio"><input type="radio" name="backend" value="upstash" ${params.backend === "redis" ? "" : "checked"}> Upstash REST</label>
-    <label class="radio"><input type="radio" name="backend" value="redis" ${params.backend === "redis" ? "checked" : ""}> Self-hosted Redis</label>
+    <label class="radio"><input type="radio" name="backend" value="upstash" ${params.backend === "redis" ? "" : "checked"}> HTTP REST (Polar exec or Upstash)</label>
+    <label class="radio"><input type="radio" name="backend" value="redis" ${params.backend === "redis" ? "checked" : ""}> Self-hosted Redis TCP</label>
   </div>
 
   <div id="fields-upstash">
-    <label for="upstash_url">Upstash REST URL</label>
-    <input type="text" id="upstash_url" name="upstash_url" placeholder="https://your-instance.upstash.io" pattern="https://.+\\.upstash\\.io/?" value="${htmlEscape(params.upstash_url_prefill || "")}">
+    <label for="upstash_url">HTTP Redis REST URL</label>
+    <input type="text" id="upstash_url" name="upstash_url" placeholder="https://acmi-redis-u70402.vm.elestio.app/bridge/exec" value="${htmlEscape(params.upstash_url_prefill || "")}">
+    <div class="hint">Polar exec: no trailing slash. Upstash Cloud REST URLs still work. Native :26379 does not.</div>
 
-    <label for="upstash_token">Upstash REST Token</label>
-    <input type="password" id="upstash_token" name="upstash_token" placeholder="Bearer token from Upstash console">
+    <label for="upstash_token">HTTP Redis REST token</label>
+    <input type="password" id="upstash_token" name="upstash_token" placeholder="vm-local-bridge or Upstash REST token">
   </div>
 
   <div id="fields-redis" style="display:none">
@@ -199,14 +201,20 @@ export default async function handler(req, res) {
       upstash_url = String(body.upstash_url || "").trim();
       upstash_token = String(body.upstash_token || "").trim();
       if (!upstash_url || !upstash_token) {
-        return fail("Both Upstash URL and token are required.", { upstash_url_prefill: upstash_url });
+        return fail("Both HTTP Redis REST URL and token are required.", { upstash_url_prefill: upstash_url });
       }
-      if (!/^https:\/\/[^\s/]+\.upstash\.io\/?$/.test(upstash_url)) {
-        return fail("Upstash URL must look like https://<instance>.upstash.io", { upstash_url_prefill: upstash_url });
+      let parsed;
+      try {
+        parsed = new URL(upstash_url);
+      } catch {
+        return fail("REST URL is not a valid URL.", { upstash_url_prefill: upstash_url });
+      }
+      if (parsed.protocol !== "https:") {
+        return fail("REST URL must be https://", { upstash_url_prefill: upstash_url });
       }
       // Probe creds before issuing code so user gets immediate feedback on bad token.
       try {
-        const probe = await fetch(upstash_url.replace(/\/$/, "") + "/", {
+        const probe = await fetch(restEndpoint(upstash_url), {
           method: "POST",
           headers: { Authorization: `Bearer ${upstash_token}`, "Content-Type": "application/json" },
           body: JSON.stringify(["PING"]),
@@ -214,10 +222,11 @@ export default async function handler(req, res) {
         const j = await probe.json();
         if (j.error || j.result !== "PONG") throw new Error(j.error || "PING did not return PONG");
       } catch (e) {
-        return fail(`Could not authenticate to Upstash: ${e.message}`, { upstash_url_prefill: upstash_url });
+        return fail(`Could not authenticate to Redis REST: ${e.message}`, { upstash_url_prefill: upstash_url });
       }
+      upstash_url = restEndpoint(upstash_url);
       backend = { kind: "upstash", url: upstash_url, token: upstash_token };
-      sub = `upstash:${new URL(upstash_url).hostname}`;
+      sub = `rest:${parsed.hostname}`;
     }
 
     const code = await saveAuthCode({

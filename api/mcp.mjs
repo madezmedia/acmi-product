@@ -26,7 +26,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createRedis } from "./_lib/redis.mjs";
 import { nativeRedisCall } from "./_lib/redis-native.mjs";
 import { registerAcmiTools } from "./_lib/mcp-tools.mjs";
-import { TOOL_DEFS } from "./_lib/mcp-tool-defs.mjs";
+import { TOOL_DEFS, CONFIG_SCHEMA } from "./_lib/mcp-tool-defs.mjs";
 import { lookupAccessToken } from "./oauth/_lib/storage.mjs";
 
 export const config = {
@@ -62,6 +62,11 @@ async function extractCreds(cfg, req) {
   if (headerRedisUri) {
     return { kind: "redis", uri: headerRedisUri, source: "header" };
   }
+  const headerBridgeUrl = req.headers["x-acmi-bridge-url"] || null;
+  const headerBridgeToken = req.headers["x-acmi-bridge-token"] || null;
+  if (headerBridgeUrl && headerBridgeToken) {
+    return { url: headerBridgeUrl, token: headerBridgeToken, source: "header-bridge" };
+  }
   const headerUrl = req.headers["x-upstash-url"] || null;
   const headerToken = req.headers["x-upstash-token"] || null;
   if (headerUrl && headerToken) {
@@ -76,11 +81,15 @@ async function extractCreds(cfg, req) {
     return { kind: "redis", uri: cfgRedisUri, source: "config" };
   }
   const cfgUrl =
+    cfg.acmiBridgeUrl ||
+    cfg.ACMI_BRIDGE_URL ||
     cfg.upstashRedisRestUrl ||
     cfg.UPSTASH_REDIS_REST_URL ||
     cfg.url ||
     null;
   const cfgToken =
+    cfg.acmiBridgeToken ||
+    cfg.ACMI_BRIDGE_TOKEN ||
     cfg.upstashRedisRestToken ||
     cfg.UPSTASH_REDIS_REST_TOKEN ||
     cfg.token ||
@@ -120,9 +129,16 @@ async function extractCreds(cfg, req) {
     if (process.env.ACMI_REDIS_URI) {
       return { kind: "redis", uri: process.env.ACMI_REDIS_URI, source: "env-authed" };
     }
+    if (process.env.ACMI_BRIDGE_URL && process.env.ACMI_BRIDGE_TOKEN) {
+      return {
+        url: process.env.ACMI_BRIDGE_URL,
+        token: process.env.ACMI_BRIDGE_TOKEN,
+        source: "env-authed-bridge",
+      };
+    }
     return {
-      url: process.env.UPSTASH_REDIS_REST_URL || null,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN || null,
+      url: process.env.UPSTASH_REDIS_REST_URL || process.env.ACMI_BRIDGE_URL || null,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.ACMI_BRIDGE_TOKEN || null,
       source: "env-authed",
     };
   }
@@ -268,7 +284,7 @@ export default async function handler(req, res) {
       res.setHeader("WWW-Authenticate", `Bearer realm="acmi-mcp", resource_metadata="${issuer}/.well-known/oauth-protected-resource"`);
       res.status(401).json({
         error: "authentication required for tool execution",
-        hint: "OAuth 2.1 + PKCE flow available. Discover via /.well-known/oauth-authorization-server. Or pass ?config=<base64 upstash creds> (Smithery legacy) or Bearer <MCP_DIRECT_AUTH_TOKEN> (deploy-owner break-glass).",
+        hint: "OAuth 2.1 + PKCE flow available. Discover via /.well-known/oauth-authorization-server. Or pass ?config=<base64 Polar exec or Upstash creds> (Smithery) or Bearer <MCP_DIRECT_AUTH_TOKEN> (deploy-owner break-glass).",
       });
       return;
     } else {
@@ -364,9 +380,11 @@ export default async function handler(req, res) {
         capabilities: { tools: { listChanged: false } },
         transport: "streamable-http",
         toolCount: TOOL_DEFS.length,
+        configSchema: CONFIG_SCHEMA,
         notes: {
           method: "POST JSON-RPC for actual MCP traffic",
           sse: "long-lived SSE streams not supported via GET on this endpoint; use POST request/reply only",
+          redis: "POST JSON command arrays to Polar HTTPS exec (no trailing slash) or Upstash REST",
         },
       });
       return;

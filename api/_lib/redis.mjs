@@ -33,11 +33,33 @@ export function resolveInstance(req) {
   };
 }
 
+/** Polar HTTPS exec is `/bridge/exec` with no trailing slash (slash → 404). */
+export function isBridgeUrl(url) {
+  return /\/bridge\/exec(?:\/|$|\?)/.test(String(url || ""));
+}
+
+/**
+ * POST target for HTTP Redis REST.
+ * Polar exec: strip slashes. Upstash Cloud: keep a trailing slash.
+ * Everything else: strip (Polar-safe default).
+ */
+export function restEndpoint(url) {
+  const stripped = String(url || "").replace(/\/+$/, "");
+  if (!stripped) return stripped;
+  if (isBridgeUrl(stripped)) return stripped;
+  try {
+    if (new URL(stripped).hostname.endsWith("upstash.io")) return `${stripped}/`;
+  } catch {
+    /* ignore invalid URL; caller will fail the fetch */
+  }
+  return stripped;
+}
+
 export async function redis(instance, ...cmd) {
   if (!instance.url || !instance.token) {
     throw new Error(`No credentials for instance "${instance.id}"`);
   }
-  const endpoint = instance.url.replace(/\/$/, "") + "/";
+  const endpoint = restEndpoint(instance.url);
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -46,9 +68,9 @@ export async function redis(instance, ...cmd) {
     },
     body: JSON.stringify(cmd),
   });
-  if (!res.ok) throw new Error(`Upstash ${res.status}`);
+  if (!res.ok) throw new Error(`Redis REST ${res.status}`);
   const data = await res.json();
-  if (data.error) throw new Error(`Upstash: ${data.error}`);
+  if (data.error) throw new Error(`Redis REST: ${data.error}`);
   return data.result;
 }
 
@@ -71,7 +93,7 @@ export function createRedis({ url, token }) {
   if (!url || !token) {
     throw new Error("createRedis: url and token required");
   }
-  const endpoint = url.replace(/\/$/, "") + "/";
+  const endpoint = restEndpoint(url);
   return async function redisCall(...cmd) {
     const res = await fetch(endpoint, {
       method: "POST",
@@ -81,9 +103,9 @@ export function createRedis({ url, token }) {
       },
       body: JSON.stringify(cmd),
     });
-    if (!res.ok) throw new Error(`Upstash ${res.status}`);
+    if (!res.ok) throw new Error(`Redis REST ${res.status}`);
     const data = await res.json();
-    if (data.error) throw new Error(`Upstash: ${data.error}`);
+    if (data.error) throw new Error(`Redis REST: ${data.error}`);
     return data.result;
   };
 }

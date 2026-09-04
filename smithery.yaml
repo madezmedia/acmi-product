@@ -1,0 +1,37 @@
+# Smithery listing for madezmediapartners/acmi-mcp
+# Hosted backend: https://acmi-product.vercel.app/api/mcp
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    required:
+      - upstashRedisRestUrl
+      - upstashRedisRestToken
+    properties:
+      upstashRedisRestUrl:
+        type: string
+        title: HTTP Redis REST URL
+        description: >-
+          Polar HTTPS exec (canonical):
+          https://acmi-redis-u70402.vm.elestio.app/bridge/exec
+          — no trailing slash. Upstash Cloud REST URLs still work.
+        x-from:
+          header: x-upstash-url
+      upstashRedisRestToken:
+        type: string
+        title: HTTP Redis REST token
+        description: Polar exec token (canonical vm-local-bridge) or Upstash REST token.
+        format: password
+        x-from:
+          header: x-upstash-token
+      acmiBridgeUrl:
+        type: string
+        title: ACMI_BRIDGE_URL (optional alias)
+        x-from:
+          header: x-acmi-bridge-url
+      acmiBridgeToken:
+        type: string
+        title: ACMI_BRIDGE_TOKEN (optional alias)
+        format: password
+        x-from:
+          header: x-acmi-bridge-token

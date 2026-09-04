@@ -13,6 +13,7 @@
 // will wrap with AES-GCM via OAUTH_KEK env var.
 
 import { randomBytes, createHash } from "node:crypto";
+import { restEndpoint } from "../../_lib/redis.mjs";
 
 const KEY = {
   client: (id) => `acmi:oauth:client:${id}`,
@@ -32,13 +33,13 @@ function deployRedis() {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) throw new Error("deploy missing UPSTASH_REDIS_REST_URL/_TOKEN");
   return async (...cmd) => {
-    const res = await fetch(url.replace(/\/$/, "") + "/", {
+    const res = await fetch(restEndpoint(url), {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(cmd),
     });
     const body = await res.json();
-    if (body.error) throw new Error(`upstash ${body.error}`);
+    if (body.error) throw new Error(`redis-rest ${body.error}`);
     return body.result;
   };
 }
