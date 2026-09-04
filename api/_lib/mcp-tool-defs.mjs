@@ -60,6 +60,11 @@ export const CONFIG_SCHEMA = {
       format: "password",
       "x-from": { header: "x-acmi-bridge-token" },
     },
+    acmiDefaultTenant: {
+      type: "string",
+      title: "ACMI_DEFAULT_TENANT",
+      description: "Key prefix tenant. Canonical fleet value: madez. Hosted MCP rewrites acmi:* → acmi:<tenant>:*.",
+    },
   },
 };
 

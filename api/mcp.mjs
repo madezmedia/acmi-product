@@ -229,6 +229,19 @@ async function dispatchJsonRpc(msg, tools) {
 // or triggers, so these all return empty arrays — but they must succeed
 // (200 + JSON-RPC result), not 401, or Smithery wraps the error into an
 // authorizationUrl response and the scan flags them as auth-failures.
+/** Hosted tools historically wrote unprefixed `acmi:ns:id:*`. Polar restore is madez-only. */
+function tenantizeKey(key, tenant) {
+  if (typeof key !== "string" || !key.startsWith("acmi:")) return key;
+  if (key.startsWith(`acmi:${tenant}:`)) return key;
+  if (key.startsWith("acmi:client:")) return key;
+  return key.replace(/^acmi:/, `acmi:${tenant}:`);
+}
+
+function withTenantPrefix(redis, tenant) {
+  const t = tenant || "madez";
+  return async (cmd, ...args) => redis(cmd, ...args.map((a) => tenantizeKey(a, t)));
+}
+
 const PUBLIC_METHODS = new Set([
   "initialize",
   "notifications/initialized",
@@ -268,12 +281,19 @@ export default async function handler(req, res) {
     const backend = await extractCreds(cfg, req);
     const { url, token, kind, uri, source, sub } = backend;
     const hasCreds = (kind === "redis" && uri) || (url && token);
+    const tenant =
+      cfg.ACMI_DEFAULT_TENANT ||
+      cfg.acmiDefaultTenant ||
+      process.env.ACMI_DEFAULT_TENANT ||
+      "madez";
     let redis;
     if (hasCreds) {
-      redis = kind === "redis"
+      const raw = kind === "redis"
         ? (...cmd) => nativeRedisCall(uri, ...cmd)
         : createRedis({ url, token });
+      redis = withTenantPrefix(raw, tenant);
       res.setHeader("X-MCP-Cred-Source", source);
+      res.setHeader("X-MCP-Tenant", tenant);
       if (sub) res.setHeader("X-MCP-Sub", sub);
     } else if (requiresAuth) {
       // RFC 9728 — point unauthenticated clients at the protected resource
