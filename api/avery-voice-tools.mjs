@@ -6,9 +6,8 @@
 const COMPOSIO_KEY = 'ak_vaOPvXoztdPG9km0Oe4p';
 const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp/mcp';
 
-// Upstash for ACMI ops
-const UPSTASH_URL = 'https://loved-platypus-102968.upstash.io';
-const UPSTASH_TOKEN = 'gQAAAAAAAZI4AAIgcDJhNDFlNmUwMjQ5ZWI0ZDNmYWUzNDU2NDc4ZWUxMmQwOA';
+const UPSTASH_URL = (process.env.ACMI_BRIDGE_URL || process.env.UPSTASH_REDIS_REST_URL || 'https://acmi-redis-u70402.vm.elestio.app/bridge/exec').replace(/\/+$/, '');
+const UPSTASH_TOKEN = process.env.ACMI_BRIDGE_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || 'vm-local-bridge';
 
 async function redis(cmd) {
   const r = await fetch(UPSTASH_URL, {
