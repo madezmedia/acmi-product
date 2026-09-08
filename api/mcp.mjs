@@ -345,6 +345,21 @@ export default async function handler(req, res) {
         shortCircuitResult = { triggers: [] };
       }
     }
+    // tools/call must use our jsonResult (structuredContent). The SDK SSE
+    // transport only serializes `content`, which Grok Bot rejects when
+    // tools/list advertised outputSchema.
+    if (req.method === "POST" && reqMethod === "tools/call") {
+      const tools = buildToolRegistry(redis);
+      const reply = await dispatchJsonRpc(req.body, tools);
+      if (wantsSSE) {
+        res.status(200).setHeader("Content-Type", "text/event-stream");
+        res.end(`event: message\ndata: ${JSON.stringify(reply)}\n\n`);
+      } else {
+        res.status(200).setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(reply));
+      }
+      return;
+    }
     if (shortCircuitResult !== null) {
       const reply = {
         jsonrpc: "2.0",

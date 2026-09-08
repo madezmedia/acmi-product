@@ -70,6 +70,7 @@ export const CONFIG_SCHEMA = {
 
 const ok = {
   type: "object",
+  additionalProperties: true,
   properties: {
     ok: { type: "boolean" },
     error: { type: "string" },
@@ -143,6 +144,7 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
         profile: { type: ["object", "null"] },
         signals: { type: ["object", "null"] },
@@ -165,7 +167,9 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
+        ok: { type: "boolean" },
         ids: { type: "array", items: { type: "string" }, description: "Array of entity IDs in the namespace" },
       },
     },
@@ -231,6 +235,7 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
         work_id: { type: "string" },
         profile: { type: ["object", "null"] },
@@ -247,7 +252,9 @@ export const TOOL_DEFS = [
     inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
+        ok: { type: "boolean" },
         work_ids: { type: "array", items: { type: "string" } },
       },
     },
@@ -272,11 +279,14 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
+        ok: { type: "boolean" },
         events: {
           type: "array",
           items: {
             type: "object",
+            additionalProperties: true,
             properties: {
               timestamp: { type: "string" },
               source_key: { type: "string" },
@@ -318,6 +328,7 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
         agent_id: { type: "string" },
         bootstrapped_at: { type: "string", format: "date-time" },
@@ -377,6 +388,7 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
         ok: { type: "boolean" },
         dry_run: { type: "boolean" },
@@ -402,6 +414,7 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
         ok: { type: "boolean" },
         query: { type: "string" },
@@ -409,6 +422,7 @@ export const TOOL_DEFS = [
           type: "array",
           items: {
             type: "object",
+            additionalProperties: true,
             properties: {
               relevance: { type: "number" },
               summary: { type: "string" },
