@@ -99,6 +99,7 @@ function hashEmail(email) {
 }
 
 function inferTier(payload) {
+  if (isLabEntryPurchase(payload, "")) return "lab";
   // Whop payload shapes vary by event type. Best-effort tier inference.
   const productName = (
     payload?.product?.name ||
