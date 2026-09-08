@@ -14,26 +14,32 @@
 //   UPSTASH_REDIS_REST_TOKEN
 
 import crypto from "node:crypto";
+import { restEndpoint } from "./_lib/redis.mjs";
+import {
+  ensureLabBuyerSecrets,
+  extractBuyerIds,
+  isLabEntryPurchase,
+} from "./_lib/lab-buyer-secrets.mjs";
 
 export const config = { runtime: "nodejs" };
 
-const REVENUE_THREAD = "acmi:thread:revenue:timeline";
+const REVENUE_THREAD_MADEZ = "acmi:madez:thread:revenue:timeline";
+const REVENUE_THREAD_LEGACY = "acmi:thread:revenue:timeline";
 
-// Direct Upstash call (the _lib/redis.mjs helper is Edge-runtime-only; this
-// endpoint runs on Node runtime so we make the REST POST ourselves).
 async function upstash(...cmd) {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) throw new Error("missing UPSTASH creds in env");
-  const endpoint = url.replace(/\/$/, "") + "/";
-  const r = await fetch(endpoint, {
+  const url = restEndpoint(
+    process.env.ACMI_BRIDGE_URL || process.env.UPSTASH_REDIS_REST_URL || "",
+  );
+  const token = process.env.ACMI_BRIDGE_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) throw new Error("missing Polar exec / UPSTASH creds in env");
+  const r = await fetch(url, {
     method: "POST",
     headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(cmd),
   });
-  if (!r.ok) throw new Error(`Upstash ${r.status}`);
+  if (!r.ok) throw new Error(`Redis REST ${r.status}`);
   const d = await r.json();
-  if (d.error) throw new Error(`Upstash: ${d.error}`);
+  if (d.error) throw new Error(`Redis REST: ${d.error}`);
   return d.result;
 }
 
@@ -214,9 +220,39 @@ export default async function handler(req, res) {
     tags: ["whop", kind, "revenue", tier],
   };
 
+  let labProvision = null;
+  if (isLabEntryPurchase(payload, tier)) {
+    const ids = extractBuyerIds(payload);
+    const buyerId = ids.whopUserId || whopMemberId;
+    try {
+      labProvision = await ensureLabBuyerSecrets(buyerId, {
+        membershipId: ids.membershipId,
+        planId: ids.planId,
+        productId: ids.productId,
+        correlationId: `labBuyerSecrets-${ts}`,
+      });
+    } catch (e) {
+      labProvision = { ok: false, error: String(e.message || e) };
+    }
+  }
+
   try {
-    await upstash("ZADD", REVENUE_THREAD, String(ts), JSON.stringify(event));
-    return reply(res, 200, { ok: true, kind, correlationId, tier, amount_usd: amount, signature_mode: signatureMode });
+    const encoded = JSON.stringify(event);
+    await upstash("ZADD", REVENUE_THREAD_MADEZ, String(ts), encoded);
+    try {
+      await upstash("ZADD", REVENUE_THREAD_LEGACY, String(ts), encoded);
+    } catch {
+      /* legacy unprefixed key is best-effort */
+    }
+    return reply(res, 200, {
+      ok: true,
+      kind,
+      correlationId,
+      tier,
+      amount_usd: amount,
+      signature_mode: signatureMode,
+      lab_provision: labProvision,
+    });
   } catch (e) {
     return reply(res, 500, { error: "failed to ZADD revenue event", detail: String(e.message || e) });
   }
