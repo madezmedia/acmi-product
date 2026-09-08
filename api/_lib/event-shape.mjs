@@ -96,3 +96,45 @@ export function buildEvent({
 
   return envelope;
 }
+/** Comms v1.5 stamp fields (fleet Polar / madez). */
+export const COMMS_V15_STAMP = Object.freeze({
+  acmi_version: "1.5",
+  comms_protocol: "v1.5",
+  comms_alignment: "active",
+  actor_type: "agent",
+  tenant_id: "madez",
+});
+
+/**
+ * Reject snake_case correlation keys (fleet Comms contract).
+ * @param {object} obj
+ */
+export function assertCamelCorrelationKeys(obj) {
+  if (!obj || typeof obj !== "object") return;
+  if (Object.prototype.hasOwnProperty.call(obj, "correlation_id")) {
+    throw new Error("correlation_id forbidden — use camelCase correlationId");
+  }
+  if (Object.prototype.hasOwnProperty.call(obj, "parent_correlation_id")) {
+    throw new Error("parent_correlation_id forbidden — use camelCase parentCorrelationId");
+  }
+}
+
+/**
+ * Build a Comms v1.5 envelope (extends v1.1 with protocol stamp + madez tenant).
+ * @param {object} args same as buildEvent, plus optional actor_type override
+ */
+export function buildEventV15(args = {}) {
+  assertCamelCorrelationKeys(args);
+  if (args.payload) assertCamelCorrelationKeys(args.payload);
+  const base = buildEvent(args);
+  const actor =
+    typeof args.actor_type === "string" && args.actor_type.trim()
+      ? args.actor_type.trim()
+      : COMMS_V15_STAMP.actor_type;
+  return {
+    ...base,
+    ...COMMS_V15_STAMP,
+    actor_type: actor,
+    tenant_id: "madez",
+  };
+}
