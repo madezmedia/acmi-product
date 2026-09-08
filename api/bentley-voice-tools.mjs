@@ -1,18 +1,26 @@
 /**
- * VAPI → Composio + ACMI Webhook Handler — v8
+ * VAPI → Composio + ACMI Webhook Handler — v8.1 (call-end hardwire)
  * Deploy to: https://acmi-product.vercel.app/api/bentley-voice-tools
  *
- * Accepts BOTH VAPI payload shapes:
- *   1. MESSAGE-WRAPPER (what VAPI live calls actually send):
+ * Accepts:
+ *   1. MESSAGE-WRAPPER tool-calls (live VAPI):
  *      { message: { type: "tool-calls", toolCallList: [ { id, function: { name, arguments } } ] } }
  *   2. FLAT (legacy / manual test):
  *      { name, arguments, toolCallId }
+ *   3. End-of-call / status-update (ended) → ACMI call-end on agent:bentley-voice
+ *      { message: { type: "end-of-call-report"|"status-update", call, endedReason, ... } }
  *
- * ALWAYS returns the VAPI-required response shape:
+ * Tool-calls ALWAYS return VAPI results[] shape:
  *   { results: [ { toolCallId, result: "<string>" } ] }
+ * Call-end / status-update return:
+ *   { ok: true, type, posted: [...] }
+ *
+ * VAPI assistant serverMessages (set on baaecd88… + 72c3f9b1…):
+ *   ["end-of-call-report", "status-update", "hang", "tool-calls"]
+ * Live voice line: +19805339730 (not 754/202). Parent cid: fleetAcmiHardwire-20260908.
  *
  * Routes to:
- *   - ACMI fleet tools (Status, Timeline, Signals, Memory, Rollup) via VM Redis REST bridge
+ *   - ACMI fleet tools (Status, Timeline, Signals, Memory, Rollup) via Polar HTTPS exec
  *   - Composio tools (Gmail, Calendar, Tasks, Web, Maps) via tool_router MCP
  */
 
@@ -21,12 +29,14 @@ const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp
 const COMPOSIO_API_KEY = (typeof process !== 'undefined' && process.env.COMPOSIO_API_KEY) || 'ak_elk9P6oo1zQJ27848GK7';
 
 // ─── ACMI (Self-hosted VM Redis REST bridge) ────────────────────────────────────
-const VM_REDIS = process.env.ACMI_BRIDGE_URL || 'http://152.53.201.27:8081/';
+const VM_REDIS = process.env.ACMI_BRIDGE_URL || 'https://acmi-redis-u70402.vm.elestio.app/bridge/exec';
 const VM_AUTH = 'Bearer ' + (process.env.ACMI_BRIDGE_TOKEN || 'vm-local-bridge');
 const ACMI_BUS = 'acmi:madez:bus:events';
 const ACMI_COORD = 'acmi:madez:thread:agent-coordination:timeline';
-const BENTLEY_ID = 'bentley';
-const BENTLEY_SOURCE = 'agent:bentley';
+const BENTLEY_ID = 'bentley-voice';
+const BENTLEY_SOURCE = 'agent:bentley-voice';
+const PARENT_CID = 'fleetAcmiHardwire-20260908';
+const SERVER_MESSAGES = ['end-of-call-report', 'status-update', 'hang', 'tool-calls'];
 const STAMP = {
   acmi_version: '1.5',
   comms_protocol: 'v1.5',
@@ -81,7 +91,7 @@ const COMPOSIO_MAP = {
 // ─── Redis via VM REST Bridge ───────────────────────────────────────────────────
 async function redisCmd(...args) {
   try {
-    const r = await fetch(VM_REDIS.replace(/\/$/, '') + '/', {
+    const r = await fetch(VM_REDIS.replace(/\/$/, ''), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: VM_AUTH },
       body: JSON.stringify(args),
@@ -431,6 +441,109 @@ function coerceArgs(a) {
   return a || {};
 }
 
+function summarize(s, n = 280) {
+  if (typeof s !== 'string') return '';
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function messageType(body) {
+  if (!body || typeof body !== 'object') return null;
+  const msg = body.message || body;
+  return msg.type || msg.event || body.type || null;
+}
+
+function extractCall(body) {
+  const msg = (body && (body.message || body)) || {};
+  return msg.call || body.call || msg || {};
+}
+
+/**
+ * VAPI end-of-call-report / status-update(ended) → ACMI call-end.
+ * Writes agent:bentley-voice timeline (fatal intent) + coord/bus best-effort.
+ */
+async function handleCallEnd(body, type) {
+  const ts = Date.now();
+  const call = extractCall(body);
+  const msg = (body && (body.message || body)) || {};
+  const sessionId = call.id || call.sessionId || msg.call?.id || `unknown-${ts}`;
+  const duration = call.duration ?? call.durationSeconds ?? msg.durationSeconds ?? msg.duration ?? null;
+  const endedReason = call.endedReason || msg.endedReason || msg.ended_reason || null;
+  const status = call.status || msg.status || null;
+  const analysisSummary = call.analysis?.summary || call.summary || msg.summary || null;
+
+  const summary = summarize(
+    '[call-end @fleet] Bentley voice ended'
+      + ' callId=' + sessionId
+      + ' duration=' + (duration ?? '?') + 's'
+      + ' reason=' + (endedReason || status || 'ended')
+      + (analysisSummary ? ' · ' + String(analysisSummary).slice(0, 120) : ''),
+    480
+  );
+
+  const ev = envelope({
+    ts,
+    kind: 'call-end',
+    idPrefix: 'bentleyVoiceCallEnd',
+    parentCorrelationId: PARENT_CID,
+    summary,
+    payload: {
+      callId: sessionId,
+      durationSeconds: duration,
+      endedReason: endedReason || null,
+      status: status || null,
+      messageType: type,
+      analysisPresent: !!analysisSummary,
+      endedAt: new Date(ts).toISOString(),
+      liveLine: '+19805339730',
+    },
+  });
+
+  const agentTl = timelineKey('agent', BENTLEY_ID);
+  // Agent timeline is primary; coord + bus are best-effort (same Polar write path).
+  const posted = [];
+  try {
+    await postEvent(ev, [agentTl]);
+    posted.push({ key: agentTl, ok: true });
+  } catch (e) {
+    posted.push({ key: agentTl, ok: false, error: e.message });
+    throw e;
+  }
+  for (const key of [ACMI_COORD, ACMI_BUS]) {
+    try {
+      await postEvent(ev, [key]);
+      posted.push({ key, ok: true });
+    } catch (e) {
+      posted.push({ key, ok: false, error: e.message });
+    }
+  }
+
+  try {
+    await mergeJsonSlot(entityBase('agent', BENTLEY_ID) + ':signals', {
+      status: 'available',
+      current_surface: 'vapi',
+      current_call_session_id: '',
+      last_call_session_id: sessionId,
+      last_call_ended_at: new Date(ts).toISOString(),
+      last_call_ended_reason: endedReason || status || 'ended',
+    });
+  } catch {}
+
+  return { event: ev, posted };
+}
+
+function isCallEndMessage(type, body) {
+  if (!type) return false;
+  if (type === 'end-of-call-report' || type === 'call-ended' || type === 'call.ended') return true;
+  if (type === 'status-update' || type === 'call.status') {
+    const call = extractCall(body);
+    const msg = (body && (body.message || body)) || {};
+    const status = String(call.status || msg.status || '').toLowerCase();
+    const endedReason = call.endedReason || msg.endedReason;
+    return status === 'ended' || status === 'completed' || !!endedReason;
+  }
+  return false;
+}
+
 /**
  * Extract a normalized list of tool calls from ANY VAPI payload shape.
  * Returns [{ name, args, toolCallId }]
@@ -493,19 +606,44 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     return res.status(200).json({
       ok: true,
-      service: 'bentley-voice-tools v8',
+      service: 'bentley-voice-tools v8.1',
       acmi_tools: Object.keys(ACMI).length,
       composio_tools: Object.keys(COMPOSIO_MAP).length,
+      agent: BENTLEY_SOURCE,
+      serverMessages: SERVER_MESSAGES,
+      handles: ['tool-calls', 'end-of-call-report', 'status-update'],
+      parentCorrelationId: PARENT_CID,
     });
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
 
   try {
-    const calls = extractToolCalls(req.body);
-    console.log('[bentley-voice-tools v8] ' + calls.length + ' tool call(s): ' + calls.map(c => c.name).join(', '));
+    const body = req.body || {};
+    const type = messageType(body);
+
+    // Call-end path (serverMessages must include end-of-call-report on the assistant).
+    if (isCallEndMessage(type, body)) {
+      console.log('[bentley-voice-tools v8.1] call-end type=' + type);
+      const { event, posted } = await handleCallEnd(body, type);
+      return res.status(200).json({
+        ok: true,
+        type,
+        correlationId: event.correlationId,
+        parentCorrelationId: event.parentCorrelationId,
+        posted,
+      });
+    }
+
+    // Preserve existing tool-calls handling.
+    const calls = extractToolCalls(body);
+    console.log('[bentley-voice-tools v8.1] ' + calls.length + ' tool call(s): ' + calls.map(c => c.name).join(', '));
 
     if (!calls.length) {
-      return res.status(200).json({ results: [{ toolCallId: req.body?.toolCallId || 'unknown', result: 'No tool call found in request.' }] });
+      // Non-tool, non-call-end message — ack without failing the webhook.
+      if (type && type !== 'tool-calls') {
+        return res.status(200).json({ ok: true, type, ignored: true });
+      }
+      return res.status(200).json({ results: [{ toolCallId: body?.toolCallId || 'unknown', result: 'No tool call found in request.' }] });
     }
 
     const results = await Promise.all(calls.map(async (c) => ({
@@ -513,11 +651,15 @@ export default async function handler(req, res) {
       result: (await dispatch(c.name, c.args)).slice(0, 800),
     })));
 
-    console.log('[bentley-voice-tools v8] → ' + results.map(r => (r.result || '').slice(0, 80)).join(' || '));
+    console.log('[bentley-voice-tools v8.1] → ' + results.map(r => (r.result || '').slice(0, 80)).join(' || '));
     // VAPI-required response shape.
     return res.status(200).json({ results });
   } catch (e) {
-    console.error('[bentley-voice-tools v8] Error:', e);
+    console.error('[bentley-voice-tools v8.1] Error:', e);
+    const type = messageType(req.body);
+    if (isCallEndMessage(type, req.body || {})) {
+      return res.status(500).json({ ok: false, type, error: e.message });
+    }
     const fallbackId = req.body?.message?.toolCallList?.[0]?.id || req.body?.toolCallId || 'unknown';
     return res.status(200).json({ results: [{ toolCallId: fallbackId, result: 'Error: ' + e.message + '. Please try again.' }] });
   }
