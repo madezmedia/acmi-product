@@ -70,6 +70,7 @@ export const CONFIG_SCHEMA = {
 
 const ok = {
   type: "object",
+  additionalProperties: true,
   properties: {
     ok: { type: "boolean" },
     error: { type: "string" },
@@ -143,6 +144,7 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
         profile: { type: ["object", "null"] },
         signals: { type: ["object", "null"] },
@@ -165,7 +167,9 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
+        ok: { type: "boolean" },
         ids: { type: "array", items: { type: "string" }, description: "Array of entity IDs in the namespace" },
       },
     },
@@ -318,6 +322,7 @@ export const TOOL_DEFS = [
     },
     outputSchema: {
       type: "object",
+      additionalProperties: true,
       properties: {
         agent_id: { type: "string" },
         bootstrapped_at: { type: "string", format: "date-time" },

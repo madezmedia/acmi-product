@@ -17,7 +17,15 @@ import { validateKeySegments, validateJson, isProtectedKey } from "./mcp-server-
 // ─── Result + utility helpers ───────────────────────────────────────
 
 function jsonResult(data) {
-  return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  // MCP clients (Grok Bot, Cursor) reject tools that declare outputSchema
+  // unless the result includes structuredContent as an object.
+  const structured = Array.isArray(data)
+    ? { ok: true, ids: data }
+    : (data !== null && typeof data === "object" ? data : { ok: true, value: data });
+  return {
+    content: [{ type: "text", text: JSON.stringify(structured, null, 2) }],
+    structuredContent: structured,
+  };
 }
 
 function safeTool(name, fn) {
@@ -154,7 +162,7 @@ export function registerAcmiTools(server, redis) {
     safeTool("acmi_list", async ({ namespace }) => {
       validateKeySegments(namespace);
       const arr = await redis("SMEMBERS", `acmi:${namespace}:list`);
-      return jsonResult(arr || []);
+      return jsonResult({ ok: true, ids: arr || [] });
     })
   );
 
@@ -245,7 +253,7 @@ export function registerAcmiTools(server, redis) {
     {},
     safeTool("acmi_work_list", async () => {
       const arr = await redis("SMEMBERS", "acmi:work:list");
-      return jsonResult(arr || []);
+      return jsonResult({ ok: true, work_ids: arr || [] });
     })
   );
 
@@ -286,7 +294,7 @@ export function registerAcmiTools(server, redis) {
           summary: d.summary || d.message || JSON.stringify(d),
         };
       });
-      return jsonResult(results);
+      return jsonResult({ ok: true, events: results });
     })
   );
 
@@ -367,7 +375,7 @@ export function registerAcmiTools(server, redis) {
         return jsonResult({ ok: true, action: "remove", threadKey });
       }
       const res = await redis("HGETALL", key);
-      return jsonResult(parseHash(res));
+      return jsonResult({ ok: true, action: "list", threads: parseHash(res) });
     })
   );
 
