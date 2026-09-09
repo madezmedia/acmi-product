@@ -236,6 +236,7 @@ export function registerAcmiTools(server, redis) {
       kind: z.string().optional().describe("Event kind (e.g. 'handoff-complete', 'step-done', 'decision')"),
       correlationId: z.string().optional().describe("Correlation ID for tracking across agents/sessions (camelCase)"),
       parentCorrelationId: z.string().optional().describe("Parent correlation ID for chain tracking (camelCase)"),
+      tenant: z.string().optional().describe("Tenant override (defaults to madez on this host)"),
     },
     safeTool("acmi_event", async ({ namespace, id, source, summary, kind, correlationId, parentCorrelationId }) => {
       validateKeySegments(namespace, id);

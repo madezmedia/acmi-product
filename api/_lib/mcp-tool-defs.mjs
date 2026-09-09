@@ -124,6 +124,7 @@ export const TOOL_DEFS = [
         kind: { type: "string", description: "Event kind (e.g. 'handoff-complete', 'step-done', 'decision')" },
         correlationId: { type: "string", description: "Correlation ID for tracking across agents/sessions (camelCase)" },
         parentCorrelationId: { type: "string", description: "Parent correlation ID for chain tracking (camelCase). Required when this event continues another." },
+        tenant: { type: "string", description: "Tenant override (defaults to madez on this host)" },
       },
       required: ["namespace", "id", "source", "summary"],
       additionalProperties: false,
