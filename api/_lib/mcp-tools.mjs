@@ -54,6 +54,128 @@ function parseHash(arr) {
   return out;
 }
 
+function stringArray(value, fieldNames = []) {
+  const parsed = typeof value === "string" ? tryParse(value) : value;
+  if (Array.isArray(parsed)) {
+    return parsed.map(String).filter(Boolean);
+  }
+  if (parsed && typeof parsed === "object") {
+    for (const field of fieldNames) {
+      if (Array.isArray(parsed[field])) {
+        return parsed[field].map(String).filter(Boolean);
+      }
+    }
+  }
+  return [];
+}
+
+function extractProfileId(key, namespace) {
+  const parts = String(key || "").split(":");
+  const idx = parts.lastIndexOf(namespace);
+  if (idx < 0 || parts[idx + 2] !== "profile") return null;
+  return parts[idx + 1] || null;
+}
+
+async function redisType(redis, key) {
+  const type = await redis("TYPE", key);
+  return String(type || "none").toLowerCase();
+}
+
+export async function addListId(redis, key, id, { fieldNames = ["ids"] } = {}) {
+  const type = await redisType(redis, key);
+  if (type === "none" || type === "set") {
+    await redis("SADD", key, id);
+    return { key, type: type === "none" ? "set" : type };
+  }
+  if (type === "string") {
+    const current = stringArray(await redis("GET", key), fieldNames);
+    if (!current.includes(id)) {
+      current.push(id);
+      await redis("SET", key, JSON.stringify(current));
+    }
+    return { key, type };
+  }
+  if (type === "list") {
+    const current = stringArray(await redis("LRANGE", key, 0, -1));
+    if (!current.includes(id)) await redis("RPUSH", key, id);
+    return { key, type };
+  }
+  if (type === "hash") {
+    await redis("HSET", key, id, "1");
+    return { key, type };
+  }
+  throw new Error(`Unsupported ACMI list index type for ${key}: ${type}`);
+}
+
+export async function readListIds(redis, key, {
+  namespace,
+  profilePattern,
+  fieldNames = ["ids"],
+} = {}) {
+  let ids = [];
+  const type = await redisType(redis, key);
+  if (type === "set") {
+    ids = stringArray(await redis("SMEMBERS", key));
+  } else if (type === "string") {
+    ids = stringArray(await redis("GET", key), fieldNames);
+  } else if (type === "list") {
+    ids = stringArray(await redis("LRANGE", key, 0, -1));
+  } else if (type === "hash") {
+    ids = Object.keys(parseHash(await redis("HGETALL", key)));
+  } else if (type !== "none") {
+    throw new Error(`Unsupported ACMI list index type for ${key}: ${type}`);
+  }
+
+  if (profilePattern && namespace) {
+    const profileKeys = stringArray(await redis("KEYS", profilePattern));
+    ids.push(...profileKeys.map((k) => extractProfileId(k, namespace)).filter(Boolean));
+  }
+
+  return Array.from(new Set(ids.map(String).filter(Boolean))).sort();
+}
+
+export async function readObjectByType(redis, key) {
+  const type = await redisType(redis, key);
+  if (type === "hash") return parseHash(await redis("HGETALL", key));
+  if (type === "string") {
+    const parsed = tryParse(await redis("GET", key));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  }
+  if (type === "none") return {};
+  throw new Error(`Unsupported ACMI object key type for ${key}: ${type}`);
+}
+
+async function writeActiveContextEntry(redis, key, threadKey, value) {
+  const type = await redisType(redis, key);
+  if (type === "none" || type === "hash") {
+    await redis("HSET", key, threadKey, JSON.stringify(value));
+    return;
+  }
+  if (type === "string") {
+    const current = await readObjectByType(redis, key);
+    current[threadKey] = value;
+    await redis("SET", key, JSON.stringify(current));
+    return;
+  }
+  throw new Error(`Unsupported ACMI active_context type for ${key}: ${type}`);
+}
+
+async function deleteActiveContextEntry(redis, key, threadKey) {
+  const type = await redisType(redis, key);
+  if (type === "none") return;
+  if (type === "hash") {
+    await redis("HDEL", key, threadKey);
+    return;
+  }
+  if (type === "string") {
+    const current = await readObjectByType(redis, key);
+    delete current[threadKey];
+    await redis("SET", key, JSON.stringify(current));
+    return;
+  }
+  throw new Error(`Unsupported ACMI active_context type for ${key}: ${type}`);
+}
+
 function parseSince(s) {
   const m = String(s).match(/^(\d+)([hdm])$/);
   if (!m) return 0;
@@ -78,7 +200,7 @@ export function registerAcmiTools(server, redis) {
       validateJson(profile, "profile");
       const key = `acmi:${namespace}:${id}:profile`;
       await redis("SET", key, profile);
-      await redis("SADD", `acmi:${namespace}:list`, id);
+      await addListId(redis, `acmi:${namespace}:list`, id);
       return jsonResult({ ok: true, key });
     })
   );
@@ -97,7 +219,7 @@ export function registerAcmiTools(server, redis) {
       validateJson(signals, "signals");
       const key = `acmi:${namespace}:${id}:signals`;
       await redis("SET", key, signals);
-      await redis("SADD", `acmi:${namespace}:list`, id);
+      await addListId(redis, `acmi:${namespace}:list`, id);
       return jsonResult({ ok: true, key });
     })
   );
@@ -113,16 +235,18 @@ export function registerAcmiTools(server, redis) {
       summary: z.string().describe("Human-readable event summary"),
       kind: z.string().optional().describe("Event kind (e.g. 'handoff-complete', 'step-done', 'decision')"),
       correlationId: z.string().optional().describe("Correlation ID for tracking across agents/sessions (camelCase)"),
+      parentCorrelationId: z.string().optional().describe("Parent correlation ID for chain tracking (camelCase)"),
     },
-    safeTool("acmi_event", async ({ namespace, id, source, summary, kind, correlationId }) => {
+    safeTool("acmi_event", async ({ namespace, id, source, summary, kind, correlationId, parentCorrelationId }) => {
       validateKeySegments(namespace, id);
       const key = `acmi:${namespace}:${id}:timeline`;
       const ts = Date.now();
       const event = { ts, source, summary };
       if (kind) event.kind = kind;
       if (correlationId) event.correlationId = correlationId;
+      if (parentCorrelationId) event.parentCorrelationId = parentCorrelationId;
       await redis("ZADD", key, ts, JSON.stringify(event));
-      await redis("SADD", `acmi:${namespace}:list`, id);
+      await addListId(redis, `acmi:${namespace}:list`, id);
       return jsonResult({ ok: true, key, event });
     })
   );
@@ -160,8 +284,12 @@ export function registerAcmiTools(server, redis) {
     },
     safeTool("acmi_list", async ({ namespace }) => {
       validateKeySegments(namespace);
-      const arr = await redis("SMEMBERS", `acmi:${namespace}:list`);
-      return jsonResult({ ok: true, ids: arr || [] });
+      const ids = await readListIds(redis, `acmi:${namespace}:list`, {
+        namespace,
+        profilePattern: `acmi:${namespace}:*:profile`,
+        fieldNames: ["ids"],
+      });
+      return jsonResult({ ok: true, ids });
     })
   );
 
@@ -177,7 +305,7 @@ export function registerAcmiTools(server, redis) {
       validateKeySegments(id);
       validateJson(profile, "profile");
       await redis("SET", `acmi:work:${id}:profile`, profile);
-      await redis("SADD", "acmi:work:list", id);
+      await addListId(redis, "acmi:work:list", id, { fieldNames: ["work_ids", "ids"] });
       return jsonResult({ ok: true, work_id: id });
     })
   );
@@ -190,12 +318,18 @@ export function registerAcmiTools(server, redis) {
       id: z.string().describe("Work item ID"),
       source: z.string().describe("Source of the event"),
       summary: z.string().describe("Event summary"),
+      kind: z.string().optional().describe("Event kind"),
+      correlationId: z.string().optional().describe("Correlation ID for chain tracking"),
+      parentCorrelationId: z.string().optional().describe("Parent correlation ID for chain tracking"),
       sessionId: z.string().optional().describe("Optional session ID to associate"),
     },
-    safeTool("acmi_work_event", async ({ id, source, summary, sessionId }) => {
+    safeTool("acmi_work_event", async ({ id, source, summary, kind, correlationId, parentCorrelationId, sessionId }) => {
       validateKeySegments(id);
       const ts = Date.now();
       const event = { ts, source, summary };
+      if (kind) event.kind = kind;
+      if (correlationId) event.correlationId = correlationId;
+      if (parentCorrelationId) event.parentCorrelationId = parentCorrelationId;
       if (sessionId) event.session_id = sessionId;
       await redis("ZADD", `acmi:work:${id}:timeline`, ts, JSON.stringify(event));
       if (sessionId) await redis("SADD", `acmi:work:${id}:sessions`, sessionId);
@@ -251,8 +385,12 @@ export function registerAcmiTools(server, redis) {
     "List all work item IDs.",
     {},
     safeTool("acmi_work_list", async () => {
-      const arr = await redis("SMEMBERS", "acmi:work:list");
-      return jsonResult({ ok: true, work_ids: arr || [] });
+      const workIds = await readListIds(redis, "acmi:work:list", {
+        namespace: "work",
+        profilePattern: "acmi:work:*:profile",
+        fieldNames: ["work_ids", "ids"],
+      });
+      return jsonResult({ ok: true, work_ids: workIds });
     })
   );
 
@@ -332,7 +470,7 @@ export function registerAcmiTools(server, redis) {
       const [profile, signals, active, rollup, timeline, spawns] = await Promise.all([
         redis("GET", `${prefix}:profile`),
         redis("GET", `${prefix}:signals`),
-        redis("HGETALL", `${prefix}:active_context`),
+        readObjectByType(redis, `${prefix}:active_context`),
         redis("GET", `${prefix}:rollup:latest`),
         redis("ZREVRANGE", `${prefix}:timeline`, 0, 19),
         redis("ZREVRANGE", `${prefix}:spawns`, 0, 4, "WITHSCORES"),
@@ -342,7 +480,7 @@ export function registerAcmiTools(server, redis) {
         bootstrapped_at: new Date().toISOString(),
         profile: profile ? tryParse(profile) : null,
         signals: signals ? tryParse(signals) : null,
-        active_context: parseHash(active),
+        active_context: active,
         rollup_latest: rollup ? tryParse(rollup) : null,
         timeline_recent: (timeline || []).map(tryParse),
         recent_spawns: parseZWithScores(spawns),
@@ -365,16 +503,16 @@ export function registerAcmiTools(server, redis) {
       const key = `acmi:agent:${agentId}:active_context`;
       if (action === "add") {
         if (!threadKey) throw new Error("threadKey is required for 'add' action");
-        await redis("HSET", key, threadKey, JSON.stringify({ role: role || "participant", joined_at: Date.now() }));
+        await writeActiveContextEntry(redis, key, threadKey, { role: role || "participant", joined_at: Date.now() });
         return jsonResult({ ok: true, action: "add", threadKey });
       }
       if (action === "remove") {
         if (!threadKey) throw new Error("threadKey is required for 'remove' action");
-        await redis("HDEL", key, threadKey);
+        await deleteActiveContextEntry(redis, key, threadKey);
         return jsonResult({ ok: true, action: "remove", threadKey });
       }
-      const res = await redis("HGETALL", key);
-      return jsonResult({ ok: true, action: "list", threads: parseHash(res) });
+      const res = await readObjectByType(redis, key);
+      return jsonResult({ ok: true, action: "list", threads: res });
     })
   );
 
