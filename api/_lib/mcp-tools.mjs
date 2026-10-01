@@ -13,6 +13,7 @@
 
 import { z } from "zod";
 import { validateKeySegments, validateJson, isProtectedKey } from "./mcp-server-helpers.mjs";
+import { readWorkItemByType } from "./acmi-readers.mjs";
 
 // ─── Result + utility helpers ───────────────────────────────────────
 
@@ -364,18 +365,17 @@ export function registerAcmiTools(server, redis) {
     safeTool("acmi_work_get", async ({ id }) => {
       validateKeySegments(id);
       const prefix = `acmi:work:${id}`;
-      const [profile, signals, timeline, sessions] = await Promise.all([
-        redis("GET", `${prefix}:profile`),
-        redis("GET", `${prefix}:signals`),
-        redis("ZREVRANGE", `${prefix}:timeline`, 0, 49),
+      const [work, sessions] = await Promise.all([
+        readWorkItemByType(redis, id, { limit: 50 }),
         redis("SMEMBERS", `${prefix}:sessions`),
       ]);
       return jsonResult({
         work_id: id,
-        profile: profile ? tryParse(profile) : null,
-        signals: signals ? tryParse(signals) : null,
-        timeline: (timeline || []).map(tryParse),
+        profile: work.profile,
+        signals: work.signals,
+        timeline: work.timeline,
         sessions: sessions || [],
+        read_warnings: work.read_warnings,
       });
     })
   );
@@ -391,7 +391,12 @@ export function registerAcmiTools(server, redis) {
         profilePattern: "acmi:work:*:profile",
         fieldNames: ["work_ids", "ids"],
       });
-      return jsonResult({ ok: true, work_ids: workIds });
+      const read_warnings = [];
+      await Promise.all(workIds.map(async (id) => {
+        const work = await readWorkItemByType(redis, id, { limit: 1 });
+        read_warnings.push(...work.read_warnings);
+      }));
+      return jsonResult({ ok: true, work_ids: workIds, read_warnings });
     })
   );
 
