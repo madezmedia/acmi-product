@@ -2,9 +2,9 @@
 // Receives Whop purchase events, validates HMAC signature, ZADDs a revenue event to
 // acmi:thread:revenue:timeline so the fleet sees real money flow.
 //
-// Whop signs requests with HMAC-SHA256 using the webhook secret configured in the
-// Whop dashboard. Header: `whop-signature: t=<unix>,v1=<hmac>` (Stripe-style).
-// We compute the same and compare in constant time.
+// Whop signs current requests with Standard Webhooks headers:
+// `webhook-id`, `webhook-timestamp`, `webhook-signature`.
+// Older Stripe-style `whop-signature: t=<unix>,v1=<hex>` is kept as fallback.
 //
 // Env required:
 //   WHOP_WEBHOOK_SECRET   — set in Vercel env after creating the webhook in Whop
@@ -65,9 +65,65 @@ async function readRawBody(req) {
   });
 }
 
-function verifyWhopSignature(rawBody, signatureHeader, secret) {
+function firstHeader(headers, name) {
+  const value = headers?.[name] || headers?.[String(name).toLowerCase()];
+  return Array.isArray(value) ? value[0] : (value || "");
+}
+
+function timingSafeEqualString(a, b, encoding = "utf8") {
+  const left = Buffer.from(String(a), encoding);
+  const right = Buffer.from(String(b), encoding);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function standardWebhookSecretKeys(secret) {
+  const keys = [Buffer.from(secret, "utf8")];
+  if (String(secret).startsWith("whsec_")) {
+    try {
+      const decoded = Buffer.from(String(secret).slice("whsec_".length), "base64");
+      if (decoded.length > 0) keys.push(decoded);
+    } catch {
+      /* ignore malformed whsec_ base64 fallback */
+    }
+  }
+  return keys;
+}
+
+export function verifyStandardWhopSignature(rawBody, headers, secret, nowMs = Date.now()) {
+  if (!secret) return { ok: true, mode: "dev-no-secret" };
+  const id = firstHeader(headers, "webhook-id");
+  const timestamp = firstHeader(headers, "webhook-timestamp");
+  const signatureHeader = firstHeader(headers, "webhook-signature");
+  if (!id || !timestamp || !signatureHeader) return { ok: false, reason: "missing-standard-signature" };
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return { ok: false, reason: "malformed-standard-timestamp" };
+  const ageSec = Math.abs(Math.floor(nowMs / 1000) - ts);
+  if (ageSec > 300) return { ok: false, reason: "stale-timestamp" };
+
+  const signed = `${id}.${timestamp}.${rawBody}`;
+  const candidates = String(signatureHeader)
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const [version, sig] = part.split(",");
+      return version === "v1" ? sig : null;
+    })
+    .filter(Boolean);
+  if (candidates.length === 0) return { ok: false, reason: "malformed-standard-signature" };
+
+  for (const key of standardWebhookSecretKeys(secret)) {
+    const expected = crypto.createHmac("sha256", key).update(signed).digest("base64");
+    for (const candidate of candidates) {
+      if (timingSafeEqualString(expected, candidate, "utf8")) return { ok: true, mode: "standard" };
+    }
+  }
+  return { ok: false, reason: "signature-mismatch" };
+}
+
+export function verifyLegacyWhopSignature(rawBody, signatureHeader, secret, nowMs = Date.now()) {
   if (!signatureHeader || !secret) return { ok: false, reason: "missing-signature-or-secret" };
-  // Whop format: "t=<unix>,v1=<hex>" (Stripe-style)
+  // Legacy format: "t=<unix>,v1=<hex>" (Stripe-style)
   const parts = signatureHeader.split(",").reduce((acc, p) => {
     const [k, v] = p.split("=");
     if (k && v) acc[k.trim()] = v.trim();
@@ -79,18 +135,27 @@ function verifyWhopSignature(rawBody, signatureHeader, secret) {
   const signed = `${t}.${rawBody}`;
   const expected = crypto.createHmac("sha256", secret).update(signed).digest("hex");
   try {
-    const matches = crypto.timingSafeEqual(
-      Buffer.from(expected, "hex"),
-      Buffer.from(v1, "hex"),
-    );
+    const matches = timingSafeEqualString(expected, v1, "hex");
     if (!matches) return { ok: false, reason: "signature-mismatch" };
     // Reject events older than 5 minutes to prevent replays
-    const ageSec = Math.floor(Date.now() / 1000) - Number(t);
+    const ageSec = Math.abs(Math.floor(nowMs / 1000) - Number(t));
     if (Number.isFinite(ageSec) && ageSec > 300) return { ok: false, reason: "stale-timestamp" };
-    return { ok: true };
+    return { ok: true, mode: "stripe-legacy" };
   } catch {
     return { ok: false, reason: "signature-buffer-mismatch" };
   }
+}
+
+export function verifyWhopSignature(rawBody, headers, secret, nowMs = Date.now()) {
+  if (!secret) return { ok: true, mode: "dev-no-secret" };
+  const standard = verifyStandardWhopSignature(rawBody, headers, secret, nowMs);
+  if (standard.ok) return standard;
+
+  const legacyHeader =
+    firstHeader(headers, "whop-signature") ||
+    firstHeader(headers, "x-whop-signature");
+  if (legacyHeader) return verifyLegacyWhopSignature(rawBody, legacyHeader, secret, nowMs);
+  return standard;
 }
 
 function hashEmail(email) {
@@ -136,28 +201,22 @@ export default async function handler(req, res) {
   try {
     rawBody = await readRawBody(req);
   } catch (e) {
-    return reply(res, 400, { error: "could not read body", detail: String(e.message || e) });
+    return reply(res, 200, { ok: false, reason: "body-read-failed", detail: String(e.message || e) });
   }
 
   const secret = process.env.WHOP_WEBHOOK_SECRET || "";
-  const signatureHeader =
-    req.headers["whop-signature"] || req.headers["x-whop-signature"] || "";
 
-  let signatureMode = "verified";
-  if (secret) {
-    const v = verifyWhopSignature(rawBody, signatureHeader, secret);
-    if (!v.ok) {
-      return reply(res, 401, { error: "invalid signature", reason: v.reason });
-    }
-  } else {
-    signatureMode = "dev-no-secret";
+  const verification = verifyWhopSignature(rawBody, req.headers || {}, secret);
+  if (!verification.ok) {
+    return reply(res, 200, { ok: false, reason: verification.reason });
   }
+  const signatureMode = verification.mode || "verified";
 
   let payload;
   try {
     payload = rawBody ? JSON.parse(rawBody) : {};
   } catch {
-    return reply(res, 400, { error: "invalid JSON body" });
+    return reply(res, 200, { ok: false, reason: "invalid-json-body" });
   }
 
   const eventType =
@@ -255,6 +314,6 @@ export default async function handler(req, res) {
       lab_provision: labProvision,
     });
   } catch (e) {
-    return reply(res, 500, { error: "failed to ZADD revenue event", detail: String(e.message || e) });
+    return reply(res, 200, { ok: false, reason: "acmi-save-failed", detail: String(e.message || e) });
   }
 }

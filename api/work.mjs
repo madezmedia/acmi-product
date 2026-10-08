@@ -3,7 +3,8 @@
 // Pulls profile + signals + last 10 timeline events per work-id from the
 // live Upstash ACMI bus. No mock data — empty fields stay empty when keys
 // return null. Sorted P0 first, then by most-recent activity.
-import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
+import { resolveInstance, redis, json, err } from "./_lib/redis.mjs";
+import { readWorkItemByType } from "./_lib/acmi-readers.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -70,27 +71,18 @@ export default async function handler(req) {
     }
 
     // Fetch profile + signals + last 10 timeline events for each id in parallel.
+    const allWarnings = [];
     const items = await Promise.all(ids.slice(0, 200).map(async (id) => {
-      const [profileRaw, signalsRaw, timelineRaw] = await Promise.all([
-        redis(instance, "GET", `acmi:work:${id}:profile`),
-        redis(instance, "GET", `acmi:work:${id}:signals`),
-        redis(instance, "ZREVRANGE", `acmi:work:${id}:timeline`, "0", "9", "WITHSCORES"),
-      ]);
-      const profile = tryParse(profileRaw) || {};
-      const signals = tryParse(signalsRaw) || {};
-
-      // Parse ZREVRANGE WITHSCORES output: [member1, score1, member2, score2, ...]
-      const events = [];
-      const scores = [];
-      const tl = Array.isArray(timelineRaw) ? timelineRaw : [];
-      for (let i = 0; i < tl.length; i += 2) {
-        const ev = tryParse(tl[i]);
-        const sc = Number(tl[i + 1]);
-        if (ev && typeof ev === "object") {
-          events.push(ev);
-          scores.push(Number.isFinite(sc) ? sc : (ev.ts || 0));
-        }
-      }
+      const work = await readWorkItemByType((...cmd) => redis(instance, ...cmd), id, { limit: 10 });
+      const profile = work.profile && typeof work.profile === "object" && !Array.isArray(work.profile)
+        ? work.profile
+        : {};
+      const signals = work.signals && typeof work.signals === "object" && !Array.isArray(work.signals)
+        ? work.signals
+        : {};
+      const events = work.timeline || [];
+      const scores = (work.timeline_scored || []).map((item) => item.score);
+      if (work.read_warnings.length) allWarnings.push(...work.read_warnings);
 
       // Latest event = first (ZREVRANGE is desc). Earliest = last in this slice.
       const latest = events[0] || null;
@@ -127,6 +119,7 @@ export default async function handler(req) {
         last_event_summary: latest ? truncate(latest.summary || "", 200) : null,
         age_iso: ageIso,
         evidence_count: evidenceCount,
+        read_warnings: work.read_warnings,
       };
     }));
 
@@ -144,6 +137,7 @@ export default async function handler(req) {
       ts: Date.now(),
       count: items.length,
       items,
+      read_warnings: allWarnings,
     }, { sMaxage: 5 });
   } catch (e) {
     return err(e.message);

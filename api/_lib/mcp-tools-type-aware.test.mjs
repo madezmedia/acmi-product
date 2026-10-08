@@ -40,7 +40,8 @@ function makeRedis(seed = {}) {
         return current.length;
       }
       case "LRANGE":
-        return item?.type === "list" ? item.value : [];
+        if (item?.type !== "list") return [];
+        return item.value.slice(Number(args[1]) || 0, Number(args[2]) === -1 ? undefined : Number(args[2]) + 1);
       case "HSET": {
         const current = item?.type === "hash" ? { ...item.value } : {};
         current[args[1]] = args[2];
@@ -61,8 +62,14 @@ function makeRedis(seed = {}) {
         const re = new RegExp(`^${pattern}$`);
         return Array.from(data.keys()).filter((candidate) => re.test(candidate));
       }
-      case "ZREVRANGE":
-        return [];
+      case "ZREVRANGE": {
+        if (item?.type !== "zset") return [];
+        const start = Number(args[1]) || 0;
+        const stop = Number(args[2]) || 0;
+        const withScores = args.map(String).some((arg) => arg.toUpperCase() === "WITHSCORES");
+        const rows = [...item.value].sort((a, b) => Number(b.score) - Number(a.score)).slice(start, stop + 1);
+        return withScores ? rows.flatMap((row) => [row.member, String(row.score)]) : rows.map((row) => row.member);
+      }
       default:
         throw new Error(`unsupported fake redis command ${cmd}`);
     }
@@ -86,6 +93,81 @@ test("addListId appends to JSON string list indexes without SADD WRONGTYPE", asy
 
   assert.deepEqual(JSON.parse(redis.data.get("acmi:work:list").value), ["existing", "new-work"]);
   assert.equal(redis.calls.some(([cmd]) => cmd === "SADD"), false);
+});
+
+test("registered acmi_work_get reads legacy HASH objects and LIST timelines", async () => {
+  const redis = makeRedis({
+    "acmi:work:legacy:profile": { type: "hash", value: { title: "Legacy Work", status: "stalled" } },
+    "acmi:work:legacy:signals": { type: "hash", value: { owner: "ops", status: "stalled" } },
+    "acmi:work:legacy:timeline": {
+      type: "list",
+      value: [
+        JSON.stringify({ ts: 123, kind: "note", summary: "legacy list event" }),
+      ],
+    },
+  });
+  const tools = {};
+  registerAcmiTools({
+    tool(name, _description, _schema, handler) {
+      tools[name] = handler;
+    },
+  }, redis);
+
+  const result = parseToolResult(await tools.acmi_work_get({ id: "legacy" }));
+  assert.equal(result.profile.title, "Legacy Work");
+  assert.equal(result.signals.owner, "ops");
+  assert.equal(result.timeline[0].summary, "legacy list event");
+  assert.deepEqual(result.read_warnings, []);
+});
+
+test("registered acmi_work_get returns warnings instead of failing on bad key types", async () => {
+  const redis = makeRedis({
+    "acmi:work:mixed:profile": { type: "set", value: new Set(["bad"]) },
+    "acmi:work:mixed:signals": { type: "string", value: JSON.stringify({ status: "open" }) },
+    "acmi:work:mixed:timeline": {
+      type: "zset",
+      value: [
+        { member: JSON.stringify({ kind: "event", summary: "still readable" }), score: 456 },
+      ],
+    },
+  });
+  const tools = {};
+  registerAcmiTools({
+    tool(name, _description, _schema, handler) {
+      tools[name] = handler;
+    },
+  }, redis);
+
+  const result = parseToolResult(await tools.acmi_work_get({ id: "mixed" }));
+  assert.equal(result.profile, null);
+  assert.equal(result.signals.status, "open");
+  assert.equal(result.timeline[0].ts, 456);
+  assert.equal(result.timeline[0].summary, "still readable");
+  assert.equal(result.read_warnings.length, 1);
+  assert.match(result.read_warnings[0].message, /unsupported object key type/);
+});
+
+test("registered acmi_work_get reads legacy JSON string timelines", async () => {
+  const redis = makeRedis({
+    "acmi:work:string-timeline:profile": { type: "string", value: JSON.stringify({ title: "String Timeline" }) },
+    "acmi:work:string-timeline:signals": { type: "string", value: JSON.stringify({ status: "open" }) },
+    "acmi:work:string-timeline:timeline": {
+      type: "string",
+      value: JSON.stringify([{ ts: 789, kind: "note", summary: "timeline in a string" }]),
+    },
+  });
+  const tools = {};
+  registerAcmiTools({
+    tool(name, _description, _schema, handler) {
+      tools[name] = handler;
+    },
+  }, redis);
+
+  const result = parseToolResult(await tools.acmi_work_get({ id: "string-timeline" }));
+  assert.equal(result.profile.title, "String Timeline");
+  assert.equal(result.timeline[0].ts, 789);
+  assert.equal(result.timeline[0].summary, "timeline in a string");
+  assert.deepEqual(result.read_warnings, []);
 });
 
 test("readListIds handles set/string/list/hash indexes and profile-key fallback", async () => {
