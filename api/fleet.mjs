@@ -1,6 +1,7 @@
 // GET /api/fleet — agent tree from acmi:agent:*:profile + signals.
 // Returns nodes shaped to match window.ACMI.FLEET in data.jsx.
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
+import { withFleetRead } from "./_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -38,7 +39,7 @@ function deriveLast(signals) {
   return `${Math.round(age / 86400)}d`;
 }
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const instance = resolveInstance(req);
     const profileKeys = (await redis(instance, "KEYS", "acmi:agent:*:profile")) || [];
@@ -97,3 +98,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);

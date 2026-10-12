@@ -7,6 +7,7 @@
 // their events while running against the MI300X.
 
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
+import { withFleetRead } from "./_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -34,7 +35,7 @@ function classifyFramework(source, kind) {
   return "other";
 }
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const instance = resolveInstance(req);
     const url = new URL(req.url);
@@ -158,3 +159,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);

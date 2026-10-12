@@ -4,6 +4,7 @@
 // event's payload.inference (when present). Used by ops-center.html
 // "MI300X Live" panel for AMD demo recording.
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
+import { withFleetRead } from "./_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -12,7 +13,7 @@ const ALLOWED = new Set([
   "agent-coordination",
 ]);
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const url = new URL(req.url);
     const thread = (url.searchParams.get("thread") || "demo-amd-chain").replace(/[^a-z0-9_-]/gi, "");
@@ -75,3 +76,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);

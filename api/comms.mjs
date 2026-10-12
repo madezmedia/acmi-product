@@ -2,6 +2,7 @@
 // Returns timeline events from acmi:thread:<name>:timeline, parsed.
 // Default thread: agent-coordination.
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
+import { withFleetRead } from "./_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -15,7 +16,7 @@ const ALLOWED_THREADS = new Set([
   "lobster-trap-fleet-guardian",
 ]);
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const url = new URL(req.url);
     const thread = (url.searchParams.get("thread") || "agent-coordination").replace(/[^a-z0-9_-]/gi, "");
@@ -43,3 +44,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);

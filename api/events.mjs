@@ -2,6 +2,7 @@
 // Tail-style fan-in across active agent timelines.
 // Polling-based (Upstash REST has no native push). Client polls every 1-3s.
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
+import { withFleetRead } from "./_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -30,7 +31,7 @@ function timeStamp(ts) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 }
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const url = new URL(req.url);
     const since = parseInt(url.searchParams.get("since") || "0", 10);
@@ -83,3 +84,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);

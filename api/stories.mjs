@@ -3,6 +3,7 @@
 // acmi:registry:work-status-vocab:v1 (DRAFT/READY/SHIPPED/DEPLOYED/LIVE).
 // Items without a recognized status fall into DRAFT.
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
+import { withFleetRead } from "./_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -35,7 +36,7 @@ function asString(v, fallback = "—") {
   return fallback;
 }
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const instance = resolveInstance(req);
 
@@ -75,3 +76,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);
