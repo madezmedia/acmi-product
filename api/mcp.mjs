@@ -230,16 +230,85 @@ async function dispatchJsonRpc(msg, tools) {
 // (200 + JSON-RPC result), not 401, or Smithery wraps the error into an
 // authorizationUrl response and the scan flags them as auth-failures.
 /** Hosted tools historically wrote unprefixed `acmi:ns:id:*`. Polar restore is madez-only. */
-function tenantizeKey(key, tenant) {
+export function tenantizeKey(key, tenant) {
   if (typeof key !== "string" || !key.startsWith("acmi:")) return key;
   if (key.startsWith(`acmi:${tenant}:`)) return key;
   if (key.startsWith("acmi:client:")) return key;
   return key.replace(/^acmi:/, `acmi:${tenant}:`);
 }
 
-function withTenantPrefix(redis, tenant) {
+const ALL_KEY_CMDS = new Set([
+  "DEL",
+  "EXISTS",
+  "MGET",
+  "TOUCH",
+  "UNLINK",
+]);
+
+const FIRST_TWO_KEY_CMDS = new Set([
+  "COPY",
+  "RENAME",
+  "RENAMENX",
+]);
+
+const SET_MULTI_KEY_CMDS = new Set([
+  "SDIFF",
+  "SINTER",
+  "SUNION",
+]);
+
+const SET_DEST_THEN_KEYS_CMDS = new Set([
+  "SDIFFSTORE",
+  "SINTERSTORE",
+  "SUNIONSTORE",
+]);
+
+function tenantizeEvalArgs(args, tenant) {
+  const numKeys = Number(args[1]) || 0;
+  return args.map((arg, index) => {
+    if (index >= 2 && index < 2 + numKeys) return tenantizeKey(arg, tenant);
+    return arg;
+  });
+}
+
+function tenantizeStoreWithNumKeysArgs(args, tenant) {
+  const numKeys = Number(args[1]) || 0;
+  return args.map((arg, index) => {
+    if (index === 0) return tenantizeKey(arg, tenant);
+    if (index >= 2 && index < 2 + numKeys) return tenantizeKey(arg, tenant);
+    return arg;
+  });
+}
+
+export function tenantizeArgs(cmd, args, tenant) {
+  const c = String(cmd).toUpperCase();
+  if (c === "SCAN") {
+    return args.map((arg, index) => (
+      index > 0 && String(args[index - 1]).toUpperCase() === "MATCH"
+        ? tenantizeKey(arg, tenant)
+        : arg
+    ));
+  }
+  if (c === "KEYS" || ALL_KEY_CMDS.has(c) || SET_MULTI_KEY_CMDS.has(c)) {
+    return args.map((arg) => tenantizeKey(arg, tenant));
+  }
+  if (FIRST_TWO_KEY_CMDS.has(c)) {
+    return args.map((arg, index) => (index < 2 ? tenantizeKey(arg, tenant) : arg));
+  }
+  if (SET_DEST_THEN_KEYS_CMDS.has(c)) {
+    return args.map((arg) => tenantizeKey(arg, tenant));
+  }
+  if (c === "EVAL" || c === "EVALSHA") return tenantizeEvalArgs(args, tenant);
+  if (c === "ZUNIONSTORE" || c === "ZINTERSTORE") return tenantizeStoreWithNumKeysArgs(args, tenant);
+  return args.map((arg, index) => (index === 0 ? tenantizeKey(arg, tenant) : arg));
+}
+
+export function withTenantPrefix(redis, tenant) {
   const t = tenant || "madez";
-  return async (cmd, ...args) => redis(cmd, ...args.map((a) => tenantizeKey(a, t)));
+  const wrapped = async (cmd, ...args) => redis(cmd, ...tenantizeArgs(cmd, args, t));
+  wrapped.keyFor = (key) => tenantizeKey(key, t);
+  wrapped.tenant = t;
+  return wrapped;
 }
 
 const PUBLIC_METHODS = new Set([

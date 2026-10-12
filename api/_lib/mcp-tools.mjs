@@ -38,10 +38,23 @@ function tryParse(s) {
   try { return JSON.parse(s); } catch { return s; }
 }
 
-function parseZWithScores(arr) {
+export function normTs(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 0;
+  if (x > 1e17) return Math.floor(x / 1e6); // ns -> ms
+  if (x > 1e14) return Math.floor(x / 1e3); // us -> ms
+  if (x < 1e11) return Math.floor(x * 1e3); // s -> ms
+  return Math.floor(x);
+}
+
+function physKey(redis, key) {
+  return typeof redis.keyFor === "function" ? redis.keyFor(key) : key;
+}
+
+export function parseZWithScores(arr) {
   const out = [];
   for (let i = 0; i < (arr || []).length; i += 2) {
-    out.push({ ts: Number(arr[i + 1]), data: tryParse(arr[i]) });
+    out.push({ ts: normTs(arr[i + 1]), raw_score: arr[i + 1], data: tryParse(arr[i]) });
   }
   return out;
 }
@@ -201,7 +214,7 @@ export function registerAcmiTools(server, redis) {
       const key = `acmi:${namespace}:${id}:profile`;
       await redis("SET", key, profile);
       await addListId(redis, `acmi:${namespace}:list`, id);
-      return jsonResult({ ok: true, key });
+      return jsonResult({ ok: true, key: physKey(redis, key) });
     })
   );
 
@@ -220,7 +233,7 @@ export function registerAcmiTools(server, redis) {
       const key = `acmi:${namespace}:${id}:signals`;
       await redis("SET", key, signals);
       await addListId(redis, `acmi:${namespace}:list`, id);
-      return jsonResult({ ok: true, key });
+      return jsonResult({ ok: true, key: physKey(redis, key) });
     })
   );
 
@@ -236,7 +249,6 @@ export function registerAcmiTools(server, redis) {
       kind: z.string().optional().describe("Event kind (e.g. 'handoff-complete', 'step-done', 'decision')"),
       correlationId: z.string().optional().describe("Correlation ID for tracking across agents/sessions (camelCase)"),
       parentCorrelationId: z.string().optional().describe("Parent correlation ID for chain tracking (camelCase)"),
-      tenant: z.string().optional().describe("Tenant override (defaults to madez on this host)"),
     },
     safeTool("acmi_event", async ({ namespace, id, source, summary, kind, correlationId, parentCorrelationId }) => {
       validateKeySegments(namespace, id);
@@ -248,7 +260,7 @@ export function registerAcmiTools(server, redis) {
       if (parentCorrelationId) event.parentCorrelationId = parentCorrelationId;
       await redis("ZADD", key, ts, JSON.stringify(event));
       await addListId(redis, `acmi:${namespace}:list`, id);
-      return jsonResult({ ok: true, key, event });
+      return jsonResult({ ok: true, key: physKey(redis, key), event });
     })
   );
 
@@ -266,12 +278,16 @@ export function registerAcmiTools(server, redis) {
       const [profile, signals, timeline] = await Promise.all([
         redis("GET", `${prefix}:profile`),
         redis("GET", `${prefix}:signals`),
-        redis("ZREVRANGE", `${prefix}:timeline`, 0, 9),
+        redis("ZRANGE", `${prefix}:timeline`, 0, -1, "WITHSCORES"),
       ]);
+      const recent = parseZWithScores(timeline)
+        .sort((a, b) => b.ts - a.ts)
+        .slice(0, 10)
+        .map((e) => e.data);
       return jsonResult({
         profile: profile ? tryParse(profile) : null,
         signals: signals ? tryParse(signals) : null,
-        timeline_recent: (timeline || []).map(tryParse),
+        timeline_recent: recent,
       });
     })
   );
@@ -412,16 +428,18 @@ export function registerAcmiTools(server, redis) {
         if (k.endsWith(":timeline")) return `acmi:${k}`;
         return `acmi:${k}:timeline`;
       });
-      const minScore = sinceMs ? Date.now() - sinceMs : 0;
+      const cutoffMs = sinceMs ? Date.now() - sinceMs : 0;
+      const minScore = cutoffMs ? Math.floor(cutoffMs / 1000) : 0;
       const merged = [];
       for (const k of targets) {
         const r = await redis("ZRANGEBYSCORE", k, minScore, "+inf", "WITHSCORES");
-        for (const e of parseZWithScores(r)) merged.push({ ...e, _source: k });
+        for (const e of parseZWithScores(r)) {
+          if (!cutoffMs || e.ts >= cutoffMs) merged.push({ ...e, _source: physKey(redis, k) });
+        }
       }
       merged.sort((a, b) => b.ts - a.ts);
       const results = merged.slice(0, maxResults).map((m) => {
-        let ts = m.ts;
-        if (ts > 9999999999999) ts = Number(String(ts).slice(0, 13));
+        const ts = m.ts;
         const iso = new Date(ts).toISOString().slice(0, 16).replace("T", " ") + "Z";
         const src = m._source.replace(/^acmi:|:timeline$/g, "");
         const d = m.data || {};
@@ -473,7 +491,7 @@ export function registerAcmiTools(server, redis) {
         redis("GET", `${prefix}:signals`),
         readObjectByType(redis, `${prefix}:active_context`),
         redis("GET", `${prefix}:rollup:latest`),
-        redis("ZREVRANGE", `${prefix}:timeline`, 0, 19),
+        redis("ZRANGE", `${prefix}:timeline`, 0, -1, "WITHSCORES"),
         redis("ZREVRANGE", `${prefix}:spawns`, 0, 4, "WITHSCORES"),
       ]);
       return jsonResult({
@@ -483,7 +501,7 @@ export function registerAcmiTools(server, redis) {
         signals: signals ? tryParse(signals) : null,
         active_context: active,
         rollup_latest: rollup ? tryParse(rollup) : null,
-        timeline_recent: (timeline || []).map(tryParse),
+        timeline_recent: parseZWithScores(timeline).sort((a, b) => b.ts - a.ts).slice(0, 20).map((e) => e.data),
         recent_spawns: parseZWithScores(spawns),
       });
     })
@@ -530,7 +548,7 @@ export function registerAcmiTools(server, redis) {
       validateJson(rollup, "rollup");
       const key = `acmi:agent:${agentId}:rollup:latest`;
       await redis("SET", key, rollup);
-      return jsonResult({ ok: true, key });
+      return jsonResult({ ok: true, key: physKey(redis, key) });
     })
   );
 

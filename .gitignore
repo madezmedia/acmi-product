@@ -1,3 +1,7 @@
 .vercel
 node_modules/
 package-lock.json
+
+# local env files (secrets)
+.env*
+!.env.example

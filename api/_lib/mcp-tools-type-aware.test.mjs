@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   addListId,
+  normTs,
   readListIds,
   readObjectByType,
   registerAcmiTools,
@@ -61,8 +62,27 @@ function makeRedis(seed = {}) {
         const re = new RegExp(`^${pattern}$`);
         return Array.from(data.keys()).filter((candidate) => re.test(candidate));
       }
-      case "ZREVRANGE":
-        return [];
+      case "ZRANGE":
+      case "ZREVRANGE": {
+        if (item?.type !== "zset") return [];
+        const start = Number(args[1]) || 0;
+        const stop = Number(args[2]) === -1 ? item.value.length - 1 : Number(args[2]) || 0;
+        const withScores = args.map(String).some((arg) => arg.toUpperCase() === "WITHSCORES");
+        const rows = [...item.value]
+          .sort((a, b) => cmd === "ZREVRANGE" ? Number(b.score) - Number(a.score) : Number(a.score) - Number(b.score))
+          .slice(start, stop + 1);
+        return withScores ? rows.flatMap((row) => [row.member, String(row.score)]) : rows.map((row) => row.member);
+      }
+      case "ZRANGEBYSCORE": {
+        if (item?.type !== "zset") return [];
+        const min = Number(args[1]);
+        const max = args[2] === "+inf" ? Infinity : Number(args[2]);
+        const withScores = args.map(String).some((arg) => arg.toUpperCase() === "WITHSCORES");
+        const rows = [...item.value]
+          .filter((row) => Number(row.score) >= min && Number(row.score) <= max)
+          .sort((a, b) => Number(a.score) - Number(b.score));
+        return withScores ? rows.flatMap((row) => [row.member, String(row.score)]) : rows.map((row) => row.member);
+      }
       default:
         throw new Error(`unsupported fake redis command ${cmd}`);
     }
@@ -86,6 +106,80 @@ test("addListId appends to JSON string list indexes without SADD WRONGTYPE", asy
 
   assert.deepEqual(JSON.parse(redis.data.get("acmi:work:list").value), ["existing", "new-work"]);
   assert.equal(redis.calls.some(([cmd]) => cmd === "SADD"), false);
+});
+
+test("normTs normalizes seconds, microseconds, nanoseconds, and milliseconds", () => {
+  assert.equal(normTs(1790861000), 1790861000000);
+  assert.equal(normTs(1790861000123456), 1790861000123);
+  assert.equal(normTs(1790861000123456789), 1790861000123);
+  assert.equal(normTs(1790861000123), 1790861000123);
+});
+
+test("acmi_get recent events sort mixed score units by normalized timestamp", async () => {
+  const redis = makeRedis({
+    "acmi:thread:agent-coordination:profile": { type: "string", value: "{}" },
+    "acmi:thread:agent-coordination:signals": { type: "string", value: "{}" },
+    "acmi:thread:agent-coordination:timeline": {
+      type: "zset",
+      value: [
+        {
+          member: JSON.stringify({ ts: 1784562375594, summary: "old ns-scored July" }),
+          score: 1784562375594000000,
+        },
+        {
+          member: JSON.stringify({ ts: 1790861000000, summary: "fresh ms event" }),
+          score: 1790861000000,
+        },
+      ],
+    },
+  });
+  const tools = {};
+  registerAcmiTools({
+    tool(name, _description, _schema, handler) {
+      tools[name] = handler;
+    },
+  }, redis);
+
+  const result = parseToolResult(await tools.acmi_get({ namespace: "thread", id: "agent-coordination" }));
+  assert.equal(result.timeline_recent[0].summary, "fresh ms event");
+  assert.equal(result.timeline_recent[1].summary, "old ns-scored July");
+});
+
+test("acmi_cat since filters old ns-scored events after normalization", async () => {
+  const now = Date.now;
+  Date.now = () => 1790862000000;
+  try {
+    const redis = makeRedis({
+      "acmi:thread:agent-coordination:timeline": {
+        type: "zset",
+        value: [
+          {
+            member: JSON.stringify({ ts: 1784562375594, kind: "old", summary: "old ns-scored July" }),
+            score: 1784562375594000000,
+          },
+          {
+            member: JSON.stringify({ ts: 1790861000000, kind: "fresh", summary: "fresh ms event" }),
+            score: 1790861000000,
+          },
+        ],
+      },
+    });
+    const tools = {};
+    registerAcmiTools({
+      tool(name, _description, _schema, handler) {
+        tools[name] = handler;
+      },
+    }, redis);
+
+    const result = parseToolResult(await tools.acmi_cat({
+      keys: ["thread:agent-coordination"],
+      since: "48h",
+      limit: 10,
+    }));
+    assert.deepEqual(result.events.map((event) => event.summary), ["fresh ms event"]);
+  } finally {
+    Date.now = now;
+  }
 });
 
 test("readListIds handles set/string/list/hash indexes and profile-key fallback", async () => {
