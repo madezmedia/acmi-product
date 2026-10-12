@@ -1,9 +1,9 @@
+import { getComposioKey } from './_lib/composio-key.mjs';
 /**
  * Avery Voice Tools — Real estate acquisition VAPI handler
  * Flat string results, VAPI results[] format, Composio + ACMI
  */
 
-const COMPOSIO_KEY = 'ak_vaOPvXoztdPG9km0Oe4p';
 const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp/mcp';
 
 const UPSTASH_URL = (process.env.ACMI_BRIDGE_URL || process.env.UPSTASH_REDIS_REST_URL || 'https://acmi-redis-u70402.vm.elestio.app/bridge/exec').replace(/\/+$/, '');
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
 
     const resp = await fetch(COMPOSIO_BASE, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'x-api-key': COMPOSIO_KEY },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'x-api-key': await getComposioKey() },
       body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: { name: 'COMPOSIO_MULTI_EXECUTE_TOOL', arguments: { tools: [{ tool_slug: toolDef.slug, arguments: toolDef.transform(args) }] } } })
     });
 

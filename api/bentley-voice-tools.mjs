@@ -1,3 +1,4 @@
+import { getComposioKey } from './_lib/composio-key.mjs';
 /**
  * VAPI → Composio + ACMI Webhook Handler — v8.1 (call-end hardwire)
  * Deploy to: https://acmi-product.vercel.app/api/bentley-voice-tools
@@ -26,7 +27,6 @@
 
 // ─── Composio ─────────────────────────────────────────────────────────────────
 const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp/mcp';
-const COMPOSIO_API_KEY = (typeof process !== 'undefined' && process.env.COMPOSIO_API_KEY) || 'ak_elk9P6oo1zQJ27848GK7';
 
 // ─── ACMI (Self-hosted VM Redis REST bridge) ────────────────────────────────────
 const VM_REDIS = process.env.ACMI_BRIDGE_URL || 'https://acmi-redis-u70402.vm.elestio.app/bridge/exec';
@@ -383,7 +383,7 @@ async function runComposio(name, args) {
   // Execute via COMPOSIO_MULTI_EXECUTE_TOOL (tool_router accepts a known slug directly)
   const execR = await fetch(COMPOSIO_BASE, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', 'x-api-key': COMPOSIO_API_KEY },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', 'x-api-key': await getComposioKey() },
     body: JSON.stringify({
       jsonrpc: '2.0',
       method: 'tools/call',
