@@ -1,3 +1,4 @@
+import { getComposioKey } from './_lib/composio-key.mjs';
 /**
  * Bentley Voice — VAPI Webhook Handler
  * Deployed at: https://acmi-product.vercel.app/api/bentley-vapi-webhook
@@ -6,7 +7,6 @@
  * Parses SSE responses correctly (Composio tool_router uses SSE transport)
  */
 
-const COMPOSIO_API_KEY = process.env.COMPOSIO_API_KEY || 'ak_xHrrW-9SrFPEC1LPv6eJ';
 const COMPOSIO_SESSION = 'trs_LuHTrrdOQdEp';
 const COMPOSIO_BASE = `https://backend.composio.dev/tool_router/${COMPOSIO_SESSION}/mcp`;
 
@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     if (toolSlug) {
       const resp = await fetch(COMPOSIO_BASE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'x-api-key': COMPOSIO_API_KEY },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'x-api-key': await getComposioKey() },
         body: JSON.stringify({
           jsonrpc: '2.0', method: 'tools/call', id: 1,
           params: { name: 'COMPOSIO_MULTI_EXECUTE_TOOL', arguments: { tools: [{ tool_slug: toolSlug, arguments: toolArgs }] } }
