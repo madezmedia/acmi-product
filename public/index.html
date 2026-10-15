@@ -3,31 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ACMI — Agentic Context Management Infrastructure</title>
+<title>LogMem — built on the ACMI protocol</title>
 <link rel="stylesheet" href="style.css">
-<meta name="description" content="ACMI is the open protocol for multi-agent coordination. Profile, Signals, Timeline — three Redis keys that replace 800 lines of agent memory code.">
-<meta property="og:title" content="ACMI — Agentic Context Management Infrastructure">
-<meta property="og:description" content="The coordination backbone for AI agent fleets. Three keys. That's the whole protocol.">
+<meta name="description" content="LogMem gives AI agents persistent context. It is built on the ACMI protocol. The core uses Redis only. Qdrant is used on custom or dedicated deployments.">
+<meta property="og:title" content="LogMem — built on the ACMI protocol">
+<meta property="og:description" content="LogMem is built on the ACMI protocol. The core uses Redis only. Qdrant is used on custom or dedicated deployments.">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
 
 <nav class="top">
   <div class="nav-inner">
-    <a href="index.html" class="logo">ACMI</a>
+    <a href="index.html" class="logo">LogMem</a>
     <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
     <div class="nav-links">
       <a href="architecture.html">Architecture</a>
       <a href="mcp.html">MCP Server</a>
       <a href="product.html">Product</a>
-      <a href="ops-center.html">Live Ops Center</a>
+      <a href="product.html">Pricing</a>
       <a href="governance-dashboard.html">Governance</a>
       <a href="deck.html">Pitch Deck</a>
       <a href="amd.html">AMD Hackathon</a>
-      <a href="competitive.html">Competitive</a>
-      <a href="roundtable.html">Roundtable</a>
-      <a href="kanban.html">Kanban</a>
-      <a href="bugs.html">Bugs</a>
     </div>
   </div>
 </nav>
@@ -38,18 +34,18 @@
   <div class="hero-meta">
     <span class="badge">Open Source · MIT License</span>
   </div>
-  <h1>Three keys.<br>That's the whole <span class="em">protocol</span>.</h1>
-  <p class="tagline">ACMI gives AI agents persistent, real-time context with a single Redis KV engine. No vector databases. No knowledge graphs. No LLM calls for core operations.</p>
+  <h1>LogMem.<br>Three keys. That is the whole <span class="em">protocol</span>.</h1>
+  <p class="tagline">LogMem gives AI agents persistent context. It is built on the ACMI protocol. The core uses Redis only. Qdrant is used on custom or dedicated deployments. Core operations do not use a knowledge graph. Core operations do not call an LLM.</p>
   <div class="hero-actions">
-    <a href="architecture.html" class="btn-primary">Read the Architecture →</a>
-    <a href="https://github.com/madezmedia/acmi" class="btn-outline">GitHub</a>
+    <a href="product.html" class="btn-primary">Audit / Contact</a>
+    <a href="architecture.html" class="btn-outline">Read the Architecture →</a>
     <a href="mcp.html" class="btn-secondary">MCP Server Docs</a>
   </div>
 </section>
 
 <section class="keys-section">
   <div class="eyebrow">N° 01 <span class="num">How it works</span></div>
-  <h2>Three keys per entity. That's the whole protocol.</h2>
+  <h2>Three keys per entity. That is the whole protocol.</h2>
   <div class="pillars">
     <div class="pillar">
       <div class="key-eyebrow"><span class="key-letter">P</span> Profile — <span class="key-q">who</span></div>
@@ -135,9 +131,10 @@ node acmi.mjs get sales acme-corp</pre>
 </section>
 
 <section class="cta">
-  <h2>Start building.</h2>
+  <h2>Start with an audit, or contact us.</h2>
   <div class="cta-links">
-    <a href="architecture.html" class="btn-primary">Read the Architecture →</a>
+    <a href="product.html" class="btn-primary">Audit / Contact</a>
+    <a href="architecture.html" class="btn-secondary">Read the Architecture →</a>
     <a href="mcp.html" class="btn-secondary">MCP Server Docs</a>
     <a href="https://github.com/madezmedia/acmi" class="btn-outline">GitHub →</a>
   </div>
@@ -145,15 +142,8 @@ node acmi.mjs get sales acme-corp</pre>
 
 </main>
 
-<footer class="site-foot">
-  <div class="inner">
-    <div class="left"><strong>ACMI</strong> — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</div>
-    <div class="links">
-      <a href="https://github.com/madezmedia/acmi">GitHub</a>
-      <a href="https://www.npmjs.com/package/@madezmedia/acmi">npm</a>
-      <a href="https://smithery.ai/servers/madezmediapartners/acmi-mcp">Smithery</a>
-    </div>
-  </div>
+<footer>
+  <p>LogMem, built on the ACMI protocol. Built by <a href="https://www.madezmedia.com">Mad EZ Media</a>. MIT License.</p>
 </footer>
 
 </body>

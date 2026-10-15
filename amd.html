@@ -3,24 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ACMI on AMD — Multi-Agent Coordination</title>
+<title>LogMem on AMD — Multi-Agent Coordination</title>
 <link rel="stylesheet" href="style.css">
 <meta name="description" content="Multi-agent coordination at swarm-economics prices. AMD Developer Hackathon submission.">
-<meta property="og:title" content="ACMI on AMD">
-<meta property="og:description" content="3 agents on an MI300X via Ollama/ROCm + ACMI MCP.">
+<meta property="og:title" content="LogMem on AMD">
+<meta property="og:description" content="3 agents on an MI300X via Ollama/ROCm. LogMem is built on the ACMI protocol.">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
 
 <nav class="top">
   <div class="nav-inner">
-    <a href="index.html" class="logo">ACMI</a>
+    <a href="index.html" class="logo">LogMem</a>
     <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
     <div class="nav-links">
       <a href="architecture.html">Architecture</a>
       <a href="mcp.html">MCP Server</a>
       <a href="product.html">Product</a>
-      <a href="bugs.html">Bug Tracker</a>
+      <a href="product.html">Pricing</a>
       <a href="amd.html" class="active">AMD Hackathon</a>
     </div>
   </div>
@@ -32,8 +32,8 @@
   <div class="hero-meta">
     <span class="badge">AMD Developer Hackathon × LabLab.ai</span>
   </div>
-  <h1>ACMI on <span class="em">AMD</span></h1>
-  <p class="tagline">Multi-agent coordination at swarm-economics prices. Local LLM inference on AMD MI300X GPUs makes 9-agent swarms economically viable. ACMI is the protocol that connects them.</p>
+  <h1>LogMem on <span class="em">AMD</span></h1>
+  <p class="tagline">Multi-agent coordination at swarm-economics prices. Local LLM inference on AMD MI300X GPUs makes 9-agent swarms economically viable. LogMem is built on the ACMI protocol. The protocol connects them.</p>
   <div class="hero-actions">
     <a href="#demo" class="btn-primary">Watch the 3-min demo ↓</a>
     <div class="code-block" style="margin:0; padding:10px 16px; border-radius:4px; display:inline-block;">
@@ -49,7 +49,7 @@
 
   <h2 style="margin-top: 80px;">The Architecture</h2>
   <p>A single AMD MI300X with 192GB HBM3 easily hosts multiple LLMs simultaneously via Ollama and ROCm 7.2 (e.g., Llama 3.3 70B + Qwen 2.5 32B + Mistral Small).</p>
-  <p>Three independent Node.js agents point to these local Ollama endpoints. They coordinate complex workflows in real-time using the <strong>ACMI MCP Server</strong> backed by Upstash Redis. Cloud round-trips kill agent loops; ACMI + AMD keeps it all local and fast.</p>
+  <p>Three independent Node.js agents point to these local Ollama endpoints. They coordinate complex workflows in real-time using the <strong>LogMem MCP server</strong> backed by Upstash Redis. Cloud round-trips slow agent loops. LogMem on AMD keeps the loop local.</p>
   
   <div style="background: var(--mzm-paper-warm); border: 1px solid var(--mzm-ink-rule); padding: 40px; margin: 32px 0; border-radius: 4px; text-align: center;">
     <p style="font-family: var(--mzm-font-mono); font-size: 14px; color: var(--mzm-ink-soft);">[ Architecture Diagram: 3 Agents ↔ ACMI Bus ↔ AMD MI300X ]</p>
@@ -98,24 +98,18 @@ npx @madezmedia/acmi-mcp</pre>
   </ul>
 
   <h2 style="margin-top: 80px;">Open Source</h2>
-  <p>ACMI is open source software released under the MIT License. Others build vertical apps; we are building the track.</p>
+  <p>LogMem is open source software under the MIT license. It is built on the ACMI protocol.</p>
   <div style="margin-top: 24px; display: flex; gap: 16px;">
     <a href="https://github.com/madezmedia/acmi" class="btn-outline">GitHub Repository</a>
-    <a href="https://smithery.ai/server/madezmediapartners/acmi-mcp" class="btn-outline">Smithery Listing</a>
+    <a href="https://smithery.ai/servers/madezmediapartners/acmi-mcp" class="btn-outline">Smithery Listing</a>
   </div>
 
 </section>
 
 </main>
 
-<footer class="site-foot">
-  <div class="inner">
-    <div class="left"><strong>ACMI</strong> — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</div>
-    <div class="links">
-      <a href="https://github.com/madezmedia/acmi">GitHub</a>
-      <a href="https://www.npmjs.com/package/@madezmedia/acmi">npm</a>
-    </div>
-  </div>
+<footer>
+  <p>LogMem, built on the ACMI protocol. Built by <a href="https://www.madezmedia.com">Mad EZ Media</a>. MIT License.</p>
 </footer>
 
 </body>

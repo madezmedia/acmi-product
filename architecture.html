@@ -3,23 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Architecture — ACMI</title>
+<title>Architecture — LogMem</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <nav class="top">
   <div class="nav-inner">
-    <a href="index.html" class="logo">ACMI</a>
+    <a href="index.html" class="logo">LogMem</a>
     <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
     <div class="nav-links">
       <a href="architecture.html" class="active">Architecture</a>
       <a href="mcp.html">MCP Server</a>
-      <a href="ops-center.html">Ops Center</a>
-      <a href="kanban.html">Kanban</a>
       <a href="product.html">Product</a>
-      <a href="bugs.html">Bug Tracker</a>
-      <a href="competitive.html">Competitive</a>
-      <a href="roundtable.html">Roundtable</a>
+      <a href="product.html">Pricing</a>
+      <a href="deck.html">Pitch Deck</a>
+      <a href="amd.html">AMD Hackathon</a>
     </div>
   </div>
 </nav>
@@ -28,11 +26,11 @@
 <div class="page-content">
 <h1 class="page-title">Architecture</h1>
 
-<p>The core insight: agents don't need normalized relational databases. They need <strong>state snapshots</strong> and <strong>chronological timelines</strong>. ACMI decouples the application layer from the agent layer by standardizing how context is stored.</p>
+<p>Agents need state snapshots and chronological timelines. LogMem is built on the ACMI protocol. The protocol stores that context in one pattern.</p>
 
 <div class="arch-diagram">
 ┌─────────────────────────────────────────────────────────────────┐
-│                        ACMI DATA MODEL                          │
+│                        ACMI PROTOCOL                            │
 │                                                                 │
 │  Entity: {namespace}:{id}                                       │
 │                                                                 │
@@ -123,7 +121,7 @@
 </ol>
 
 <h2>Multi-Tenant Design</h2>
-<p>ACMI is namespace-driven. Drop the same infrastructure into any project by changing the namespace:</p>
+<p>The ACMI protocol is namespace-driven. Use the same infrastructure in any project. Change the namespace.</p>
 <table>
 <tr><th>Namespace</th><th>Use Case</th><th>Example</th></tr>
 <tr><td><code>sales</code></td><td>CRM pipeline</td><td>Track deal stages, log calls, predict churn</td></tr>
@@ -152,7 +150,7 @@ Execute → Assess (0-100) → Log → Analyze → Adjust → Execute (improved)
 </main>
 
 <footer>
-  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+  <p>LogMem, built on the ACMI protocol. Built by <a href="https://www.madezmedia.com">Mad EZ Media</a>. MIT License.</p>
 </footer>
 </body>
 </html>

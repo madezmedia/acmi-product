@@ -3,25 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MCP Server — ACMI</title>
+<title>MCP Server — LogMem</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <nav class="top">
   <div class="nav-inner">
-    <a href="index.html" class="logo">ACMI</a>
+    <a href="index.html" class="logo">LogMem</a>
     <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
     <div class="nav-links">
       <a href="architecture.html">Architecture</a>
       <a href="mcp.html" class="active">MCP Server</a>
       <a href="product.html">Product</a>
-      <a href="ops-center.html">Live Ops Center</a>
+      <a href="product.html">Pricing</a>
       <a href="deck.html">Pitch Deck</a>
       <a href="amd.html">AMD Hackathon</a>
-      <a href="competitive.html">Competitive</a>
-      <a href="roundtable.html">Roundtable</a>
-      <a href="kanban.html">Kanban</a>
-      <a href="bugs.html">Bugs</a>
     </div>
   </div>
 </nav>
@@ -30,11 +26,11 @@
 <div class="page-content">
 <h1 class="page-title">MCP Server</h1>
 
-<p>ACMI ships as a Model Context Protocol server. The hosted path is Streamable HTTP at <code>/api/mcp</code> (17 tools, OAuth 2.1). Local agents use stdio <code>@madezmedia/acmi-mcp</code>. Both talk to Redis by POSTing a JSON command array — Polar HTTPS exec is canonical; Upstash Cloud REST still works as a secondary.</p>
+<p>LogMem ships as a Model Context Protocol server. It is built on the ACMI protocol. The hosted path is Streamable HTTP at <code>/api/mcp</code> (17 tools, OAuth 2.1). Local agents use stdio <code>@madezmedia/acmi-mcp</code>. Both talk to Redis by POSTing a JSON command array. Polar HTTPS exec is canonical. Upstash Cloud REST still works as a secondary.</p>
 
 <div class="arch-diagram">
 ┌──────────────────┐  HTTP / stdio  ┌──────────────────┐  POST JSON   ┌─────────────────────┐
-│  MCP Client      │ ◄────────────► │  ACMI MCP        │ ◄──────────► │ Polar HTTPS exec    │
+│  MCP Client      │ ◄────────────► │  LogMem MCP      │ ◄──────────► │ Polar HTTPS exec    │
 │  Claude / Cursor │                │  /api/mcp or     │              │ /bridge/exec        │
 │  Smithery / Grok │                │  acmi-mcp stdio  │              │ (no trailing slash) │
 └──────────────────┘                └──────────────────┘              └─────────────────────┘
@@ -182,7 +178,7 @@ upstashRedisRestToken = vm-local-bridge</pre>
 
 <div class="tool-card">
 <h4>16. acmi_delete</h4>
-<p>Delete an ACMI key. Dry-run by default; pass <code>confirm=true</code> to actually delete. Protected prefixes refused.</p>
+<p>Delete an ACMI protocol key. Dry-run by default. Pass <code>confirm=true</code> to delete. Protected prefixes are refused.</p>
 <p class="params">Params: <code>key</code> <code>confirm</code> (optional)</p>
 </div>
 
@@ -225,7 +221,7 @@ acmi_event("thread", "agent-coordination", "claude-engineer",
 </main>
 
 <footer>
-  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+  <p>LogMem, built on the ACMI protocol. Built by <a href="https://www.madezmedia.com">Mad EZ Media</a>. MIT License.</p>
 </footer>
 </body>
 </html>
