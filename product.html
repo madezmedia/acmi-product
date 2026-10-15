@@ -3,37 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Product Plan — ACMI</title>
+<title>Product Plan — LogMem</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <nav class="top">
   <div class="nav-inner">
-    <a href="index.html" class="logo">ACMI</a>
+    <a href="index.html" class="logo">LogMem</a>
     <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
     <div class="nav-links">
       <a href="architecture.html">Architecture</a>
       <a href="mcp.html">MCP Server</a>
-      <a href="ops-center.html">Ops Center</a>
-      <a href="kanban.html">Kanban</a>
       <a href="product.html" class="active">Product</a>
-      <a href="bugs.html">Bug Tracker</a>
-      <a href="competitive.html">Competitive</a>
-      <a href="roundtable.html">Roundtable</a>
+      <a href="product.html">Pricing</a>
+      <a href="deck.html">Pitch Deck</a>
+      <a href="amd.html">AMD Hackathon</a>
     </div>
   </div>
 </nav>
 
 <main>
 <div class="page-content">
-<h1 class="page-title">Product Plan</h1>
+<h1 class="page-title">LogMem Product Plan</h1>
 
-<p>ACMI's commercial strategy: open protocol + paid cloud layer. The same model as Next.js→Vercel, Postgres→Supabase, MCP→Anthropic.</p>
+<p>LogMem is the public product name. It is built on the ACMI protocol. ACMI is only the internal protocol name. The open-source release is free under the MIT license. Paid work is an audit, a done-for-you build, a monthly retainer, or a dedicated stack for one client on Elestio.</p>
 
 <h2>The Pitch</h2>
 <div style="background:var(--mzm-paper-warm);border:1px solid var(--mzm-ink-rule);border-radius:var(--mzm-radius-md);padding:1.5rem;margin:1.5rem 0;">
 <p style="font-size:1.1rem;color:var(--mzm-ink);line-height:1.7;">
-<strong>ACMI is the coordination backbone for AI agent fleets.</strong> Three Redis keys — Profile, Signals, Timeline — replace 800 lines of agent memory code. No vector databases. No knowledge graphs. No LLM calls for core operations. Sub-5ms reads. Model-agnostic. Works with every agent framework.
+<strong>LogMem coordinates fleets of AI agents.</strong> LogMem is built on the ACMI protocol. The protocol keeps state in three Redis keys: Profile, Signals, and Timeline. These keys replace 800 lines of agent memory code. A custom LogMem deployment uses Qdrant. Core operations do not use a knowledge graph. Core operations do not call an LLM. A read completes in under 5 ms. LogMem works with any model, and it works with every agent framework.
 </p>
 </div>
 
@@ -42,34 +40,38 @@
 <div class="feature-grid" style="margin-bottom:2rem;">
   <div class="feature">
     <h3>🛠️ Indie AI Builder</h3>
-    <p><strong>Who:</strong> Solo dev building multi-agent tools. Uses Claude Code, Cursor, or similar.</p>
-    <p><strong>Pain:</strong> Agents lose context between sessions. No cheap way to coordinate 2-5 agents.</p>
-    <p><strong>Value:</strong> Free tier covers their fleet. 10-minute setup. MCP-native.</p>
+    <p><strong>Who:</strong> A solo developer who builds multi-agent tools with Claude Code, Cursor, or a similar tool.</p>
+    <p><strong>Pain:</strong> Agents lose context between sessions. Coordinating 2 to 5 agents is hard to do at a low cost.</p>
+    <p><strong>Value:</strong> The free open-source release covers this fleet. Setup takes about 10 minutes. LogMem speaks MCP.</p>
   </div>
   <div class="feature">
     <h3>🏢 Startup CTO</h3>
-    <p><strong>Who:</strong> Leading a 5-20 person AI team. Building autonomous agent products.</p>
-    <p><strong>Pain:</strong> Agent coordination breaks at scale. No observability. Duplicate work.</p>
-    <p><strong>Value:</strong> Lock protocol prevents conflicts. Fleet dashboard shows everything.</p>
+    <p><strong>Who:</strong> A CTO who leads an AI team of 5 to 20 people and ships autonomous agent products.</p>
+    <p><strong>Pain:</strong> Coordination breaks as the fleet grows. The team cannot see what agents are doing, and agents repeat the same work.</p>
+    <p><strong>Value:</strong> The lock protocol stops conflicts. The fleet dashboard shows the whole fleet.</p>
   </div>
   <div class="feature">
     <h3>🔬 Research Lab</h3>
-    <p><strong>Who:</strong> Academic or corporate research team studying multi-agent systems.</p>
-    <p><strong>Pain:</strong> Need a reproducible coordination baseline for experiments.</p>
-    <p><strong>Value:</strong> MIT license. Event-sourced audit trail. Benchmark-friendly.</p>
+    <p><strong>Who:</strong> An academic or corporate team that studies multi-agent systems.</p>
+    <p><strong>Pain:</strong> The team needs a coordination baseline that another team can repeat.</p>
+    <p><strong>Value:</strong> The license is MIT. The audit trail is a log of events. The design is easy to benchmark.</p>
   </div>
 </div>
 
 <h2>Pricing Tiers</h2>
+<p>The audit, the done-for-you build, and the retainer replace the old software subscription tiers. A dedicated Elestio stack is quoted on request.</p>
 <table>
 <tr><th>Tier</th><th>Price</th><th>Included</th></tr>
-<tr><td><strong>Open Source</strong></td><td>Free forever</td><td>Full protocol, CLI, MCP server, MIT license. Self-host with your own Redis.</td></tr>
-<tr><td><strong>Hyvmynd Cloud</strong></td><td>$0 (free tier) / $29/mo (pro)</td><td>Managed Upstash hosting, fleet dashboard, webhook ingestion, multi-tenant workspaces.</td></tr>
-<tr><td><strong>Hyvmynd Studio</strong></td><td>$49/mo</td><td>Visual debugger for Profile/Signals/Timeline, fleet visualization, team collaboration.</td></tr>
-<tr><td><strong>Enterprise</strong></td><td>Contact</td><td>On-premise, SLA, custom integrations, dedicated support.</td></tr>
+<tr><td><strong>LogMem Open Source</strong></td><td>Free. MIT license.</td><td>The full protocol, the CLI, and the MCP server. You host it yourself.</td></tr>
+<tr><td><strong>LogMem Audit</strong></td><td>$497</td><td>An audit of a LogMem setup.</td></tr>
+<tr><td><strong>LogMem Done for you</strong></td><td>$2,500+</td><td>LogMem work delivered for the client. The price starts at $2,500.</td></tr>
+<tr><td><strong>LogMem Retainer</strong></td><td>$500-1,500/mo</td><td>Ongoing LogMem work, billed each month.</td></tr>
+<tr><td><strong>LogMem dedicated Elestio stack</strong></td><td>Contact us</td><td>A separate LogMem stack for one client, deployed on Elestio.</td></tr>
+<tr><td><strong>LogMem Enterprise</strong></td><td>Contact</td><td>On-premise deployment, an SLA, custom integrations, and dedicated support. This row is separate from the dedicated Elestio stack.</td></tr>
 </table>
 
 <h2>MVP Scope</h2>
+<p>These lists stop at v1.2. This page does not add later versions or new features.</p>
 <h3>✅ Shipped (v1.0–v1.2)</h3>
 <ul>
 <li>Profile, Signals, Timeline CRUD via CLI</li>
@@ -102,36 +104,36 @@
 <h2>Ship Timeline</h2>
 <table>
 <tr><th>Phase</th><th>Timeline</th><th>Key Deliverables</th></tr>
-<tr><td><strong>Phase 1: Indie Dev Hero</strong></td><td>Months 1–6</td><td>Manifesto essay, npm package, 5 YouTube explainers, Show HN launch, benchmark numbers</td></tr>
-<tr><td><strong>Phase 2: Thought Leader</strong></td><td>Months 6–18</td><td>Conference talks, Hyvmynd Cloud beta, arXiv preprint, podcast circuit, 10K stars</td></tr>
-<tr><td><strong>Phase 3: Founder Cred</strong></td><td>Months 18–36</td><td>Fundraise decision gate, Hyvmynd Studio launch, book deal, possible foundation donation</td></tr>
+<tr><td><strong>Phase 1: Indie Dev Hero</strong></td><td>Months 1–6</td><td>Manifesto essay. npm package. Five YouTube explainers. Show HN launch. Benchmark numbers.</td></tr>
+<tr><td><strong>Phase 2: Thought Leader</strong></td><td>Months 6–18</td><td>Conference talks. arXiv preprint. Podcast circuit. Target of 10K stars.</td></tr>
+<tr><td><strong>Phase 3: Founder Cred</strong></td><td>Months 18–36</td><td>Fundraise decision gate. Book deal. Possible foundation donation.</td></tr>
 </table>
 
 <h2>Competitive Moat</h2>
 <ul>
-<li><strong>Fleet primitives</strong> — Lock Protocol, Anti-Dead Heartbeats, RL cycle. No other memory system ships these.</li>
-<li><strong>Node.js-first</strong> — Most competitors are Python-only. ACMI targets the JS/TS ecosystem gap.</li>
-<li><strong>Redis-native thesis</strong> — Anti-SQL opinion. Sub-5ms reads with zero LLM dependency.</li>
-<li><strong>MCP-native</strong> — Works out of the box with every MCP-compatible tool. Growing standard.</li>
-<li><strong>Brand strategy</strong> — Anchor on the idea ("Agent Context Engineering"), not the artifact. Protocol-not-product positioning.</li>
+<li><strong>Fleet primitives.</strong> LogMem ships the Lock Protocol, anti-dead heartbeats, and an RL cycle. No other memory system ships this set.</li>
+<li><strong>Node.js first.</strong> Most competitors are Python only. LogMem targets the JavaScript and TypeScript gap. LogMem is built on the ACMI protocol.</li>
+<li><strong>Redis keys, plus Qdrant on custom deployments.</strong> The core path does not use SQL. A read completes in under 5 ms. Core reads do not depend on an LLM. A custom deployment uses Qdrant.</li>
+<li><strong>MCP.</strong> LogMem works with every MCP-compatible tool. MCP is a growing standard.</li>
+<li><strong>Names.</strong> LogMem is the public product name. ACMI is only the internal protocol name. The brand idea is Agent Context Engineering.</li>
 </ul>
 
 <h2>Distribution Strategy</h2>
 <ol>
-<li><strong>Show HN</strong> — "Three Redis keys for multi-agent memory." Technical credibility play.</li>
-<li><strong>Twitter/X threads</strong> — 8-12 tweet threads showing the 10-line quickstart.</li>
-<li><strong>YouTube</strong> — "Profile / Signals / Timeline in 5 minutes" weekly series.</li>
-<li><strong>Conference circuit</strong> — AI Engineer World's Fair, AI Tinkerers, Latent Space podcast.</li>
-<li><strong>Dev communities</strong> — r/LocalLLaMA, r/MachineLearning, Dev.to, Hashnode.</li>
-<li><strong>Newsletter</strong> — <code>theagentcontext.dev</code> — weekly, survives pivots.</li>
-<li><strong>Developer relations</strong> — Cold outreach to swyx, Cole Medin, Charity Majors, Upstash/Redis devrel.</li>
+<li><strong>Show HN.</strong> Use the title "Three Redis keys for multi-agent memory." The post is there to earn technical trust.</li>
+<li><strong>Twitter/X threads.</strong> Post threads of 8 to 12 messages that show the 10-line quickstart.</li>
+<li><strong>YouTube.</strong> Publish "Profile / Signals / Timeline in 5 minutes" each week.</li>
+<li><strong>Conference circuit.</strong> AI Engineer World's Fair, AI Tinkerers, and the Latent Space podcast.</li>
+<li><strong>Dev communities.</strong> r/LocalLLaMA, r/MachineLearning, Dev.to, and Hashnode.</li>
+<li><strong>Newsletter.</strong> <code>theagentcontext.dev</code>, sent each week. It can continue if the product plan changes.</li>
+<li><strong>Developer relations.</strong> Contact swyx, Cole Medin, Charity Majors, and the developer-relations teams at Upstash or Redis.</li>
 </ol>
 
 </div>
 </main>
 
 <footer>
-  <p>ACMI — Agentic Context Management Infrastructure · Built by <a href="https://www.madezmedia.com">Mad EZ Media</a> · MIT License</p>
+  <p>LogMem, built on the ACMI protocol. Built by <a href="https://www.madezmedia.com">Mad EZ Media</a>. MIT License.</p>
 </footer>
 </body>
 </html>
