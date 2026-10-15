@@ -1,0 +1,15 @@
+title = "acmi-product gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "composio-api-key"
+description = "Composio API key (ak_ prefix)"
+regex = '''\bak_[A-Za-z0-9_-]{20,}\b'''
+keywords = ["ak_"]
+tags = ["composio", "key"]
+
+[allowlist]
+description = "Ignore dependency and build output"
+paths = ['''node_modules/''', '''package-lock\.json''']

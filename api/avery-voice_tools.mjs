@@ -1,10 +1,10 @@
+import { getComposioKey } from './_lib/composio-key.mjs';
 /**
  * Avery Voice Tools — VAPI → Composio Webhook Handler
  * Real estate acquisition agent: Gmail, Calendar, Tasks, Maps, Search
  */
 
 const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp/mcp';
-const COMPOSIO_API_KEY = process.env.COMPOSIO_API_KEY || 'ak_xHrrW-9SrFPEC1LPv6eJ';
 
 // Sent messaging — direct REST
 const SENT_API_BASE = 'https://api.sent.dm/v3';
@@ -109,7 +109,7 @@ export async function handler(req, res) {
 
     const resp = await fetch(COMPOSIO_BASE, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'x-api-key': COMPOSIO_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'x-api-key': await getComposioKey() },
       body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: { name: 'COMPOSIO_MULTI_EXECUTE_TOOL', arguments: { tools: [{ tool_slug: toolDef.slug, arguments: toolDef.transform(args) }] } } })
     });
 
