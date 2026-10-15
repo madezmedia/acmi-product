@@ -7,6 +7,14 @@
 // The mock is the fallback, not a separate code path.
 
 (function () {
+  function fleetInit() {
+    const headers = { Accept: "application/json" };
+    if (typeof window.acmiFleetReadHeaders === "function") {
+      Object.assign(headers, window.acmiFleetReadHeaders());
+    }
+    return { headers };
+  }
+
   const PARALLEL = [
     { fn: bootstrapFleet,   field: "FLEET" },
     { fn: bootstrapStories, field: "KANBAN" },
@@ -17,12 +25,12 @@
   ];
 
   async function bootstrapFleet() {
-    const r = await fetch("/api/fleet").then(r => r.json());
+    const r = await fetch("/api/fleet", fleetInit()).then(r => r.json());
     if (!r?.ok || !r.fleet) throw new Error(r?.error || "no fleet");
     return { fleet: r.fleet, agents: r.agents || [] };
   }
   async function bootstrapStories() {
-    const r = await fetch("/api/stories").then(r => r.json());
+    const r = await fetch("/api/stories", fleetInit()).then(r => r.json());
     if (!r?.ok) throw new Error(r?.error || "no stories");
     // Defense-in-depth: even if the API ever drifts, sanitize every card so
     // React never sees an object/array where it expects a string/number.
@@ -60,23 +68,23 @@
     };
   }
   async function bootstrapComms() {
-    const r = await fetch("/api/comms?thread=agent-coordination&limit=12").then(r => r.json());
+    const r = await fetch("/api/comms?thread=agent-coordination&limit=12", fleetInit()).then(r => r.json());
     if (!r?.ok) throw new Error(r?.error || "no comms");
     return (r.events || []).map(toCommsShape).filter(Boolean);
   }
   async function bootstrapHitl() {
-    const r = await fetch("/api/hitl?for=mikey&limit=10").then(r => r.json());
+    const r = await fetch("/api/hitl?for=mikey&limit=10", fleetInit()).then(r => r.json());
     if (!r?.ok) throw new Error(r?.error || "no hitl");
     return r;
   }
   async function bootstrapEvents() {
-    const r = await fetch("/api/events?limit=20").then(r => r.json());
+    const r = await fetch("/api/events?limit=20", fleetInit()).then(r => r.json());
     if (!r?.ok) throw new Error(r?.error || "no events");
     return r.events || [];
   }
   async function bootstrapChain() {
     // MI300X live activity — the chain happening on the GPU right now.
-    const r = await fetch("/api/chain?thread=demo-amd-chain&limit=24").then(r => r.json());
+    const r = await fetch("/api/chain?thread=demo-amd-chain&limit=24", fleetInit()).then(r => r.json());
     if (!r?.ok) throw new Error(r?.error || "no chain");
     return {
       eventCount: r.event_count || 0,

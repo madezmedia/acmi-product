@@ -129,8 +129,12 @@
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs || 8000);
     try {
+      const headers = { "Accept": "application/json" };
+      if (typeof window.acmiFleetReadHeaders === "function") {
+        Object.assign(headers, window.acmiFleetReadHeaders());
+      }
       const r = await fetch(BASE + path, {
-        headers: { "Accept": "application/json" },
+        headers,
         signal: ctrl.signal,
       });
       if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`);

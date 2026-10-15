@@ -2,10 +2,11 @@
 // Returns: profile, signals, timeline (last 50), spawns (last 10),
 // active_context (HASH), rollup_latest. Matches what acmi_bootstrap returns.
 import { resolveInstance, redis, tryParse, json, err } from "../_lib/redis.mjs";
+import { withFleetRead } from "../_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const url = new URL(req.url);
     // Edge dynamic routes pass id via the path; for portability we also
@@ -58,3 +59,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);

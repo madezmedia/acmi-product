@@ -5,6 +5,7 @@
 // return null. Sorted P0 first, then by most-recent activity.
 import { resolveInstance, redis, json, err } from "./_lib/redis.mjs";
 import { readWorkItemByType } from "./_lib/acmi-readers.mjs";
+import { withFleetRead } from "./_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -54,7 +55,7 @@ function priorityKey(p) {
   return PRIORITY_RANK[norm] ?? 99;
 }
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const instance = resolveInstance(req);
 
@@ -143,3 +144,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);

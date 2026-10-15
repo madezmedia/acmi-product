@@ -5,6 +5,9 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "scripts": {
+    "test": "node --test api/_lib/*.test.mjs api/*.test.mjs"
+  },
   "engines": {
     "node": ">=20.0.0"
   },

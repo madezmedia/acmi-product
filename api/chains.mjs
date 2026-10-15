@@ -5,6 +5,7 @@
 // up to its origin), and returns up to 30 chains sorted by last_ts desc.
 // Single-event chains are dropped UNLESS kind === "hitl-required".
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
+import { withFleetRead } from "./_lib/read-auth.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -48,7 +49,7 @@ function resolveRoot(cid, parentMap) {
   return cur;
 }
 
-export default async function handler(req) {
+async function handler(req) {
   try {
     const instance = resolveInstance(req);
     const now = Date.now();
@@ -164,3 +165,5 @@ export default async function handler(req) {
     return err(e.message);
   }
 }
+
+export default withFleetRead(handler);

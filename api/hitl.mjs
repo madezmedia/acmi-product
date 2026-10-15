@@ -1,5 +1,5 @@
-// GET /api/hitl?for=mikey&limit=20 — existing read path, preserved 1:1.
-// POST /api/hitl                  — NEW write path, bearer-protected.
+// GET /api/hitl?for=mikey&limit=20 — fleet read, ACMI_READ_BEARER required.
+// POST /api/hitl                  — write path, OAuth / ACMI_WRITE_BEARER.
 //
 // Runtime: Node (required for OAuth lookupAccessToken via node:crypto).
 // GET still cached as before (s-maxage=5, stale-while-revalidate=30).
@@ -16,6 +16,7 @@
 // and risk executor confusion (checker advisory commit 4bb6b5c).
 import { tryParse } from "./_lib/redis.mjs";
 import { requireBearer, AuthError } from "./_lib/auth.mjs";
+import { rejectFleetReadNode } from "./_lib/read-auth.mjs";
 import { extractIdempotencyKey, checkIdempotency } from "./_lib/idempotency.mjs";
 import { buildEvent, generateCorrelationId } from "./_lib/event-shape.mjs";
 
@@ -69,6 +70,7 @@ async function nodeRedis(instance, ...cmd) {
 
 // ─── GET (preserved 1:1) ────────────────────────────────────────────────
 async function handleGet(req, res) {
+  if (rejectFleetReadNode(req, res)) return;
   const url = new URL(req.url, `https://${req.headers.host || "acmi-product.vercel.app"}`);
   const user = (url.searchParams.get("for") || "mikey").replace(/[^a-z0-9_-]/gi, "");
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10), 100);
@@ -93,7 +95,7 @@ async function handleGet(req, res) {
   const resolved = items.filter((e) => /resolved|cleared/.test(e.kind || ""));
 
   res.setHeader("Content-Type", "application/json");
-  res.setHeader("Cache-Control", `public, s-maxage=5, stale-while-revalidate=30`);
+  res.setHeader("Cache-Control", "private, no-store");
   res.setHeader("Access-Control-Allow-Origin", "*");
   return res.status(200).json({
     ok: true,
@@ -211,9 +213,9 @@ async function handlePost(req, res) {
 }
 
 // ─── Method router ─────────────────────────────────────────────────────
-// GET stays anonymous + cached (every page-load reads /api/hitl). POST is
-// bearer-protected via inline requireBearer in handlePost. We can't use the
-// withAuth() wrapper here because it would force auth on GET too.
+// GET requires ACMI_READ_BEARER (rejectFleetReadNode). POST keeps the write
+// bearer via inline requireBearer. withAuth() is not used here because it
+// would force the write helper onto GET.
 export default async function handler(req, res) {
   try {
     if (req.method === "GET") return await handleGet(req, res);

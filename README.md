@@ -54,6 +54,32 @@ node acmi.mjs event sales acme-corp email "Sent proposal PDF"
 node acmi.mjs get sales acme-corp
 ```
 
+## Fleet read API authentication
+
+`GET` handlers that return fleet, work, comms, HITL, timeline, or signals data require a bearer token. The server compares it to `ACMI_READ_BEARER` and fails closed: if that env var is unset or the request has no matching `Authorization: Bearer` value, the response is `401` and no Redis read runs. Responses are `Cache-Control: private, no-store`. The credential is not logged.
+
+Set `ACMI_READ_BEARER` in the deployment environment before relying on live dashboards. Do not reuse `ACMI_WRITE_BEARER` — that secret authorizes mutations. Browser pages (`ops-center.html`, kanban, governance, Bob story/timeline, ops-center-v2 `live-bootstrap.js`) send the bearer only when the operator has stored the same value for the session:
+
+```js
+acmiSetFleetReadBearer("<same value as ACMI_READ_BEARER>")
+```
+
+That writes `sessionStorage["acmi_read_bearer"]` (or set `window.ACMI_READ_BEARER` before the helper loads). Without it, those pages keep their existing mock, empty, or error fallback and the live panels stay blank.
+
+Manual check when the test runner is unavailable:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://acmi-product.vercel.app/api/fleet
+# 401 when ACMI_READ_BEARER is set or unset (unset is also 401)
+
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -H "Authorization: Bearer $ACMI_READ_BEARER" \
+  https://acmi-product.vercel.app/api/fleet
+# 200 only when the header matches the server env var
+```
+
+Automated coverage: `npm test` (`api/_lib/read-auth.test.mjs`).
+
 ## Features
 
 - **14 MCP Tools** — stdio transport, works with Claude Desktop, Cursor, Cline, Windsurf
