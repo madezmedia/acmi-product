@@ -1,4 +1,5 @@
 import { getComposioKey } from './_lib/composio-key.mjs';
+import { bridgeToken } from './_lib/bridge-auth.mjs';
 /**
  * Avery Voice Tools — Real estate acquisition VAPI handler
  * Flat string results, VAPI results[] format, Composio + ACMI
@@ -7,12 +8,10 @@ import { getComposioKey } from './_lib/composio-key.mjs';
 const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp/mcp';
 
 const UPSTASH_URL = (process.env.ACMI_BRIDGE_URL || process.env.UPSTASH_REDIS_REST_URL || 'https://acmi-redis-u70402.vm.elestio.app/bridge/exec').replace(/\/+$/, '');
-const UPSTASH_TOKEN = process.env.ACMI_BRIDGE_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || 'vm-local-bridge';
-
 async function redis(cmd) {
   const r = await fetch(UPSTASH_URL, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${bridgeToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(cmd)
   });
   return (await r.json()).result;

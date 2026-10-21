@@ -6,6 +6,7 @@
 // stores the path + ids (no secret material).
 
 import { restEndpoint } from "./redis.mjs";
+import { bridgeToken } from "./bridge-auth.mjs";
 
 export const LAB_PRODUCT_ID = "prod_W2AW7G0vsy4Dw";
 export const LAB_ENTRY_PLAN_ID = "plan_TwYRNmhv585q0";
@@ -19,7 +20,7 @@ function redisUrl() {
 }
 
 function redisToken() {
-  return process.env.ACMI_BRIDGE_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "vm-local-bridge";
+  return bridgeToken();
 }
 
 async function redis(...cmd) {

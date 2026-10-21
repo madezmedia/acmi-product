@@ -1,4 +1,5 @@
 import { getComposioKey } from './_lib/composio-key.mjs';
+import { bridgeToken } from './_lib/bridge-auth.mjs';
 /**
  * VAPI → Composio + ACMI Webhook Handler — v8.1 (call-end hardwire)
  * Deploy to: https://acmi-product.vercel.app/api/bentley-voice-tools
@@ -30,7 +31,6 @@ const COMPOSIO_BASE = 'https://backend.composio.dev/tool_router/trs_LuHTrrdOQdEp
 
 // ─── ACMI (Self-hosted VM Redis REST bridge) ────────────────────────────────────
 const VM_REDIS = process.env.ACMI_BRIDGE_URL || 'https://acmi-redis-u70402.vm.elestio.app/bridge/exec';
-const VM_AUTH = 'Bearer ' + (process.env.ACMI_BRIDGE_TOKEN || 'vm-local-bridge');
 const ACMI_BUS = 'acmi:madez:bus:events';
 const ACMI_COORD = 'acmi:madez:thread:agent-coordination:timeline';
 const BENTLEY_ID = 'bentley-voice';
@@ -93,7 +93,7 @@ async function redisCmd(...args) {
   try {
     const r = await fetch(VM_REDIS.replace(/\/$/, ''), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: VM_AUTH },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeToken() },
       body: JSON.stringify(args),
     });
     const text = await r.text();

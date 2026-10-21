@@ -21,13 +21,14 @@
 // audit-finding cid vapi-acmi-postcall-logging-broken-investigation-1778507939057
 // surfaced 8-day silence on acmi:vapi:cps-conference:timeline.
 
+import { bridgeToken } from "./_lib/bridge-auth.mjs";
+
 export const config = {
   runtime: "nodejs",
   maxDuration: 30,
 };
 
 const REDIS_URL = process.env.ACMI_BRIDGE_URL || "http://152.53.201.27:8081/";
-const REDIS_TOKEN = process.env.ACMI_BRIDGE_TOKEN || "vm-local-bridge";
 
 const VAPI_WEBHOOK_SECRET = process.env.VAPI_WEBHOOK_SECRET || null;
 
@@ -46,13 +47,13 @@ const STAMP = {
 };
 
 async function redisCmd(...cmd) {
-  if (!REDIS_URL || !REDIS_TOKEN) {
+  if (!REDIS_URL) {
     throw new Error("ACMI bridge creds missing from deploy env");
   }
   const res = await fetch(REDIS_URL.replace(/\/$/, "") + "/", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${REDIS_TOKEN}`,
+      Authorization: `Bearer ${bridgeToken()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(cmd),
