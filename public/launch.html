@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ACMI — The Coordination Layer for AI Devs Running More Than One Agent</title>
-<meta name="description" content="MIT protocol, paid fleet recipe. 10 production agents, Redis schema, governance dashboard. Stop your Claude, Cursor, and Cline from forgetting what each other did. $47 kit, $39/mo lab.">
-<meta property="og:title" content="ACMI — The Coordination Layer for AI Fleets">
-<meta property="og:description" content="MIT protocol, paid fleet recipe. 10 production agents. Stop your agents from forgetting what each other did.">
+<title>LogMem — built on the ACMI protocol</title>
+<meta name="description" content="LogMem is built on the ACMI protocol. The core uses Redis only. Qdrant is used on custom or dedicated deployments. Pricing not set. Contact us.">
+<meta property="og:title" content="LogMem — built on the ACMI protocol">
+<meta property="og:description" content="LogMem is built on the ACMI protocol. The core uses Redis only. Qdrant is used on custom or dedicated deployments.">
 <meta property="og:image" content="https://acmi-product.vercel.app/brand/cover-techex-B.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -254,7 +254,7 @@
   /* Pricing */
   .price-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 24px;
     margin-top: 32px;
   }
@@ -419,7 +419,7 @@
 
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="brand">acmi<span class="dot">.</span></div>
+    <div class="brand">LogMem<span class="dot">.</span></div>
     <nav class="nav">
       <a href="#problem">Problem</a>
       <a href="#protocol">Protocol</a>
@@ -427,19 +427,19 @@
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
     </nav>
-    <a class="cta-mini" href="#pricing">Get the Kit</a>
+    <a class="cta-mini" href="product.html">Audit / Contact</a>
   </div>
 </div>
 
 <header class="hero">
   <div class="wrap">
-    <div class="eyebrow">Agentic Context Memory Interface · <span class="accent">v1.3 · MIT</span></div>
+    <div class="eyebrow">LogMem · built on the ACMI protocol · <span class="accent">MIT</span></div>
     <h1>Stop teaching your agents the same thing <span class="em">twice</span>.</h1>
     <p class="hero-sub">
-      ACMI is the coordination layer for AI developers running more than one agent. The protocol is MIT — clone the repo, install the npm package, deploy on your Redis. What you buy is the <em>fleet recipe</em>: ten production agents, the schema they live in, the dashboard that watches them, and ongoing access as I ship more.
+      LogMem coordinates a fleet of AI agents. It is built on the ACMI protocol. The protocol is MIT. Clone the repo, install the npm package, and run it on your Redis. The core uses Redis only. Qdrant is used on custom or dedicated deployments.
     </p>
     <div class="hero-ctas">
-      <a class="btn btn-primary" href="#pricing">Get the Starter Kit · $47</a>
+      <a class="btn btn-primary" href="product.html">Audit / Contact</a>
       <a class="btn btn-ghost" href="#protocol">How the protocol works</a>
     </div>
   </div>
@@ -452,7 +452,7 @@
   </div>
   <div class="proof-cell">
     <span class="label">Smithery</span>
-    <span class="val mono"><a href="https://smithery.ai/server/@madezmediapartners/acmi-mcp" target="_blank" rel="noopener">acmi-mcp</a></span>
+    <span class="val mono"><a href="https://smithery.ai/servers/madezmediapartners/acmi-mcp" target="_blank" rel="noopener">acmi-mcp</a></span>
   </div>
   <div class="proof-cell">
     <span class="label">GitHub</span>
@@ -497,7 +497,7 @@
     <div class="sec-label">The protocol</div>
     <h2>Three slots per entity. That's the whole thing.</h2>
     <p style="max-width: 760px; color: var(--ink-2);">
-      Every entity in ACMI — an agent, a human, a project, a thread, a work item — has exactly three slots. No schemas, no migrations, no joins. The reference SDK is <code>@madezmedia/acmi</code> on npm; the MCP server is <code>@madezmedia/acmi-mcp</code>, listed publicly on Smithery.
+      Every entity in the ACMI protocol — an agent, a human, a project, a thread, a work item — has exactly three slots. No schemas, no migrations, no joins. The reference SDK is <code>@madezmedia/acmi</code> on npm; the MCP server is <code>@madezmedia/acmi-mcp</code>, listed publicly on Smithery.
     </p>
     <div class="slots">
       <div class="slot">
@@ -525,7 +525,7 @@
 <section>
   <div class="wrap">
     <div class="sec-label">The wedge</div>
-    <h2>Other tools give one agent better memory. ACMI gives your whole fleet a shared timeline.</h2>
+    <h2>Other tools give one agent better memory. LogMem gives your whole fleet a shared timeline. LogMem is built on the ACMI protocol.</h2>
     <div class="vs-grid">
       <div class="vs-card">
         <div class="name">Single-Agent Memory Tools</div>
@@ -533,14 +533,14 @@
         <ul>
           <li>Vector stores or knowledge graphs</li>
           <li>One agent gets smarter</li>
-          <li>Closed SaaS pricing (Mem0: $19–249/mo, Zep credit-based, Cognee €1,970/mo on-prem)</li>
+          <li>Closed SaaS pricing (Mem0 subscription, Zep credit-based, Cognee on-prem)</li>
           <li>No cross-agent handoff primitive</li>
           <li>Vendor lock-in to a runtime or framework</li>
         </ul>
       </div>
       <div class="vs-card acmi">
-        <div class="name">ACMI · The Fleet Protocol</div>
-        <div class="tagline">Cross-agent coordination, MIT, on your Redis</div>
+        <div class="name">LogMem</div>
+        <div class="tagline">Built on the ACMI protocol. MIT. Your Redis.</div>
         <ul>
           <li>Three-slot structured contract</li>
           <li>Your whole fleet shares one timeline</li>
@@ -555,8 +555,8 @@
 
 <section id="inside">
   <div class="wrap">
-    <div class="sec-label">Inside the Starter Kit</div>
-    <h2>Ten hours of fleet wiring you don't have to do.</h2>
+    <div class="sec-label">Open protocol materials</div>
+    <h2>The protocol is free. You can inspect the fleet materials.</h2>
     <p style="max-width: 760px; color: var(--ink-2);">
       The protocol is free. The kit is the working fleet — the ten production agents I run for myself, the Redis schema they live in, the dashboards that watch them, the cron schedule that keeps them moving. Drop-in ready, ~15 minutes to your first event on the timeline.
     </p>
@@ -599,7 +599,7 @@
       <div class="kit-item">
         <div class="n">08</div>
         <h4>Discord access · 90 days</h4>
-        <p><code>#starter-kit-help</code> — direct line while you set up. After 90 days, upgrade to the Lab or roll off.</p>
+        <p>A direct line while you set up.</p>
       </div>
     </div>
     <div class="install">
@@ -616,46 +616,78 @@
 <section id="pricing">
   <div class="wrap">
     <div class="sec-label">Pricing</div>
-    <h2>Two tiers. Both ship a working fleet.</h2>
+    <h2>The LogMem ladder.</h2>
+    <p style="max-width: 720px; color: var(--ink-2);">These are the same offers as the product plan. Open source stays free.</p>
     <div class="price-grid">
       <div class="tier">
-        <div class="tier-name">Tier 01 · One-time</div>
-        <div class="tier-title">ACMI Starter Kit</div>
-        <div class="price">$47</div>
-        <div class="price-note">one-time payment</div>
+        <div class="tier-name">Open source</div>
+        <div class="tier-title">LogMem Open Source</div>
+        <div class="price">Free</div>
+        <div class="price-note">MIT license</div>
         <ul>
-          <li>Protocol Spec v1.3 (PDF)</li>
-          <li>10 production agent profiles + prompts</li>
-          <li>Redis schema + Upstash deploy guide</li>
-          <li>39 cron + launchd templates</li>
-          <li>Lobster Trap policy template</li>
-          <li>Forkable governance dashboard</li>
-          <li>16-tool MCP server</li>
-          <li>Discord access (90 days)</li>
+          <li>The full protocol</li>
+          <li>The CLI</li>
+          <li>The MCP server</li>
+          <li>You host it yourself</li>
         </ul>
-        <a class="btn btn-ghost" href="https://whop.com/madezmedia/acmi-starter-kit" target="_blank" rel="noopener">Get the Kit on Whop →</a>
+        <a class="btn btn-ghost" href="product.html">See the product plan</a>
       </div>
-      <div class="tier recommended">
-        <div class="tier-name">Tier 02 · Recurring</div>
-        <div class="tier-title">Claude Engineer Lab</div>
-        <div class="price">$39<span style="font-size: 18px; color: var(--accent-soft);">/mo</span></div>
-        <div class="price-note">grandfathered for life at $39 if you join now</div>
+      <div class="tier">
+        <div class="tier-name">One-time</div>
+        <div class="tier-title">LogMem Audit</div>
+        <div class="price">Pricing not set</div>
+        <div class="price-note">audit</div>
         <ul>
-          <li><strong>Everything in the Starter Kit, instantly</strong></li>
-          <li>1 live build per week · Tuesdays 2pm ET</li>
-          <li>1 async skill drop per week · Fridays</li>
-          <li>Roadmap voting access</li>
-          <li>Private Discord · lifetime member access</li>
-          <li>Direct DM access (best-effort)</li>
-          <li>14-day early access on all new releases</li>
-          <li>Price locks at $39 even when public price rises to $49</li>
+          <li>An audit of a LogMem setup</li>
         </ul>
-        <a class="btn btn-primary" style="background: var(--accent); border-color: var(--accent);" href="https://whop.com/madezmedia/claude-engineer-lab" target="_blank" rel="noopener">Join the Lab →</a>
+        <a class="btn btn-ghost" href="product.html">Audit / Contact</a>
+      </div>
+      <div class="tier">
+        <div class="tier-name">Project</div>
+        <div class="tier-title">LogMem Done for you</div>
+        <div class="price">Pricing not set</div>
+        <div class="price-note">done for you</div>
+        <ul>
+          <li>LogMem work delivered for the client</li>
+          <li>Pricing not set. Contact us.</li>
+        </ul>
+        <a class="btn btn-ghost" href="product.html">Audit / Contact</a>
+      </div>
+      <div class="tier">
+        <div class="tier-name">Monthly</div>
+        <div class="tier-title">LogMem Retainer</div>
+        <div class="price">Pricing not set</div>
+        <div class="price-note">retainer</div>
+        <ul>
+          <li>Ongoing LogMem work, billed each month</li>
+        </ul>
+        <a class="btn btn-ghost" href="product.html">Audit / Contact</a>
+      </div>
+      <div class="tier">
+        <div class="tier-name">Dedicated stack</div>
+        <div class="tier-title">Elestio stack</div>
+        <div class="price">Contact us</div>
+        <div class="price-note">one client, one stack</div>
+        <ul>
+          <li>A separate LogMem stack for one client</li>
+          <li>Deployed on Elestio</li>
+        </ul>
+        <a class="btn btn-ghost" href="product.html">Contact us</a>
+      </div>
+      <div class="tier">
+        <div class="tier-name">Enterprise</div>
+        <div class="tier-title">LogMem Enterprise</div>
+        <div class="price">Contact</div>
+        <div class="price-note">not the Elestio stack</div>
+        <ul>
+          <li>On-premise deployment</li>
+          <li>An SLA</li>
+          <li>Custom integrations</li>
+          <li>Dedicated support</li>
+        </ul>
+        <a class="btn btn-ghost" href="product.html">Contact</a>
       </div>
     </div>
-    <p style="margin-top: 28px; font-size: 14px; color: var(--ink-3); font-family: var(--mono); text-align: center;">
-      Whop checkout · 14-day refund policy · cancel anytime
-    </p>
   </div>
 </section>
 
@@ -669,10 +701,10 @@
       </div>
       <div>
         <p style="font-size: 18px;">
-          I run a 10-agent ACMI fleet to operate my business. Six of them are coordinating today as you read this — you can watch them on the <a href="https://acmi-product.vercel.app/governance-dashboard.html" target="_blank" rel="noopener">production dashboard</a>.
+          I run a 10-agent LogMem fleet to operate my business. LogMem is built on the ACMI protocol. Six of them are coordinating today as you read this — you can watch them on the <a href="https://acmi-product.vercel.app/governance-dashboard.html" target="_blank" rel="noopener">production dashboard</a>.
         </p>
         <p style="font-size: 18px;">
-          I built ACMI because I kept opening Claude Code, Cursor, and Cline in three tabs and watching each one re-derive the project from scratch. I open-sourced the protocol because protocols only matter when they're shared. The kit and the Lab exist because there's about ten hours of working code between the protocol-as-spec and the protocol-as-running-fleet, and most builders would rather skip that ten hours.
+          I built LogMem because I kept opening Claude Code, Cursor, and Cline in three tabs. Each one started the project from scratch. LogMem is built on the ACMI protocol. I open-sourced the protocol so other people can use it.
         </p>
         <p style="font-size: 18px;">
           Receipts: <a href="https://github.com/madezmedia/acmi-product" target="_blank" rel="noopener">public repo</a>, <a href="https://acmi-product.vercel.app" target="_blank" rel="noopener">live site</a>, <a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">building in public on X</a>. TechEx hackathon submission filed this week (sizzle reel, six decks, governance dashboard live in prod).
@@ -687,16 +719,16 @@
     <div class="sec-label">FAQ</div>
     <h2>The honest answers.</h2>
     <details class="faq" open>
-      <summary>Is the protocol really MIT? Why would I pay $47?</summary>
-      <div class="answer">Yes, MIT. You're paying for the working fleet — 10 agent configurations, the dashboard, the cron schedule, the Redis layout, the deploy guide. About 10 hours of work you skip. If you'd rather wire it yourself from the GitHub repo, do that. It's free.</div>
+      <summary>Is the protocol really MIT?</summary>
+      <div class="answer">Yes. The protocol is MIT. You can host it yourself. Paid work is an audit, done-for-you work, or a retainer. Pricing not set. Contact us.</div>
     </details>
     <details class="faq">
       <summary>Will this work with my agent framework?</summary>
-      <div class="answer">ACMI is framework-agnostic. It's a Redis-backed event log with a three-slot model. Anything that can write to Redis (or use the MCP server) can participate. Tested: Claude Code, Cursor, Cline, Cowork, Claude Desktop, Perplexity, LangGraph, CrewAI, raw Node/Python.</div>
+      <div class="answer">LogMem is built on the ACMI protocol. The protocol is a Redis-backed event log with a three-slot model. Anything that can write to Redis (or use the MCP server) can participate. Tested: Claude Code, Cursor, Cline, Cowork, Claude Desktop, Perplexity, LangGraph, CrewAI, raw Node/Python.</div>
     </details>
     <details class="faq">
       <summary>What infrastructure do I need?</summary>
-      <div class="answer">An Upstash Redis instance (free tier works for getting started) and any MCP-capable agent host. That's it. No vector DB required, no additional servers.</div>
+      <div class="answer">The core uses Redis only. Qdrant is used on custom or dedicated deployments. You also need an MCP-capable agent host.</div>
     </details>
     <details class="faq">
       <summary>Do I need to know Redis?</summary>
@@ -704,23 +736,15 @@
     </details>
     <details class="faq">
       <summary>How is this different from Mem0 / Letta / Zep / LangMem?</summary>
-      <div class="answer">Those tools give one agent better memory. ACMI is a coordination contract for multiple agents to share a timeline. Run Mem0 next to ACMI if you want vector-based recall — they're complementary, not competitive. Letta is an agent runtime; ACMI is a protocol that any runtime can write to.</div>
+      <div class="answer">Those tools give one agent better memory. LogMem is a coordination product for many agents. It is built on the ACMI protocol. The core uses Redis only. Qdrant is used on custom or dedicated deployments. Letta is an agent runtime. The ACMI protocol is a contract any runtime can write to.</div>
     </details>
     <details class="faq">
-      <summary>What are the "live builds" in the Lab actually like?</summary>
-      <div class="answer">60 minutes, Tuesdays 2pm ET in Discord. I build the next thing on the public roadmap — a new agent, a new dashboard view, a new MCP integration. You watch the actual code happen, bugs and all. Recording posted within 24 hours.</div>
-    </details>
-    <details class="faq">
-      <summary>What's the refund policy?</summary>
-      <div class="answer">Whop's standard 14-day refund. One click in your Whop account. No questions, no retention games.</div>
-    </details>
-    <details class="faq">
-      <summary>Is there a team / enterprise tier?</summary>
-      <div class="answer">Coming after the TechEx hackathon case study ships — likely $299–499/mo with the governance dashboard + Lobster Trap audit layer and an SLA. If you want first dibs, DM me on X (<a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">@madezmedia</a>).</div>
+      <summary>Is there a dedicated stack or an enterprise offer?</summary>
+      <div class="answer">Yes. A dedicated Elestio stack for one client is Contact us. Enterprise is Contact. Enterprise is on-premise deployment, an SLA, custom integrations, and dedicated support. It is not the Elestio stack.</div>
     </details>
     <details class="faq">
       <summary>What if I'm not using Claude?</summary>
-      <div class="answer">The patterns work for any agent framework. The Starter Kit's agent prompts are Claude-flavored, but the protocol itself is model-agnostic. If you're 100% on a different stack, the kit gives you the schema and dashboard — you'll write your own prompts.</div>
+      <div class="answer">The patterns work for any agent framework. The ACMI protocol is model-agnostic. LogMem is built on that protocol.</div>
     </details>
   </div>
 </section>
@@ -729,29 +753,17 @@
   <div class="wrap" style="text-align: center;">
     <h2 style="color: var(--paper);">Ready to give your fleet a shared timeline?</h2>
     <p style="font-size: 19px; color: var(--accent-soft); max-width: 640px; margin: 16px auto 32px auto;">
-      Inspect the protocol before you pay. Buy the kit if you want to skip the wiring. Join the Lab if you want to be in the room while it ships.
+      The protocol is free. Start with an audit, or contact us about a dedicated stack.
     </p>
     <div class="hero-ctas" style="justify-content: center;">
-      <a class="btn btn-primary" style="background: var(--accent); border-color: var(--accent);" href="https://whop.com/madezmedia/acmi-starter-kit" target="_blank" rel="noopener">Get the Kit · $47</a>
-      <a class="btn btn-ghost" style="background: transparent; color: var(--paper); border-color: var(--paper);" href="https://whop.com/madezmedia/claude-engineer-lab" target="_blank" rel="noopener">Join the Lab · $39/mo</a>
+      <a class="btn btn-primary" style="background: var(--accent); border-color: var(--accent);" href="product.html">Audit / Contact</a>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <div class="row">
-      <div>
-        <strong style="font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;">ACMI</strong> · The Fleet Protocol · v1.3 · MIT<br>
-        Built by <a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">Mad EZ Media</a> · running in production at <a href="https://acmi-product.vercel.app" target="_blank" rel="noopener">acmi-product.vercel.app</a>
-      </div>
-      <div>
-        <a href="https://github.com/madezmedia/acmi-product" target="_blank" rel="noopener">GitHub</a> ·
-        <a href="https://smithery.ai/server/@madezmediapartners/acmi-mcp" target="_blank" rel="noopener">Smithery</a> ·
-        <a href="https://twitter.com/madezmedia" target="_blank" rel="noopener">X</a> ·
-        <a href="#pricing">Pricing</a>
-      </div>
-    </div>
+    <p>LogMem, built on the ACMI protocol. Built by <a href="https://www.madezmedia.com">Mad EZ Media</a>. MIT License.</p>
   </div>
 </footer>
 
