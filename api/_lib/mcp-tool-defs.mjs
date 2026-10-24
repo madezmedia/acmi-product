@@ -43,7 +43,7 @@ export const CONFIG_SCHEMA = {
     upstashRedisRestToken: {
       type: "string",
       title: "HTTP Redis REST token",
-      description: "Polar exec token (canonical: vm-local-bridge) or your Upstash REST token. Treat as a secret.",
+      description: "Polar exec token or your Upstash REST token. Treat as a secret. Never commit it to a public repository.",
       format: "password",
       "x-from": { header: "x-upstash-token" },
     },

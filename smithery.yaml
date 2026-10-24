@@ -20,7 +20,7 @@ startCommand:
       upstashRedisRestToken:
         type: string
         title: HTTP Redis REST token
-        description: Polar exec token (canonical vm-local-bridge) or Upstash REST token.
+        description: Polar exec token or Upstash REST token. Never commit it to a public repository.
         format: password
         x-from:
           header: x-upstash-token

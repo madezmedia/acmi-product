@@ -45,7 +45,7 @@ Do not append a trailing slash. Do not open native Redis :26379 from Mac or clou
 <h2>Canonical Redis</h2>
 <div class="code-block">
 <pre>POST https://acmi-redis-u70402.vm.elestio.app/bridge/exec
-Authorization: Bearer vm-local-bridge
+Authorization: Bearer &lt;your-bridge-token&gt;
 Content-Type: application/json
 
 ["PING"]  →  {"result":"PONG"}</pre>
@@ -64,9 +64,10 @@ Listing: <a href="https://smithery.ai/servers/madezmediapartners/acmi-mcp">smith
 <h3>Smithery form values (madez fleet)</h3>
 <div class="code-block">
 <pre>upstashRedisRestUrl   = https://acmi-redis-u70402.vm.elestio.app/bridge/exec
-upstashRedisRestToken = vm-local-bridge</pre>
+upstashRedisRestToken = &lt;your-bridge-token&gt;</pre>
 </div>
 <p>Field names stay <code>upstashRedisRest*</code> so existing Smithery connections do not break. The values are Polar exec, not Upstash Cloud.</p>
+<p>The token is a secret. Ask the operator for it. Never commit a real token to a public repository.</p>
 
 <h2>Local stdio (Claude Desktop / Grok / Codex / OpenClaw)</h2>
 <div class="code-block">
@@ -76,7 +77,7 @@ upstashRedisRestToken = vm-local-bridge</pre>
       "command": "acmi-mcp",
       "env": {
         "ACMI_BRIDGE_URL": "https://acmi-redis-u70402.vm.elestio.app/bridge/exec",
-        "ACMI_BRIDGE_TOKEN": "vm-local-bridge",
+        "ACMI_BRIDGE_TOKEN": "<your-bridge-token>",
         "ACMI_DEFAULT_TENANT": "madez",
         "ACMI_ALLOWED_TENANTS": "madez,client:duane,client:suzanne"
       }

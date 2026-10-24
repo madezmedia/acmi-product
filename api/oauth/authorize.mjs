@@ -71,7 +71,7 @@ button:hover{background:var(--accent)}
     <div class="hint">Polar exec: no trailing slash. Upstash Cloud REST URLs still work. Native :26379 does not.</div>
 
     <label for="upstash_token">HTTP Redis REST token</label>
-    <input type="password" id="upstash_token" name="upstash_token" placeholder="vm-local-bridge or Upstash REST token">
+    <input type="password" id="upstash_token" name="upstash_token" placeholder="Upstash REST token or bridge token">
   </div>
 
   <div id="fields-redis" style="display:none">
