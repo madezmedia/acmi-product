@@ -7,6 +7,7 @@
 
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
 import { withFleetRead } from "./_lib/read-auth.mjs";
+import { normTs } from "./_lib/mcp-tools.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -39,14 +40,19 @@ async function handler(req) {
     // Older 72h cap silently dropped the 12-event demo seed once it aged past 3 days.
     const windowHours = Math.max(1, Math.min(720, parseInt(url.searchParams.get("hours") || "24", 10)));
     const since = Date.now() - windowHours * 3600 * 1000;
+    // Epoch-second scores are below this millisecond window. Read from the
+    // seconds floor and drop rows whose normalised score is still too old.
+    const redisMin = Math.floor(since / 1000);
 
-    const raw = await redis(instance, "ZRANGEBYSCORE", THREAD_KEY, String(since), "+inf", "WITHSCORES");
+    const raw = await redis(instance, "ZRANGEBYSCORE", THREAD_KEY, String(redisMin), "+inf", "WITHSCORES");
 
     const events = [];
     for (let i = 0; i < (raw || []).length; i += 2) {
       const parsed = tryParse(raw[i]);
       if (!parsed) continue;
-      events.push({ ...parsed, _score: Number(raw[i + 1]) });
+      const ts = normTs(raw[i + 1]);
+      if (ts < since) continue;
+      events.push({ ...parsed, _score: ts });
     }
 
     // Hero counters
