@@ -3,6 +3,7 @@
 // Polling-based (Upstash REST has no native push). Client polls every 1-3s.
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
 import { withFleetRead } from "./_lib/read-auth.mjs";
+import { normTs } from "./_lib/mcp-tools.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -34,7 +35,8 @@ function timeStamp(ts) {
 async function handler(req) {
   try {
     const url = new URL(req.url);
-    const since = parseInt(url.searchParams.get("since") || "0", 10);
+    const sinceRaw = parseInt(url.searchParams.get("since") || "0", 10);
+    const since = sinceRaw > 0 ? normTs(sinceRaw) : 0;
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 200);
 
     const instance = resolveInstance(req);
@@ -43,20 +45,24 @@ async function handler(req) {
     const agentKeys = (await redis(instance, "KEYS", "acmi:agent:*:timeline")) || [];
     const sample = agentKeys.slice(0, 30);
 
-    // Fan-in: ZRANGEBYSCORE since min, latest 10 from each.
-    const minScore = since > 0 ? since : Date.now() - 6 * 60 * 60 * 1000;
+    // Fan-in: ZRANGEBYSCORE since min, earliest 10 from each (ascending LIMIT).
+    // The Redis floor stays in milliseconds. Lowering it to epoch seconds would
+    // make LIMIT 0 10 return the oldest members and hide this window.
+    const windowStartMs = since > 0 ? since : Date.now() - 6 * 60 * 60 * 1000;
     const merged = [];
     for (const key of sample) {
-      const raw = (await redis(instance, "ZRANGEBYSCORE", key, String(minScore), "+inf", "LIMIT", "0", "10")) || [];
+      const raw = (await redis(instance, "ZRANGEBYSCORE", key, String(windowStartMs), "+inf", "LIMIT", "0", "10")) || [];
       for (const item of raw) {
         const ev = tryParse(item);
         if (!ev || typeof ev !== "object") continue;
+        const ts = ev.ts === undefined || ev.ts === null || ev.ts === "" ? 0 : normTs(ev.ts);
+        if (ts !== 0 && ts < windowStartMs) continue;
         const agentId = key.split(":")[2];
         const fw = FW_SUFFIX_FROM_FRAMEWORK[ev.framework || ""] || "ad";
         const k = shortKind(ev.kind);
         merged.push({
-          t: timeStamp(ev.ts),
-          ts: ev.ts || 0,
+          t: timeStamp(ts),
+          ts,
           a: ev.source || agentId,
           kind: k,
           text: (ev.summary || JSON.stringify(ev.payload || {})).slice(0, 140),

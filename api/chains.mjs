@@ -6,6 +6,7 @@
 // Single-event chains are dropped UNLESS kind === "hitl-required".
 import { resolveInstance, redis, tryParse, json, err } from "./_lib/redis.mjs";
 import { withFleetRead } from "./_lib/read-auth.mjs";
+import { normTs } from "./_lib/mcp-tools.mjs";
 
 export const config = { runtime: "edge" };
 
@@ -53,24 +54,32 @@ async function handler(req) {
   try {
     const instance = resolveInstance(req);
     const now = Date.now();
-    const minScore = now - WINDOW_MINUTES * 60 * 1000;
+    const windowStartMs = now - WINDOW_MINUTES * 60 * 1000;
+    // Nanosecond scores sit above `now` in milliseconds, and epoch-second
+    // scores sit below windowStartMs. Read from the seconds floor and keep
+    // events whose normalised timestamp is inside the millisecond window.
+    const redisMin = Math.floor(windowStartMs / 1000);
 
     // Pull all events in window across coordination threads in parallel.
     const perThread = await Promise.all(THREADS.map(async (thread) => {
       const key = `acmi:thread:${thread}:timeline`;
       try {
-        const raw = await redis(instance, "ZRANGEBYSCORE", key, String(minScore), String(now));
+        const raw = await redis(instance, "ZRANGEBYSCORE", key, String(redisMin), "+inf");
         const list = Array.isArray(raw) ? raw : [];
-        return list.map(tryParse).filter(e => e && typeof e === "object").map(e => ({
-          ts: e.ts || 0,
-          source: asString(e.source, ""),
-          kind: asString(e.kind, ""),
-          cid: asString(e.correlationId, ""),
-          parent_cid: asString(e.parentCorrelationId, ""),
-          summary: asString(e.summary, ""),
-          payload: e.payload || null,
-          thread,
-        }));
+        return list.map(tryParse).filter(e => e && typeof e === "object").flatMap(e => {
+          const ts = normTs(e.ts || 0);
+          if (ts < windowStartMs || ts > now) return [];
+          return [{
+            ts,
+            source: asString(e.source, ""),
+            kind: asString(e.kind, ""),
+            cid: asString(e.correlationId, ""),
+            parent_cid: asString(e.parentCorrelationId, ""),
+            summary: asString(e.summary, ""),
+            payload: e.payload || null,
+            thread,
+          }];
+        });
       } catch {
         return [];
       }

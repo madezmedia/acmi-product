@@ -39,10 +39,33 @@ function tryParse(s) {
   try { return JSON.parse(s); } catch { return s; }
 }
 
-function parseZWithScores(arr) {
+export function normTs(n) {
+  // ISO / date strings ("2026-10-12T20:52:00Z", "2026-10-12 20:52Z") were
+  // turned into 0 here, so the entry was stored at 1970 and dropped out of
+  // every time window. Parse them; a numeric string still goes through Number.
+  if (typeof n === "string" && n.trim() !== "" && !Number.isFinite(Number(n))) {
+    const s = n.trim();
+    const p = Date.parse(s) || Date.parse(s.replace(" ", "T"));
+    return Number.isFinite(p) ? p : 0;
+  }
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 0;
+  // Round to whole microseconds first: x / 1e6 in floating point can land a
+  // hair under the true value (1791853034186000000 / 1e6 = ...185.99999),
+  // and flooring that moves the entry 1 ms early.
+  if (x > 1e17) return Math.floor(Math.round(x / 1e3) / 1e3); // ns -> ms
+  if (x > 1e14) return Math.floor(Math.round(x) / 1e3); // us -> ms
+  // Seconds only when the value is a plausible epoch-seconds reading
+  // (2001..5138). Smaller numbers are left alone: fixtures and relative
+  // clocks use them, and scaling would reorder nothing but break equality.
+  if (x >= 1e9 && x < 1e11) return Math.floor(x * 1e3); // s -> ms
+  return Math.floor(x);
+}
+
+export function parseZWithScores(arr) {
   const out = [];
   for (let i = 0; i < (arr || []).length; i += 2) {
-    out.push({ ts: Number(arr[i + 1]), data: tryParse(arr[i]) });
+    out.push({ ts: normTs(arr[i + 1]), raw_score: arr[i + 1], data: tryParse(arr[i]) });
   }
   return out;
 }
@@ -417,16 +440,21 @@ export function registerAcmiTools(server, redis) {
         if (k.endsWith(":timeline")) return `acmi:${k}`;
         return `acmi:${k}:timeline`;
       });
-      const minScore = sinceMs ? Date.now() - sinceMs : 0;
+      const windowStartMs = sinceMs ? Date.now() - sinceMs : 0;
+      // Epoch-second scores (~1e9) are below a millisecond lower bound, so
+      // compare normalised timestamps to the ms window after the read.
+      const redisMin = sinceMs ? Math.floor(windowStartMs / 1000) : 0;
       const merged = [];
       for (const k of targets) {
-        const r = await redis("ZRANGEBYSCORE", k, minScore, "+inf", "WITHSCORES");
-        for (const e of parseZWithScores(r)) merged.push({ ...e, _source: k });
+        const r = await redis("ZRANGEBYSCORE", k, redisMin, "+inf", "WITHSCORES");
+        for (const e of parseZWithScores(r)) {
+          if (sinceMs && e.ts < windowStartMs) continue;
+          merged.push({ ...e, _source: k });
+        }
       }
       merged.sort((a, b) => b.ts - a.ts);
       const results = merged.slice(0, maxResults).map((m) => {
-        let ts = m.ts;
-        if (ts > 9999999999999) ts = Number(String(ts).slice(0, 13));
+        const ts = m.ts;
         const iso = new Date(ts).toISOString().slice(0, 16).replace("T", " ") + "Z";
         const src = m._source.replace(/^acmi:|:timeline$/g, "");
         const d = m.data || {};
